@@ -4,6 +4,10 @@
     <ProjectReference Include="..\CleanScope.Domain\CleanScope.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>$(DotnetWindowsTfm)</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
