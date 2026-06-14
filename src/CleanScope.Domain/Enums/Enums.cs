@@ -27,8 +27,15 @@ public enum EvidenceKind { PathRule, Metadata, Signature, InstalledApp, Registry
 /// <summary>用户决策 (user_decision.decision)。</summary>
 public enum DecisionType { Processed, Ignored, RemindLater }
 
-/// <summary>规则/忽略匹配方式 (ignore_entry.match_type / 规则 match_type)。</summary>
+/// <summary>忽略名单匹配方式 (ignore_entry.match_type)。规则包的匹配方式见 <see cref="RuleMatchKind"/>。</summary>
 public enum MatchType { Exact, Prefix, Glob }
+
+/// <summary>
+/// 规则包匹配方式 (rules/*.json 的 match_type, 知识库§0)。
+/// PathPrefix=真实路径前缀; PathGlob=路径通配; DirName=名称段精确; Extension=扩展名。
+/// 匹配在真实路径解析后进行 (IR-4)。
+/// </summary>
+public enum RuleMatchKind { PathPrefix, PathGlob, DirName, Extension }
 
 /// <summary>操作类型 (action_log.action)。MVP 仅辅助操作; MoveToRecycleBin 自 Beta 起。</summary>
 public enum ActionType { OpenDir, CopyPath, OpenSettings, ShowCommand, AddIgnore, ExportReport, MoveToRecycleBin }

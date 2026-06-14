@@ -5,8 +5,8 @@ namespace CleanScope.Domain.Models;
 /// <summary>规则库条目 (rules/*.json schema, 知识库§0)。区别于 RuleMatch(逐文件匹配结果)。</summary>
 public record RuleDefinition(
     string Id,
-    string Pattern,
-    MatchType MatchType,
+    string Pattern,            // 已展开环境变量后的匹配模式
+    RuleMatchKind MatchKind,
     string Category,
     RiskLevel RiskLevel,
     bool DirectDelete,
