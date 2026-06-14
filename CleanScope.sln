@@ -31,6 +31,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanScope.Infrastructure.T
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanScope.Core.Tests", "tests\CleanScope.Core.Tests\CleanScope.Core.Tests.csproj", "{9A3F3B16-9D35-4E18-9DF4-F18FD468D3F6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanScope.Reporting.Tests", "tests\CleanScope.Reporting.Tests\CleanScope.Reporting.Tests.csproj", "{B4993142-17B4-40F2-86B3-01D47004A600}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -88,6 +90,10 @@ Global
 		{9A3F3B16-9D35-4E18-9DF4-F18FD468D3F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9A3F3B16-9D35-4E18-9DF4-F18FD468D3F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9A3F3B16-9D35-4E18-9DF4-F18FD468D3F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4993142-17B4-40F2-86B3-01D47004A600}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4993142-17B4-40F2-86B3-01D47004A600}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4993142-17B4-40F2-86B3-01D47004A600}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4993142-17B4-40F2-86B3-01D47004A600}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{8F6EA290-1414-48CA-AA20-03ABB6CB20A1} = {8039DDC1-F32F-4739-98BD-D315471353EE}
@@ -102,5 +108,6 @@ Global
 		{353B64E0-67E9-44E4-B3C1-C1746E23ECB6} = {2A37AF4D-BC75-4731-9388-93F7E9F9BF3D}
 		{DF7BD3A5-1B94-43F4-8791-901AD1CDAB3F} = {2A37AF4D-BC75-4731-9388-93F7E9F9BF3D}
 		{9A3F3B16-9D35-4E18-9DF4-F18FD468D3F6} = {2A37AF4D-BC75-4731-9388-93F7E9F9BF3D}
+		{B4993142-17B4-40F2-86B3-01D47004A600} = {2A37AF4D-BC75-4731-9388-93F7E9F9BF3D}
 	EndGlobalSection
 EndGlobal
