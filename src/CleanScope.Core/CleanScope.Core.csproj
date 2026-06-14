@@ -10,4 +10,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- 让单测可验证内部纯逻辑 (如权限降级映射), 无需公开 API。 -->
+    <InternalsVisibleTo Include="CleanScope.Core.Tests" />
+  </ItemGroup>
+
 </Project>

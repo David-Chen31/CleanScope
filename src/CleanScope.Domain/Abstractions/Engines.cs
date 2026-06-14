@@ -6,9 +6,20 @@ namespace CleanScope.Domain.Abstractions;
 /// <summary>扫描引擎: 遍历 + 目录大小聚合 + TopN。只读, 不删除, 不评估, 不解释。</summary>
 public interface IScanEngine
 {
+    /// <summary>扫描并返回按大小降序的 TopN 节点。</summary>
     Task<IReadOnlyList<FileNode>> ScanAsync(
         ScanOptions options,
         IProgress<ScanProgress>? progress = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// 同上, 但额外把"每个定稿节点"流式投递给 <paramref name="onNode"/> (全量, 非仅 TopN)。
+    /// 供编排层增量持久化 → 中断后可凭已落库节点续扫 (T1.4)。返回值仍为 TopN。
+    /// </summary>
+    Task<IReadOnlyList<FileNode>> ScanAsync(
+        ScanOptions options,
+        IProgress<FileNode>? onNode,
+        IProgress<ScanProgress>? progress,
         CancellationToken ct = default);
 }
 

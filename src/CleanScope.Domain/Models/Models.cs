@@ -23,8 +23,15 @@ public record EvidenceBundle(
     FileMetadata? Metadata,
     IReadOnlyList<Evidence> Evidences);
 
-/// <summary>扫描选项。</summary>
-public record ScanOptions(string TargetPath, int TopN, ScanMode Mode);
+/// <summary>
+/// 扫描选项。<paramref name="SkipPaths"/>: 续扫时跳过的已扫子树完整路径 (T1.4 中断恢复);
+/// 引擎不再下钻这些子树, 其大小不计入父目录聚合 —— 编排层 (T1.11) 负责合并已持久化的子树结果。
+/// </summary>
+public record ScanOptions(
+    string TargetPath,
+    int TopN,
+    ScanMode Mode,
+    IReadOnlyList<string>? SkipPaths = null);
 
 /// <summary>扫描进度 (IProgress 回调)。</summary>
 public record ScanProgress(long FilesScanned, long BytesScanned, string? CurrentPath);
