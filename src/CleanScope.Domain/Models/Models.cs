@@ -1,0 +1,88 @@
+namespace CleanScope.Domain.Models;
+
+// 非实体的领域 DTO / 值对象 (接口契约用)。纯形状, 无逻辑 (T0.5)。
+
+/// <summary>规则库条目 (rules/*.json schema, 知识库§0)。区别于 RuleMatch(逐文件匹配结果)。</summary>
+public record RuleDefinition(
+    string Id,
+    string Pattern,
+    MatchType MatchType,
+    string Category,
+    RiskLevel RiskLevel,
+    bool DirectDelete,
+    bool IsSystemCritical,
+    string Description,
+    string RecommendedAction,
+    string EvidenceType,
+    double Confidence,
+    int Priority);
+
+/// <summary>证据集合 (架构§5 EvidenceBundle): 元数据 + 证据链原子项。</summary>
+public record EvidenceBundle(
+    long FileId,
+    FileMetadata? Metadata,
+    IReadOnlyList<Evidence> Evidences);
+
+/// <summary>扫描选项。</summary>
+public record ScanOptions(string TargetPath, int TopN, ScanMode Mode);
+
+/// <summary>扫描进度 (IProgress 回调)。</summary>
+public record ScanProgress(long FilesScanned, long BytesScanned, string? CurrentPath);
+
+/// <summary>单文件分析聚合 (编排层装配, 供决策/脱敏/解释使用)。</summary>
+public record FileAnalysis(
+    FileNode Node,
+    EvidenceBundle Evidence,
+    RuleMatch? RuleMatch,
+    IReadOnlyList<AttributionCandidate> Attributions,
+    RiskAssessment Risk,
+    AiExplanation? Explanation);
+
+/// <summary>决策视图项 (DecisionService 输出, 面向用户展示)。</summary>
+public record DecisionItem(
+    string Path,
+    long Size,
+    string? OwnerApp,
+    RiskLevel RiskLevel,
+    string RecommendedAction,
+    string? Explanation,
+    IReadOnlyList<long> EvidenceChain);
+
+/// <summary>扫描报告 (报告导出输入)。</summary>
+public record ScanReport(
+    ScanTask Task,
+    IReadOnlyList<DecisionItem> Items);
+
+/// <summary>已脱敏的 AI 输入 (脱敏网关唯一产物; 仅 P0 + 脱敏 P1; 永不含文件内容, PR-1)。</summary>
+public record AiInput(
+    string PathPattern,        // 脱敏: %USER%/%FILE%
+    string? Extension,
+    long Size,
+    NodeType? NodeType,
+    string? MatchedRuleCategory,
+    RiskLevel? RuleRiskLevel,
+    bool IsSystemCritical,
+    IReadOnlyList<string> Facts,                       // 仅 is_fact=1 的脱敏证据
+    IReadOnlyList<AttributionCandidate> RelatedApps,
+    double? Confidence);
+
+/// <summary>操作请求 (辅助操作或删除意图)。</summary>
+public record ActionRequest(
+    long? FileId,
+    string TargetPath,
+    ActionType Action);
+
+/// <summary>安全闸门判定结果 (架构§安全闸门)。</summary>
+public enum GuardOutcome { Allowed, Rejected }
+
+public record GuardDecision(
+    GuardOutcome Outcome,
+    string Reason,
+    string? RecommendedAlternative);
+
+/// <summary>已安装应用 (归因证据来源)。</summary>
+public record InstalledApp(
+    string Name,
+    string? Publisher,
+    string? InstallLocation,
+    string? Source);           // Registry / WinGet / Appx
