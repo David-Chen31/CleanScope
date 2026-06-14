@@ -15,6 +15,13 @@
     <TargetFramework>$(DotnetWindowsTfm)</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>cleanscope</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 声明式规则包随宿主分发: 复制到输出目录的 rules/ (RulePackLoader.DefaultRulesDirectory)。 -->
+    <Content Include="..\..\rules\*.json" Link="rules\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>
