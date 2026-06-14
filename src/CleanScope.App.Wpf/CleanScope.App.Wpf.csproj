@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\CleanScope.Domain\CleanScope.Domain.csproj" />
+    <ProjectReference Include="..\CleanScope.Application\CleanScope.Application.csproj" />
+    <ProjectReference Include="..\CleanScope.Core\CleanScope.Core.csproj" />
+    <ProjectReference Include="..\CleanScope.Safety\CleanScope.Safety.csproj" />
+    <ProjectReference Include="..\CleanScope.Ai\CleanScope.Ai.csproj" />
+    <ProjectReference Include="..\CleanScope.Infrastructure\CleanScope.Infrastructure.csproj" />
+    <ProjectReference Include="..\CleanScope.Reporting\CleanScope.Reporting.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(DotnetWindowsTfm)</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+</Project>

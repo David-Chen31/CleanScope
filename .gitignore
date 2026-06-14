@@ -1,1 +1,46 @@
 /ai开发项目步骤.md
+
+# ===== .NET build output =====
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+.vs/
+artifacts/
+
+# ===== Rider / VS Code =====
+.idea/
+.vscode/
+
+# ===== CleanScope 安全/隐私: 绝不入库 (PR-1/PR-4) =====
+# 本地数据库 (含扫描出的真实路径/文件名, 属 P1/P2)
+*.db
+*.db-shm
+*.db-wal
+cleanscope.db*
+
+# 扫描结果 / 导出报告 (含真实用户路径)
+/scan-results/
+/exports/
+*.report.md
+*.report.html
+*.report.json
+
+# 密钥 / API Key / 本地配置 (PR-1)
+*.secret
+*.key
+appsettings.*.local.json
+.env
+.env.*
+secrets.json
+
+# 日志 / 审计 (仅本地)
+*.log
+/audit/
+
+# ===== OS =====
+Thumbs.db
+Desktop.ini
+.DS_Store
