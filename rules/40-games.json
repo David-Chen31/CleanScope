@@ -1,0 +1,16 @@
+[
+  { "id":"steam-apps", "pattern":"*\\Steam\\steamapps", "match_type":"path_glob",
+    "category":"Steam 游戏", "risk_level":"C", "direct_delete":false, "is_system_critical":false,
+    "description":"Steam 已安装游戏/下载文件", "recommended_action":"用 Steam 卸载或移动安装文件夹，勿直删",
+    "evidence_type":"path_rule", "confidence":0.85, "priority":65 },
+
+  { "id":"steam-downloading", "pattern":"*\\Steam\\steamapps\\downloading", "match_type":"path_glob",
+    "category":"Steam 下载缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"Steam 下载临时缓存", "recommended_action":"用 Steam 设置>下载>清除下载缓存",
+    "evidence_type":"path_rule", "confidence":0.8, "priority":62 },
+
+  { "id":"epic-games", "pattern":"*\\Epic Games", "match_type":"path_glob",
+    "category":"Epic 游戏", "risk_level":"C", "direct_delete":false, "is_system_critical":false,
+    "description":"Epic 已安装游戏", "recommended_action":"用 Epic 启动器卸载/移动，勿直删",
+    "evidence_type":"path_rule", "confidence":0.8, "priority":65 }
+]

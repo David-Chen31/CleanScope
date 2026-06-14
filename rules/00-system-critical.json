@@ -1,0 +1,83 @@
+[
+  { "id":"win-system-root", "pattern":"%SystemRoot%", "match_type":"path_prefix",
+    "category":"Windows 系统目录", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"Windows 操作系统本体目录", "recommended_action":"严禁删除/修改",
+    "evidence_type":"path_rule", "confidence":0.99, "priority":100 },
+
+  { "id":"win-system32", "pattern":"%SystemRoot%\\System32", "match_type":"path_prefix",
+    "category":"Windows 核心组件", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"核心系统 DLL/可执行/服务", "recommended_action":"严禁删除",
+    "evidence_type":"path_rule", "confidence":0.99, "priority":100 },
+
+  { "id":"win-syswow64", "pattern":"%SystemRoot%\\SysWOW64", "match_type":"path_prefix",
+    "category":"Windows 核心组件(32位)", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"32 位系统组件", "recommended_action":"严禁删除",
+    "evidence_type":"path_rule", "confidence":0.99, "priority":100 },
+
+  { "id":"win-winsxs", "pattern":"%SystemRoot%\\WinSxS", "match_type":"path_prefix",
+    "category":"WinSxS 组件存储", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"组件并存存储；删除会破坏系统且不可逆",
+    "recommended_action":"仅用 DISM /StartComponentCleanup，禁止手动删除",
+    "evidence_type":"path_rule", "confidence":0.98, "priority":100 },
+
+  { "id":"win-installer-cache", "pattern":"%SystemRoot%\\Installer", "match_type":"path_prefix",
+    "category":"Windows Installer Cache", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"MSI 安装/修复/更新/卸载缓存；删后软件无法修复或卸载",
+    "recommended_action":"不要手动删除；通过软件官方卸载/修复处理",
+    "evidence_type":"path_rule", "confidence":0.97, "priority":100 },
+
+  { "id":"win-driverstore", "pattern":"%SystemRoot%\\System32\\DriverStore", "match_type":"path_prefix",
+    "category":"驱动存储", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"驱动程序存储", "recommended_action":"严禁删除；用设备管理器/pnputil 管理",
+    "evidence_type":"path_rule", "confidence":0.97, "priority":100 },
+
+  { "id":"win-drivers", "pattern":"%SystemRoot%\\System32\\drivers", "match_type":"path_prefix",
+    "category":"驱动目录", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"系统驱动 (.sys)", "recommended_action":"严禁删除",
+    "evidence_type":"path_rule", "confidence":0.97, "priority":100 },
+
+  { "id":"win-reg-hive", "pattern":"%SystemRoot%\\System32\\config", "match_type":"path_prefix",
+    "category":"注册表数据库", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"SYSTEM/SOFTWARE/SAM/SECURITY 注册表 hive", "recommended_action":"严禁删除",
+    "evidence_type":"path_rule", "confidence":0.99, "priority":100 },
+
+  { "id":"win-boot", "pattern":"%SystemRoot%\\Boot", "match_type":"path_prefix",
+    "category":"启动文件", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"系统启动相关；删后无法开机", "recommended_action":"严禁删除",
+    "evidence_type":"path_rule", "confidence":0.98, "priority":100 },
+
+  { "id":"win-fonts", "pattern":"%SystemRoot%\\Fonts", "match_type":"path_prefix",
+    "category":"系统字体", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"系统字体目录", "recommended_action":"勿删；经字体设置管理",
+    "evidence_type":"path_rule", "confidence":0.9, "priority":100 },
+
+  { "id":"sys-pagefile", "pattern":"pagefile.sys", "match_type":"dir_name",
+    "category":"系统内存文件", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"虚拟内存页面文件", "recommended_action":"经 系统>高级>虚拟内存 调整，勿直删",
+    "evidence_type":"dir_name_pattern", "confidence":0.95, "priority":100 },
+
+  { "id":"sys-hiberfil", "pattern":"hiberfil.sys", "match_type":"dir_name",
+    "category":"系统内存文件", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"休眠文件", "recommended_action":"用 powercfg /hibernate off 关闭，勿直删",
+    "evidence_type":"dir_name_pattern", "confidence":0.95, "priority":100 },
+
+  { "id":"sys-swapfile", "pattern":"swapfile.sys", "match_type":"dir_name",
+    "category":"系统内存文件", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"交换文件(UWP)", "recommended_action":"由系统管理，勿直删",
+    "evidence_type":"dir_name_pattern", "confidence":0.9, "priority":100 },
+
+  { "id":"sys-volinfo", "pattern":"System Volume Information", "match_type":"dir_name",
+    "category":"卷影/还原点", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"还原点/卷影存储", "recommended_action":"经 系统保护 设置管理",
+    "evidence_type":"dir_name_pattern", "confidence":0.9, "priority":100 },
+
+  { "id":"sys-recyclebin", "pattern":"$Recycle.Bin", "match_type":"dir_name",
+    "category":"回收站本体", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"回收站系统目录", "recommended_action":"用 清空回收站，勿直删目录",
+    "evidence_type":"dir_name_pattern", "confidence":0.9, "priority":100 },
+
+  { "id":"win-recovery", "pattern":"Recovery", "match_type":"dir_name",
+    "category":"恢复环境", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"WinRE 恢复环境", "recommended_action":"严禁删除",
+    "evidence_type":"dir_name_pattern", "confidence":0.85, "priority":100 }
+]

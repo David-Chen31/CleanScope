@@ -1,0 +1,46 @@
+[
+  { "id":"npm-cache", "pattern":"%LocalAppData%\\npm-cache", "match_type":"path_prefix",
+    "category":"npm 缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"npm 包缓存", "recommended_action":"用 npm cache clean --force",
+    "evidence_type":"path_rule", "confidence":0.9, "priority":60 },
+
+  { "id":"pnpm-store", "pattern":"%LocalAppData%\\pnpm\\store", "match_type":"path_prefix",
+    "category":"pnpm 存储", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"pnpm 全局内容寻址存储", "recommended_action":"用 pnpm store prune",
+    "evidence_type":"path_rule", "confidence":0.88, "priority":60 },
+
+  { "id":"yarn-cache", "pattern":"%LocalAppData%\\Yarn\\Cache", "match_type":"path_prefix",
+    "category":"Yarn 缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"Yarn 包缓存", "recommended_action":"用 yarn cache clean",
+    "evidence_type":"path_rule", "confidence":0.88, "priority":60 },
+
+  { "id":"pip-cache", "pattern":"%LocalAppData%\\pip\\Cache", "match_type":"path_prefix",
+    "category":"pip 缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"pip 下载/构建缓存", "recommended_action":"用 pip cache purge",
+    "evidence_type":"path_rule", "confidence":0.9, "priority":60 },
+
+  { "id":"conda-pkgs", "pattern":"*\\conda\\pkgs", "match_type":"path_glob",
+    "category":"conda 包缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"conda 下载的包缓存", "recommended_action":"用 conda clean --all",
+    "evidence_type":"path_rule", "confidence":0.82, "priority":60 },
+
+  { "id":"uv-cache", "pattern":"%LocalAppData%\\uv\\cache", "match_type":"path_prefix",
+    "category":"uv 缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"uv Python 包缓存", "recommended_action":"用 uv cache clean",
+    "evidence_type":"path_rule", "confidence":0.85, "priority":60 },
+
+  { "id":"gradle-caches", "pattern":"%UserProfile%\\.gradle\\caches", "match_type":"path_prefix",
+    "category":"Gradle 缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"Gradle 依赖/构建缓存", "recommended_action":"可清理；或迁移 GRADLE_USER_HOME",
+    "evidence_type":"path_rule", "confidence":0.9, "priority":60 },
+
+  { "id":"maven-repo", "pattern":"%UserProfile%\\.m2\\repository", "match_type":"path_prefix",
+    "category":"Maven 本地仓库", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"Maven 依赖仓库，可重新下载", "recommended_action":"可清理；或迁移本地仓库路径",
+    "evidence_type":"path_rule", "confidence":0.88, "priority":60 },
+
+  { "id":"nuget-packages", "pattern":"%UserProfile%\\.nuget\\packages", "match_type":"path_prefix",
+    "category":"NuGet 全局包", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"NuGet 全局包缓存", "recommended_action":"用 dotnet nuget locals all --clear",
+    "evidence_type":"path_rule", "confidence":0.88, "priority":60 }
+]

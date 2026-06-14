@@ -1,0 +1,31 @@
+[
+  { "id":"user-temp", "pattern":"%TEMP%", "match_type":"path_prefix",
+    "category":"用户临时目录", "risk_level":"A", "direct_delete":true, "is_system_critical":false,
+    "description":"用户临时文件，多数可再生成", "recommended_action":"可清理(占用中文件会跳过)；仍建议确认",
+    "evidence_type":"path_rule", "confidence":0.85, "priority":50 },
+
+  { "id":"win-temp", "pattern":"%SystemRoot%\\Temp", "match_type":"path_prefix",
+    "category":"系统临时目录", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"系统临时文件", "recommended_action":"经磁盘清理处理，部分需管理员",
+    "evidence_type":"path_rule", "confidence":0.8, "priority":55 },
+
+  { "id":"thumbcache", "pattern":"%LocalAppData%\\Microsoft\\Windows\\Explorer", "match_type":"path_prefix",
+    "category":"缩略图缓存", "risk_level":"A", "direct_delete":true, "is_system_critical":false,
+    "description":"thumbcache 缩略图缓存，可重建", "recommended_action":"可清理，资源管理器会重建",
+    "evidence_type":"path_rule", "confidence":0.85, "priority":50 },
+
+  { "id":"log-files", "pattern":"*.log", "match_type":"extension",
+    "category":"日志文件", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"应用日志；多数可清", "recommended_action":"确认非系统活动日志后可清理",
+    "evidence_type":"extension", "confidence":0.6, "priority":40 },
+
+  { "id":"crash-dump", "pattern":"*.dmp", "match_type":"extension",
+    "category":"崩溃转储", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"崩溃转储文件，排障后可清", "recommended_action":"无需排障时可清理",
+    "evidence_type":"extension", "confidence":0.65, "priority":40 },
+
+  { "id":"memory-dump", "pattern":"%SystemRoot%\\MEMORY.DMP", "match_type":"path_prefix",
+    "category":"系统内存转储", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"蓝屏完整内存转储", "recommended_action":"经磁盘清理>系统错误内存转储 清理",
+    "evidence_type":"path_rule", "confidence":0.8, "priority":55 }
+]

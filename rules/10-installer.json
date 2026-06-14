@@ -1,0 +1,22 @@
+[
+  { "id":"programdata-package-cache", "pattern":"%ProgramData%\\Package Cache", "match_type":"path_prefix",
+    "category":"Package Cache", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"安装包缓存(VS 等)，GUID 子目录；删后修复/卸载异常",
+    "recommended_action":"用对应官方安装器(如 VS Installer)管理，勿直删",
+    "evidence_type":"path_rule", "confidence":0.95, "priority":100 },
+
+  { "id":"win-update-cache", "pattern":"%SystemRoot%\\SoftwareDistribution\\Download", "match_type":"path_prefix",
+    "category":"Windows 更新缓存", "risk_level":"C", "direct_delete":false, "is_system_critical":false,
+    "description":"Windows Update 下载缓存", "recommended_action":"经磁盘清理或停 wuauserv 后清理，非直删",
+    "evidence_type":"path_rule", "confidence":0.85, "priority":80 },
+
+  { "id":"windows-old", "pattern":"%SystemDrive%\\Windows.old", "match_type":"path_prefix",
+    "category":"旧系统备份", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"升级后旧系统备份，占用大", "recommended_action":"用 磁盘清理>以前的Windows安装 删除",
+    "evidence_type":"path_rule", "confidence":0.9, "priority":70 },
+
+  { "id":"win-temp-installer", "pattern":"%SystemDrive%\\Config.Msi", "match_type":"path_prefix",
+    "category":"安装临时目录", "risk_level":"C", "direct_delete":false, "is_system_critical":false,
+    "description":"MSI 安装过程临时目录", "recommended_action":"安装结束后通常自动清理，勿在安装中删",
+    "evidence_type":"path_rule", "confidence":0.8, "priority":75 }
+]

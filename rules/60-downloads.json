@@ -1,0 +1,11 @@
+[
+  { "id":"downloads-dir", "pattern":"%UserProfile%\\Downloads", "match_type":"path_prefix",
+    "category":"下载目录", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"下载文件，多数可重新获取", "recommended_action":"逐项确认后清理；重要文件先移走",
+    "evidence_type":"path_rule", "confidence":0.7, "priority":45 },
+
+  { "id":"installer-archive", "pattern":"*.iso", "match_type":"extension",
+    "category":"镜像/安装包", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"ISO 镜像，通常可重新下载", "recommended_action":"确认不再需要后清理",
+    "evidence_type":"extension", "confidence":0.6, "priority":42 }
+]

@@ -1,0 +1,18 @@
+[
+  { "id":"docker-data", "pattern":"%AppData%\\Docker", "match_type":"path_prefix",
+    "category":"Docker 数据", "risk_level":"C", "direct_delete":false, "is_system_critical":false,
+    "description":"Docker Desktop 数据/配置", "recommended_action":"用 docker system prune，勿直删",
+    "evidence_type":"path_rule", "confidence":0.8, "priority":70 },
+
+  { "id":"docker-wsl-vhdx", "pattern":"%LocalAppData%\\Docker\\wsl", "match_type":"path_prefix",
+    "category":"Docker WSL 磁盘", "risk_level":"D", "direct_delete":false, "is_system_critical":false,
+    "description":"Docker 在 WSL2 的 ext4.vhdx 镜像磁盘(挂载中)",
+    "recommended_action":"用 docker prune + wsl --shutdown 后 compact，勿直删",
+    "evidence_type":"path_rule", "confidence":0.82, "priority":85 },
+
+  { "id":"wsl-distro-vhdx", "pattern":"%LocalAppData%\\Packages\\*\\LocalState\\ext4.vhdx", "match_type":"path_glob",
+    "category":"WSL 发行版磁盘", "risk_level":"D", "direct_delete":false, "is_system_critical":false,
+    "description":"WSL 发行版虚拟磁盘；删除丢失该发行版全部数据",
+    "recommended_action":"用 官方 compact/export，勿直删",
+    "evidence_type":"path_rule", "confidence":0.85, "priority":85 }
+]

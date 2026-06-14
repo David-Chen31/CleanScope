@@ -1,0 +1,16 @@
+[
+  { "id":"vs-component-cache", "pattern":"%ProgramData%\\Microsoft\\VisualStudio\\Packages", "match_type":"path_prefix",
+    "category":"Visual Studio 缓存", "risk_level":"C", "direct_delete":false, "is_system_critical":false,
+    "description":"VS 安装/组件缓存", "recommended_action":"用 VS Installer 管理，勿直删",
+    "evidence_type":"path_rule", "confidence":0.85, "priority":70 },
+
+  { "id":"jetbrains-caches", "pattern":"%LocalAppData%\\JetBrains\\*\\caches", "match_type":"path_glob",
+    "category":"JetBrains 缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"JetBrains IDE 索引/缓存，可重建", "recommended_action":"IDE 内 Invalidate Caches，或可删后重建",
+    "evidence_type":"path_rule", "confidence":0.85, "priority":60 },
+
+  { "id":"vscode-cache", "pattern":"%AppData%\\Code\\Cache", "match_type":"path_prefix",
+    "category":"VS Code 缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
+    "description":"VS Code 缓存，可重建", "recommended_action":"可清理后由 VS Code 重建",
+    "evidence_type":"path_rule", "confidence":0.85, "priority":60 }
+]

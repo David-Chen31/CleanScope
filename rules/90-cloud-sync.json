@@ -1,0 +1,7 @@
+[
+  { "id":"onedrive", "pattern":"%UserProfile%\\OneDrive", "match_type":"path_prefix",
+    "category":"OneDrive 同步", "risk_level":"C", "direct_delete":false, "is_system_critical":false,
+    "description":"OneDrive 同步目录；误删可能同步删除云端",
+    "recommended_action":"经 OneDrive 客户端管理(如释放空间)，勿直删",
+    "evidence_type":"path_rule", "confidence":0.85, "priority":68 }
+]

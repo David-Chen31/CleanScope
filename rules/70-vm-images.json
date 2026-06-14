@@ -1,0 +1,12 @@
+[
+  { "id":"vm-vhd", "pattern":"*.vhdx", "match_type":"extension",
+    "category":"虚拟磁盘镜像", "risk_level":"C", "direct_delete":false, "is_system_critical":false,
+    "description":"虚拟机/Hyper-V 磁盘；可能含重要数据或挂载中",
+    "recommended_action":"确认未挂载且无需后再处理；优先经虚拟化工具",
+    "evidence_type":"extension", "confidence":0.7, "priority":58 },
+
+  { "id":"vm-vmdk", "pattern":"*.vmdk", "match_type":"extension",
+    "category":"VMware 磁盘", "risk_level":"C", "direct_delete":false, "is_system_critical":false,
+    "description":"VMware 虚拟磁盘", "recommended_action":"经 VMware 管理，确认未使用再处理",
+    "evidence_type":"extension", "confidence":0.7, "priority":58 }
+]
