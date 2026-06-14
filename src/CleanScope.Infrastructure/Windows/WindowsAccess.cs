@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Win32;
 
 namespace CleanScope.Infrastructure.Windows;
 
@@ -72,9 +73,57 @@ public sealed class WindowsAccess : IWindowsAccess
         }
     }
 
-    // —— 以下方法由后续任务落地 ——
-    /// <summary>T2.2: 已安装软件列表 (注册表 Uninstall + WinGet + Appx)。</summary>
-    public IReadOnlyList<InstalledApp> GetInstalledApplications() => Array.Empty<InstalledApp>();
+    private const string UninstallPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
+
+    /// <summary>
+    /// 已安装软件列表 (只读注册表 Uninstall): HKLM 64位 + HKLM 32位(WOW6432Node) + HKCU。
+    /// 覆盖 Win32 及绝大多数 WinGet 安装项 (后者亦写 Uninstall)。原生 Appx/UWP 枚举需 WinRT, 留作后续。
+    /// </summary>
+    public IReadOnlyList<InstalledApp> GetInstalledApplications()
+    {
+        var apps = new List<InstalledApp>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        ReadUninstall(RegistryHive.LocalMachine, RegistryView.Registry64, apps, seen);
+        ReadUninstall(RegistryHive.LocalMachine, RegistryView.Registry32, apps, seen); // WOW6432Node
+        ReadUninstall(RegistryHive.CurrentUser, RegistryView.Default, apps, seen);
+        return apps;
+    }
+
+    private static void ReadUninstall(
+        RegistryHive hive, RegistryView view, List<InstalledApp> outp, HashSet<string> seen)
+    {
+        try
+        {
+            using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+            using var root = baseKey.OpenSubKey(UninstallPath);
+            if (root is null) return;
+
+            foreach (var subName in root.GetSubKeyNames())
+            {
+                try
+                {
+                    using var sub = root.OpenSubKey(subName);
+                    if (sub is null) continue;
+
+                    var display = sub.GetValue("DisplayName") as string;
+                    if (string.IsNullOrWhiteSpace(display)) continue;                 // 无名 → 多为更新/组件
+                    if (sub.GetValue("SystemComponent") is int sc && sc == 1) continue; // 系统组件
+                    if (sub.GetValue("ParentKeyName") is string pk && pk.Length > 0) continue; // 补丁子项
+
+                    var location = NullIfBlank(sub.GetValue("InstallLocation") as string);
+                    if (!seen.Add(display + "|" + (location ?? string.Empty))) continue; // 跨视图去重
+
+                    outp.Add(new InstalledApp(
+                        Name: display!,
+                        Publisher: NullIfBlank(sub.GetValue("Publisher") as string),
+                        InstallLocation: location,
+                        Source: "Registry"));
+                }
+                catch { /* 单项异常跳过, 不影响整体 */ }
+            }
+        }
+        catch { /* 某 hive/view 不可用 → 跳过 */ }
+    }
 
     /// <summary>T2.3: 文件被哪个进程占用 (IR-2 删除前置)。</summary>
     public string? GetOccupyingProcessName(string path) => null;
