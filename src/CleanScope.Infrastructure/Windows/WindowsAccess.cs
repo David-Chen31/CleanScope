@@ -125,8 +125,8 @@ public sealed class WindowsAccess : IWindowsAccess
         catch { /* 某 hive/view 不可用 → 跳过 */ }
     }
 
-    /// <summary>T2.3: 文件被哪个进程占用 (IR-2 删除前置)。</summary>
-    public string? GetOccupyingProcessName(string path) => null;
+    /// <summary>文件被哪个进程占用 (IR-2 删除前置)。经 Restart Manager; 无占用/失败 → null。仅返回进程名(非路径)。</summary>
+    public string? GetOccupyingProcessName(string path) => RestartManager.GetOccupyingProcessName(path);
 
     private static string? NullIfBlank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s;
 }
