@@ -1,7 +1,14 @@
 namespace CleanScope.Application;
 
-/// <summary>编排结果: 扫描报告数据 + 分级建议项 (写文件由宿主经 IReportExporter 完成)。</summary>
-public sealed record ScanAndAnalyzeResult(ScanReport Report, IReadOnlyList<DecisionItem> Decisions);
+/// <summary>
+/// 编排结果: 扫描报告数据 + 分级建议项 (写文件由宿主经 IReportExporter 完成)。
+/// <paramref name="Analyses"/> 保留逐文件完整分析 (证据链/归因/AI 解释), 供详情页展示
+/// 事实 vs 推测 (安全§9); 报告/列表用 <paramref name="Decisions"/> 精简视图即可。
+/// </summary>
+public sealed record ScanAndAnalyzeResult(
+    ScanReport Report,
+    IReadOnlyList<DecisionItem> Decisions,
+    IReadOnlyList<FileAnalysis> Analyses);
 
 /// <summary>
 /// 闭环编排 (架构§3 主干): 扫描 → 证据 → 规则 → 归因 → 风险 → 决策 → 报告数据。
@@ -86,7 +93,7 @@ public sealed class ScanAndAnalyzeUseCase
         var task = new ScanTask(0, options.TargetPath, options.Mode, ScanStatus.Completed,
             startedAt, DateTime.UtcNow, totalSize, observed, _appVersion);
 
-        return new ScanAndAnalyzeResult(new ScanReport(task, decisions), decisions);
+        return new ScanAndAnalyzeResult(new ScanReport(task, decisions), decisions, analyses);
     }
 
     // 同步派发的 IProgress (默认 Progress<T> 经 SynchronizationContext 异步派发, 编排里需即时计数)。
