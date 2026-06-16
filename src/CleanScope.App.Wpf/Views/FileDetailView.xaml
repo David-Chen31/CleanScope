@@ -1,0 +1,173 @@
+<UserControl x:Class="CleanScope.App.Wpf.Views.FileDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:CleanScope.App.Wpf.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DataContext="{d:DesignInstance vm:FileDetailViewModel}"
+             mc:Ignorable="d" d:DesignWidth="860">
+    <StackPanel>
+        <Button Content="← 返回清单" Command="{Binding BackCommand}" Style="{StaticResource Ghost}"
+                HorizontalAlignment="Left" Margin="0,0,0,12"/>
+
+        <StackPanel DataContext="{Binding Row}">
+
+            <!-- 标题 + 风险 -->
+            <Border Style="{StaticResource Cards}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Background="{Binding RiskLevel, Converter={StaticResource RiskToBrush}}"
+                                CornerRadius="4" Padding="10,3" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding RiskMeaning}" FontWeight="Bold" Foreground="#222"/>
+                        </Border>
+                        <TextBlock Text="{Binding SizeText}" FontSize="16" FontWeight="Bold" Margin="14,0,0,0"
+                                   VerticalAlignment="Center" Foreground="{StaticResource Ink}"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Name}" Style="{StaticResource H1}" Margin="0,10,0,2"/>
+                    <TextBlock Text="{Binding Path}" Style="{StaticResource Sub}" TextWrapping="Wrap"/>
+
+                    <!-- 高风险提示: D/E 仅提示不建议删除, 不渲染任何删除入口 -->
+                    <Border Margin="0,12,0,0" Padding="12" CornerRadius="6" Background="#FCE8E6"
+                            Visibility="{Binding IsHighRisk, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Foreground="#9A1C19" TextWrapping="Wrap"
+                                   Text="🔴 该项为高风险（D/E）：可能是系统/应用关键文件或无法判断来源。本工具不提供删除入口，强烈建议保留。"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- 属性 -->
+            <Border Style="{StaticResource Cards}">
+                <StackPanel>
+                    <TextBlock Text="属性" Style="{StaticResource H2}"/>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="0,2"><TextBlock Text="类型" Style="{StaticResource Sub}"/><TextBlock Text="{Binding NodeType}"/></StackPanel>
+                        <StackPanel Margin="0,2"><TextBlock Text="扩展名" Style="{StaticResource Sub}"/><TextBlock Text="{Binding Extension}"/></StackPanel>
+                        <StackPanel Margin="0,2"><TextBlock Text="产品 / 公司" Style="{StaticResource Sub}"/><TextBlock Text="{Binding ProductName}"/></StackPanel>
+                        <StackPanel Margin="0,2"><TextBlock Text="签名者" Style="{StaticResource Sub}"/><TextBlock Text="{Binding Signer}"/></StackPanel>
+                        <StackPanel Margin="0,2"><TextBlock Text="最后修改" Style="{StaticResource Sub}"/><TextBlock Text="{Binding Mtime}"/></StackPanel>
+                        <StackPanel Margin="0,2"><TextBlock Text="占用进程" Style="{StaticResource Sub}"/><TextBlock Text="{Binding OccupyingProcess}"/></StackPanel>
+                    </UniformGrid>
+                    <TextBlock Margin="0,8,0,0" Foreground="#9A6700"
+                               Visibility="{Binding IsReparsePoint, Converter={StaticResource BoolToVis}}"
+                               Text="⚠ 此项为符号链接 / 联接点；风险判定基于解析后的真实路径。"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 风险评估 -->
+            <Border Style="{StaticResource Cards}">
+                <StackPanel>
+                    <TextBlock Text="风险评估（规则/风险引擎权威，AI 不可降低）" Style="{StaticResource H2}"/>
+                    <TextBlock Text="{Binding RiskMeaning}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+                    <ItemsControl ItemsSource="{Binding RiskFactors}" Margin="0,6,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" Style="{StaticResource Sub}" Margin="0,1"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- 证据链: 事实 vs AI 推测, 视觉区分 (安全§9) -->
+            <Border Style="{StaticResource Cards}">
+                <StackPanel>
+                    <TextBlock Text="证据链" Style="{StaticResource H2}"/>
+                    <TextBlock Text="事实证据（可驱动权威结论）" Foreground="#1A56C4" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                    <ItemsControl ItemsSource="{Binding FactEvidences}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{Binding IsFact, Converter={StaticResource FactToBrush}}"
+                                        CornerRadius="6" Padding="10,7" Margin="0,3">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Background="#1A56C4" CornerRadius="3" Padding="5,1">
+                                                <TextBlock Text="{Binding Badge}" Foreground="White" FontSize="11"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding Kind}" Margin="8,0,0,0" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource Ink}"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Value}" TextWrapping="Wrap" Margin="0,3,0,0"
+                                                   Foreground="{StaticResource Ink}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="AI 推测（仅供解释参考，不影响风险判定）" Foreground="#9A6700" FontWeight="SemiBold"
+                               Margin="0,10,0,4"
+                               Visibility="{Binding HasInferenceEvidence, Converter={StaticResource BoolToVis}}"/>
+                    <ItemsControl ItemsSource="{Binding InferenceEvidences}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{Binding IsFact, Converter={StaticResource FactToBrush}}"
+                                        CornerRadius="6" Padding="10,7" Margin="0,3">
+                                    <StackPanel>
+                                        <Border Background="#9A6700" CornerRadius="3" Padding="5,1" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding Badge}" Foreground="White" FontSize="11"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding Value}" TextWrapping="Wrap" Margin="0,3,0,0"
+                                                   Foreground="{StaticResource Ink}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- 归因候选 -->
+            <Border Style="{StaticResource Cards}"
+                    Visibility="{Binding HasAttributions, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <TextBlock Text="可能归属（候选 + 置信度，非唯一答案）" Style="{StaticResource H2}"/>
+                    <ItemsControl ItemsSource="{Binding Attributions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,2">
+                                    <TextBlock Text="{Binding AppName}" Width="220" Foreground="{StaticResource Ink}"/>
+                                    <TextBlock Text="{Binding ConfidenceText}" Foreground="{StaticResource Muted}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- AI 解释 (仅 Validated 才展示) -->
+            <Border Style="{StaticResource Cards}"
+                    Visibility="{Binding HasAi, Converter={StaticResource BoolToVis}}">
+                <StackPanel DataContext="{Binding Ai}">
+                    <TextBlock Text="AI 解释" Style="{StaticResource H2}"/>
+                    <TextBlock Text="{Binding SourceLabel}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,0,0,6"/>
+                    <TextBlock Text="{Binding WhatIsIt}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+                    <TextBlock Text="{Binding UserFriendlyExplanation}" Style="{StaticResource Sub}" Margin="0,4,0,6"/>
+                    <ItemsControl ItemsSource="{Binding Reasoning}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" Style="{StaticResource Sub}" Margin="0,1"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+
+        <!-- 安全闸门判定 + 辅助操作 (无删除入口) -->
+        <Border Style="{StaticResource Cards}">
+            <StackPanel>
+                <TextBlock Text="操作（均为只读/辅助，无删除）" Style="{StaticResource H2}"/>
+                <Border Padding="10" CornerRadius="6" Background="#F1F5FB" Margin="0,0,0,10">
+                    <TextBlock Text="{Binding GuardVerdict}" Foreground="#1F2933" TextWrapping="Wrap"/>
+                </Border>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="打开所在文件夹" Command="{Binding OpenFolderCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+                    <Button Content="复制路径" Command="{Binding CopyPathCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+                    <Button Content="加入忽略名单" Command="{Binding AddIgnoreCommand}" Style="{StaticResource Ghost}"/>
+                </StackPanel>
+                <TextBlock Text="{Binding ActionStatus}" Style="{StaticResource Sub}" Margin="0,8,0,0"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

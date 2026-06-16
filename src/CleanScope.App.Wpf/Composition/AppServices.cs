@@ -1,0 +1,23 @@
+using CleanScope.Application;
+using CleanScope.Domain.Abstractions;
+
+namespace CleanScope.App.Wpf.Composition;
+
+/// <summary>
+/// 组合根产物: 已装配的应用服务 (供 ViewModel 调用)。
+/// UI 层只持有领域抽象 + 编排用例, 不知具体实现 (组合在 <see cref="CompositionRoot"/> 集中完成)。
+/// 删除能力不在此暴露: 唯一可改盘路径是 Safety 闸门, MVP 永不放行 (零删除)。
+/// </summary>
+public sealed class AppServices
+{
+    public required ScanAndAnalyzeUseCase UseCase { get; init; }
+    public required IReportExporter ReportExporter { get; init; }
+    public required IIgnoreRepository IgnoreRepository { get; init; }
+    public required IActionExecutor ActionExecutor { get; init; }
+    public required ISafetyGuard SafetyGuard { get; init; }
+
+    /// <summary>AI 解释是否启用 (脱敏后出云); 未配置密钥则为 false, 全程本地。</summary>
+    public required bool AiEnabled { get; init; }
+
+    public required string AppVersion { get; init; }
+}

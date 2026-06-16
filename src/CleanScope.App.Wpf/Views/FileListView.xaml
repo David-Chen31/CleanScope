@@ -1,0 +1,63 @@
+<UserControl x:Class="CleanScope.App.Wpf.Views.FileListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:CleanScope.App.Wpf.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DataContext="{d:DesignInstance vm:FileListViewModel}"
+             mc:Ignorable="d" d:DesignWidth="860">
+    <Border Style="{StaticResource Cards}">
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <TextBlock Text="文件清单" Style="{StaticResource H2}"/>
+                <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <TextBlock Text="排序：" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
+                    <Button Content="按大小" Command="{Binding SortBySizeCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+                    <Button Content="按风险" Command="{Binding SortByRiskCommand}" Style="{StaticResource Ghost}"/>
+                    <TextBlock Text="（点击任意行查看详情与证据链；本版本不提供删除按钮）"
+                               VerticalAlignment="Center" Margin="16,0,0,0" Style="{StaticResource Sub}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <ListView ItemsSource="{Binding View}" SelectedItem="{Binding Selected}"
+                      BorderThickness="0" Background="Transparent"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="风险" Width="70">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding RiskLevel, Converter={StaticResource RiskToBrush}}"
+                                            CornerRadius="4" Padding="8,2">
+                                        <TextBlock Text="{Binding RiskText}" FontWeight="Bold" Foreground="#222"/>
+                                    </Border>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="大小" Width="100"
+                                        DisplayMemberBinding="{Binding SizeText}"/>
+                        <GridViewColumn Header="归属应用" Width="150"
+                                        DisplayMemberBinding="{Binding OwnerApp}"/>
+                        <GridViewColumn Header="路径" Width="360">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding Path}"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="建议" Width="200">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding RecommendedAction}" TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding RecommendedAction}" Foreground="{StaticResource Muted}"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </DockPanel>
+    </Border>
+</UserControl>
