@@ -36,14 +36,37 @@ public sealed class SafetyGuard : ISafetyGuard
 
     private GuardDecision EvaluateDelete(ActionRequest request, RuleMatch? ruleMatch, RiskAssessment? risk)
     {
-        // C1 能力位: MVP 恒 false ⇒ 直接拒绝 (SR-1, MVP 零删除)。
+        // C6 先行 (IR-4): 解析真实路径, 防 symlink/junction 绕过后续黑名单判定。
+        var realPath = _windows.ResolveRealPath(request.TargetPath);
+
+        // C2 + C3: 命中系统关键黑名单 / 禁删类型 → 拒 (规则权威 + 路径黑名单双保险, IR-5)。
+        if (ruleMatch?.IsSystemCritical == true || SystemCriticalPaths.IsBlacklisted(realPath))
+            return Reject(
+                "目标命中系统关键黑名单, 严禁删除。",
+                "请经官方工具/设置处理 (如 DISM 清理、设备管理器、磁盘清理), 切勿手动删除。");
+
+        // C4: 仅 A 级可考虑直删 (自 Beta 起); B/C/D/E 不放行。
+        if (risk is not null && risk.Level != RiskLevel.A)
+            return Reject(
+                $"风险等级为 {risk.Level}, 不允许直接删除 (仅 A 级在 Beta 起可考虑)。",
+                ruleMatch?.RecommendedAction ?? "请参考更安全的官方清理方式, 或先备份确认。");
+
+        // C5: 被进程占用 → 拒 (IR-2)。
+        var occupier = _windows.GetOccupyingProcessName(realPath);
+        if (!string.IsNullOrWhiteSpace(occupier))
+            return Reject(
+                $"目标正被进程「{occupier}」占用, 不能删除。",
+                "请先关闭占用该文件的程序, 再重新评估。");
+
+        // C7 忽略名单 / C8 两步确认 / C9 回收站 / C10 审计: 由上层与执行器在 Beta 起保证。
+        // C1 能力位: MVP 恒 false ⇒ 兜底拒绝 (SR-1, MVP 零删除)。
         if (!_deleteEnabled)
             return Reject(
                 "当前版本不提供删除功能, 仅作解释与建议 (MVP 零删除)。",
                 "请参考建议的官方清理方式, 或在充分了解后自行确认处理。");
 
-        // Beta 起: 此处继续 C2–C10 (T4.2)。当前不可达。
-        return Reject("删除准入未通过。", "请参考官方清理方式。");
+        // (Beta 起) 走到此处方可进入两步确认 + 审计 + 移入回收站。
+        return Reject("删除准入未完全通过。", "请参考官方清理方式。");
     }
 
     private static GuardDecision Allow(string reason) => new(GuardOutcome.Allowed, reason, null);
