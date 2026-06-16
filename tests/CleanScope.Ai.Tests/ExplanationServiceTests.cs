@@ -80,12 +80,25 @@ public sealed class ExplanationServiceTests
         Assert.Equal("rule-based", e.ModelUsed);
     }
 
+    [Fact] // T-16: 关闭云端 → 全程本地, 绝不发起远程调用
+    public async Task Disabled_cloud_never_invokes_remote()
+    {
+        var chat = new FakeChat { Enabled = false, Reply = _ => throw new InvalidOperationException("不应被调用") };
+        var e = await new ExplanationService(chat).ExplainAsync(Input());
+        Assert.False(e.IsCloud);
+        Assert.Equal(0, chat.Calls);    // 未发起任何出云调用
+    }
+
     private sealed class FakeChat : IAiChat
     {
         public bool Enabled { get; set; }
         public Func<string, string>? Reply { get; set; }
+        public int Calls { get; private set; }
 
         public Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken ct = default)
-            => Task.FromResult(Reply is null ? "{}" : Reply(userPrompt));
+        {
+            Calls++;
+            return Task.FromResult(Reply is null ? "{}" : Reply(userPrompt));
+        }
     }
 }

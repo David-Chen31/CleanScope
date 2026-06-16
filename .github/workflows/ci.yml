@@ -1,0 +1,31 @@
+name: CI
+
+# 安全测试硬门禁 (已确认 2026-06-14): T-01~T-20 随各模块落地, 任一失败即阻断合并/发布。
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    # Windows runner: 部分测试依赖 Win32 (注册表/Restart Manager/Authenticode)。
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore CleanScope.sln
+
+      - name: Build
+        run: dotnet build CleanScope.sln --configuration Release --no-restore
+
+      # 全量测试 = 硬门禁。含安全红线 T-01~T-20、架构依赖约束、无永久删除静态断言。
+      - name: Test (hard gate)
+        run: dotnet test CleanScope.sln --configuration Release --no-build --verbosity normal
