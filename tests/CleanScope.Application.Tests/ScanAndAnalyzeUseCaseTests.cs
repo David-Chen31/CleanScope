@@ -1,10 +1,13 @@
 using CleanScope.Application;
+using CleanScope.Core.Attribution;
 using CleanScope.Core.Decisions;
+using CleanScope.Core.Evidences;
 using CleanScope.Core.Risk;
 using CleanScope.Core.Rules;
 using CleanScope.Core.Scanning;
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
+using CleanScope.Infrastructure.Windows;
 using CleanScope.Reporting;
 
 namespace CleanScope.Application.Tests;
@@ -31,8 +34,10 @@ public sealed class ScanAndAnalyzeUseCaseTests : IDisposable
             new RuleDefinition("temp-cache", Path.Combine(_root, "Cache"), RuleMatchKind.PathPrefix,
                 "缓存", RiskLevel.B, false, false, "测试缓存", "用官方命令清理", "path_rule", 0.9, 60),
         };
+        var windows = new WindowsAccess();   // 真实系统访问 (只读)
         return new ScanAndAnalyzeUseCase(
-            new ScanEngine(), new RuleEngine(rules), new RiskEngine(), new DecisionService());
+            new ScanEngine(), new EvidenceCollector(windows), new RuleEngine(rules),
+            new AttributionEngine(), new RiskEngine(), new DecisionService());
     }
 
     [Fact]
@@ -67,6 +72,22 @@ public sealed class ScanAndAnalyzeUseCaseTests : IDisposable
         Assert.Contains("# CleanScope 扫描报告", md);
         Assert.Contains("不会自动删除任何文件", md);
         Assert.Contains("风险统计", md);
+    }
+
+    [Fact] // T2.6: 接真实证据后, 被占用文件 → 风险 floor 抬到 ≥C (护栏保持有效)
+    public async Task Occupied_file_is_raised_to_at_least_C_end_to_end()
+    {
+        var locked = Path.Combine(_root, "mystery", "held.bin");
+        File.WriteAllBytes(locked, new byte[4000]);   // 够大, 进入 TopN
+        using (new FileStream(locked, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            var result = await BuildUseCase().ExecuteAsync(new ScanOptions(_root, 50, ScanMode.Normal));
+            var held = result.Decisions.Single(d => d.Path == locked);
+            // 无规则命中本会是 E; 占用证据把它抬到 C (RiskEngine 护栏)。
+            Assert.True(held.RiskLevel <= RiskLevel.D && held.RiskLevel >= RiskLevel.C,
+                $"expected ≥C, got {held.RiskLevel}");
+            Assert.Equal(RiskLevel.C, held.RiskLevel);
+        }
     }
 
     public void Dispose()

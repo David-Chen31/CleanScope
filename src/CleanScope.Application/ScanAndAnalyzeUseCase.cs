@@ -4,26 +4,30 @@ namespace CleanScope.Application;
 public sealed record ScanAndAnalyzeResult(ScanReport Report, IReadOnlyList<DecisionItem> Decisions);
 
 /// <summary>
-/// 闭环编排 (架构§3 主干): 扫描 → 规则 → 风险 → 决策 → 报告数据。
+/// 闭环编排 (架构§3 主干): 扫描 → 证据 → 规则 → 归因 → 风险 → 决策 → 报告数据。
 /// 全程经 Domain 抽象, 不碰具体实现 (engines 由组合根注入)。MVP 只读、零删除。
 ///
-/// Phase 1 简化: 证据为"扫描观测 + 规则命中"两类事实 (满足 SR-5 证据链非空);
-/// 归因为空; AI 为静态桩 (无解释)。Phase 2 接真实证据/归因, Phase 3 接 AI 旁路 (脱敏→解释→校验)。
+/// Phase 2 起接真实证据 (EvidenceCollector, 只产事实) 与候选归因 (AttributionEngine);
+/// AI 仍为静态桩 (无解释), Phase 3 接 AI 旁路 (脱敏→解释→校验)。
 /// </summary>
 public sealed class ScanAndAnalyzeUseCase
 {
     private readonly IScanEngine _scan;
+    private readonly IEvidenceCollector _evidence;
     private readonly IRuleEngine _rules;
+    private readonly IAttributionEngine _attribution;
     private readonly IRiskEngine _risk;
     private readonly IDecisionService _decision;
     private readonly string _appVersion;
 
     public ScanAndAnalyzeUseCase(
-        IScanEngine scan, IRuleEngine rules, IRiskEngine risk, IDecisionService decision,
-        string appVersion = "0.1.0")
+        IScanEngine scan, IEvidenceCollector evidence, IRuleEngine rules, IAttributionEngine attribution,
+        IRiskEngine risk, IDecisionService decision, string appVersion = "0.1.0")
     {
         _scan = scan;
+        _evidence = evidence;
         _rules = rules;
+        _attribution = attribution;
         _risk = risk;
         _decision = decision;
         _appVersion = appVersion;
@@ -40,24 +44,15 @@ public sealed class ScanAndAnalyzeUseCase
         var counter = new SyncProgress<FileNode>(_ => observed++);
         var nodes = await _scan.ScanAsync(options, counter, progress, ct);
 
-        long evId = 0;
         var analyses = new List<FileAnalysis>(nodes.Count);
         foreach (var node in nodes)
         {
             ct.ThrowIfCancellationRequested();
 
-            // SR-5: 至少一条观测事实证据, 保证证据链非空。
-            var evidences = new List<Evidence>
-            {
-                new(++evId, node.Id, EvidenceKind.Metadata, node.Path, "scan", IsFact: true, 1.0, startedAt),
-            };
-            var ruleMatch = _rules.Match(node, new EvidenceBundle(node.Id, null, evidences));
-            if (ruleMatch is not null)
-                evidences.Add(new Evidence(++evId, node.Id, EvidenceKind.PathRule,
-                    $"{ruleMatch.RuleId}:{ruleMatch.Category}", "rule", IsFact: true, ruleMatch.Confidence, startedAt));
-
-            var bundle = new EvidenceBundle(node.Id, null, evidences);
-            var attributions = Array.Empty<AttributionCandidate>();
+            // 证据采集 (只产事实, 含基础观测 → SR-5 链非空) → 规则 → 归因 → 风险。
+            var bundle = await _evidence.CollectAsync(node, ct);
+            var ruleMatch = _rules.Match(node, bundle);
+            var attributions = _attribution.Attribute(node, bundle, ruleMatch);
             var risk = _risk.Assess(node, bundle, ruleMatch, attributions);
 
             // AI 静态桩: MVP 无解释 (Explanation=null)。

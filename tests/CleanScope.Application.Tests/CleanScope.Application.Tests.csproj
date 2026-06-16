@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>$(DotnetTfm)</TargetFramework>
+    <TargetFramework>$(DotnetWindowsTfm)</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
@@ -24,6 +24,7 @@
     <!-- 集成测试: 装配真实引擎验证端到端编排。 -->
     <ProjectReference Include="..\..\src\CleanScope.Application\CleanScope.Application.csproj" />
     <ProjectReference Include="..\..\src\CleanScope.Core\CleanScope.Core.csproj" />
+    <ProjectReference Include="..\..\src\CleanScope.Infrastructure\CleanScope.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\CleanScope.Reporting\CleanScope.Reporting.csproj" />
     <ProjectReference Include="..\..\src\CleanScope.Domain\CleanScope.Domain.csproj" />
   </ItemGroup>

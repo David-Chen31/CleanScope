@@ -1,12 +1,15 @@
 using System.Globalization;
 using CleanScope.Application;
+using CleanScope.Core.Attribution;
 using CleanScope.Core.Decisions;
+using CleanScope.Core.Evidences;
 using CleanScope.Core.Risk;
 using CleanScope.Core.Rules;
 using CleanScope.Core.Scanning;
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
 using CleanScope.Infrastructure.Rules;
+using CleanScope.Infrastructure.Windows;
 using CleanScope.Reporting;
 
 // CleanScope CLI 宿主 + 手写 DI 组合根 (T1.12, 最小闭环里程碑)。
@@ -34,9 +37,12 @@ try
     var rules = await new RulePackLoader(rulesDir).LoadAsync();
     Console.WriteLine($"已加载规则: {rules.Count} 条");
 
+    var windows = new WindowsAccess();   // 真实系统访问 (只读): 元数据/签名/已安装/占用
     var useCase = new ScanAndAnalyzeUseCase(
         new ScanEngine(),
+        new EvidenceCollector(windows),
         new RuleEngine(rules),
+        new AttributionEngine(),
         new RiskEngine(),
         new DecisionService(),
         AppVersion);
