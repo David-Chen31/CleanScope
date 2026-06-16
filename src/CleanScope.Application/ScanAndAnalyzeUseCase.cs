@@ -20,9 +20,16 @@ public sealed class ScanAndAnalyzeUseCase
     private readonly IDecisionService _decision;
     private readonly string _appVersion;
 
+    // AI 旁路 (可选): 三者齐备才启用; 任一缺失 → 无 AI 解释 (MVP/离线)。AI 永不进入裁决。
+    private readonly ISanitizationGateway? _sanitizer;
+    private readonly IExplanationService? _explanation;
+    private readonly IAiOutputValidator? _validator;
+
     public ScanAndAnalyzeUseCase(
         IScanEngine scan, IEvidenceCollector evidence, IRuleEngine rules, IAttributionEngine attribution,
-        IRiskEngine risk, IDecisionService decision, string appVersion = "0.1.0")
+        IRiskEngine risk, IDecisionService decision, string appVersion = "0.1.0",
+        ISanitizationGateway? sanitizer = null, IExplanationService? explanation = null,
+        IAiOutputValidator? validator = null)
     {
         _scan = scan;
         _evidence = evidence;
@@ -31,7 +38,12 @@ public sealed class ScanAndAnalyzeUseCase
         _risk = risk;
         _decision = decision;
         _appVersion = appVersion;
+        _sanitizer = sanitizer;
+        _explanation = explanation;
+        _validator = validator;
     }
+
+    private bool AiEnabled => _sanitizer is not null && _explanation is not null && _validator is not null;
 
     public async Task<ScanAndAnalyzeResult> ExecuteAsync(
         ScanOptions options, IProgress<ScanProgress>? progress = null, CancellationToken ct = default)
@@ -55,8 +67,18 @@ public sealed class ScanAndAnalyzeUseCase
             var attributions = _attribution.Attribute(node, bundle, ruleMatch);
             var risk = _risk.Assess(node, bundle, ruleMatch, attributions);
 
-            // AI 静态桩: MVP 无解释 (Explanation=null)。
-            analyses.Add(new FileAnalysis(node, bundle, ruleMatch, attributions, risk, Explanation: null));
+            var analysis = new FileAnalysis(node, bundle, ruleMatch, attributions, risk, Explanation: null);
+
+            // AI 旁路: 脱敏(唯一出云通道) → 解释(可降级) → 校验(规则优先)。系统关键项跳过(规则文案已足且省调用)。
+            if (AiEnabled && ruleMatch?.IsSystemCritical != true)
+            {
+                var aiInput = _sanitizer!.Sanitize(analysis);
+                var rawExplanation = await _explanation!.ExplainAsync(aiInput, ct);
+                var validated = _validator!.Validate(rawExplanation, ruleMatch, risk);
+                analysis = analysis with { Explanation = validated };   // 未通过校验者 Validated=false, 决策层不展示
+            }
+
+            analyses.Add(analysis);
         }
 
         var decisions = _decision.Summarize(analyses);

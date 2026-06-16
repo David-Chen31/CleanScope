@@ -1,4 +1,8 @@
 using System.Globalization;
+using CleanScope.Ai.Chat;
+using CleanScope.Ai.Explanation;
+using CleanScope.Ai.Sanitization;
+using CleanScope.Ai.Validation;
 using CleanScope.Application;
 using CleanScope.Core.Attribution;
 using CleanScope.Core.Decisions;
@@ -6,6 +10,7 @@ using CleanScope.Core.Evidences;
 using CleanScope.Core.Risk;
 using CleanScope.Core.Rules;
 using CleanScope.Core.Scanning;
+using CleanScope.Domain.Abstractions;
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
 using CleanScope.Infrastructure.Rules;
@@ -38,6 +43,27 @@ try
     Console.WriteLine($"已加载规则: {rules.Count} 条");
 
     var windows = new WindowsAccess();   // 真实系统访问 (只读): 元数据/签名/已安装/占用
+
+    // AI 旁路 (可选, --ai 开启): 脱敏→解释→校验。未开启或未配置 → 无 AI, 纯规则/风险。
+    ISanitizationGateway? sanitizer = null;
+    IExplanationService? explanation = null;
+    IAiOutputValidator? validator = null;
+    if (opts.Has("--ai"))
+    {
+        var aiOptions = AiOptions.Load(ResolveAiConfig());
+        if (aiOptions.IsUsable)
+        {
+            sanitizer = new SanitizationGateway();
+            explanation = new ExplanationService(new OpenAiChatClient(Http.Shared, aiOptions));
+            validator = new AiOutputValidator();
+            Console.WriteLine($"AI 解释: 已启用 (模型 {aiOptions.Model}, 脱敏后出云)");
+        }
+        else
+        {
+            Console.WriteLine("AI 解释: 已请求 --ai 但未配置可用密钥, 跳过 (纯本地规则/风险)。");
+        }
+    }
+
     var useCase = new ScanAndAnalyzeUseCase(
         new ScanEngine(),
         new EvidenceCollector(windows),
@@ -45,7 +71,8 @@ try
         new AttributionEngine(),
         new RiskEngine(),
         new DecisionService(),
-        AppVersion);
+        AppVersion,
+        sanitizer, explanation, validator);
 
     var mode = opts.Has("--admin") ? ScanMode.Admin : ScanMode.Normal;
     var top = opts.GetInt("--top", 100);
@@ -87,8 +114,21 @@ catch (Exception ex)
 
 static void PrintUsage()
 {
-    Console.WriteLine("用法: cleanscope scan <path> [--report out.md] [--top N] [--admin] [--sanitize] [--rules <dir>]");
+    Console.WriteLine("用法: cleanscope scan <path> [--report out.md] [--top N] [--admin] [--sanitize] [--ai] [--rules <dir>]");
     Console.WriteLine("  只读扫描指定路径, 按风险分级并可导出 Markdown 报告。绝不删除文件。");
+    Console.WriteLine("  --ai: 启用 AI 解释 (脱敏后出云, 需 appsettings.ai.local.json 或环境变量); AI 仅建议, 不改判风险。");
+}
+
+// 定位 AI 配置 (appsettings.ai.local.json, 已 gitignore): 输出目录旁或仓库根。
+static string? ResolveAiConfig()
+{
+    const string name = "appsettings.ai.local.json";
+    for (var d = new DirectoryInfo(AppContext.BaseDirectory); d is not null; d = d.Parent)
+    {
+        var candidate = Path.Combine(d.FullName, name);
+        if (File.Exists(candidate)) return candidate;
+    }
+    return null;
 }
 
 // 优先用输出目录旁的 rules/; 开发期回退到仓库根 (CleanScope.sln 旁) 的 rules/。
@@ -144,6 +184,11 @@ static string HumanSize(long bytes)
 }
 
 // —— 小工具 ——
+
+internal static class Http
+{
+    public static readonly HttpClient Shared = new() { Timeout = TimeSpan.FromSeconds(30) };
+}
 
 internal sealed class Options
 {
