@@ -167,6 +167,14 @@ static void PrintSummary(ScanAndAnalyzeResult result, TimeSpan elapsed)
     foreach (var (i, n) in items.OrderByDescending(i => i.Size).Take(10).Select((x, idx) => (x, idx + 1)))
         Console.WriteLine($"  {n,2}. [{i.RiskLevel}] {HumanSize(i.Size),10}  {i.Path}");
 
+    var cats = CleanupAggregator.Aggregate(items);
+    if (cats.Count > 0)
+    {
+        Console.WriteLine("\n可清理类别 (A/B, 去重可回收):");
+        foreach (var c in cats.Take(10))
+            Console.WriteLine($"  [{c.TopRisk}] {HumanSize(c.ReclaimableSize),10}  {c.Name} ({c.ItemCount} 项) — {c.RecommendedAction}");
+    }
+
     var high = items.Where(i => i.RiskLevel is RiskLevel.D or RiskLevel.E).ToList();
     if (high.Count > 0)
         Console.WriteLine($"\n⚠️ {high.Count} 项为 D/E 级 —— 不建议删除。");

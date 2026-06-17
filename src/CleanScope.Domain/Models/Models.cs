@@ -59,7 +59,20 @@ public record DecisionItem(
     string RecommendedAction,
     string? Explanation,
     IReadOnlyList<long> EvidenceChain,
-    long ExclusiveSize = 0);
+    long ExclusiveSize = 0,
+    string? Category = null);     // 清理类别 (来自规则 Category 或缓存启发), 供"按类别聚合"
+
+/// <summary>
+/// 可清理类别聚合 (S3, 对标 CCleaner/BleachBit 的"按类别给可回收空间")。
+/// 把 A/B 可清理项按 <see cref="Category"/> 归并, 给每类去重后的可回收大小与官方清理方式。
+/// 仍不自动删除: 只给方式, 用户决策。
+/// </summary>
+public record CleanupCategory(
+    string Name,
+    int ItemCount,
+    long ReclaimableSize,           // 去重独占大小之和
+    RiskLevel TopRisk,
+    string RecommendedAction);
 
 /// <summary>扫描报告 (报告导出输入)。</summary>
 public record ScanReport(

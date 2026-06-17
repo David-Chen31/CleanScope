@@ -8,8 +8,8 @@ namespace CleanScope.Infrastructure.Tests;
 // 用默认环境变量展开器 (本测试项目为 net8.0-windows, %SystemRoot% 等可用)。
 public sealed class RulePackAssetsTests
 {
-    private const int ExpectedFiles = 11;   // 知识库 §1: 11 个规则包
-    private const int ExpectedRules = 52;   // 11 包合计 52 条
+    private const int ExpectedFiles = 12;   // 知识库 §1: 11 包 + 33-dev-cache (S3 可清理类别扩充)
+    private const int ExpectedRules = 59;   // 12 包合计 59 条 (新增 7 条开发缓存)
     private const int ExpectedSystemCritical = 17; // 00-system-critical 16 + 10-installer:package-cache 1
 
     private static string RulesDir()

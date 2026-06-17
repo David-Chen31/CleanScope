@@ -49,11 +49,29 @@ public sealed class MarkdownReportExporter : IReportExporter
         sb.AppendLine();
 
         AppendRiskSummary(sb, items);
+        AppendCleanupCategories(sb, items);
         AppendTopN(sb, items, 20);
         AppendHighRisk(sb, items);
         AppendDetails(sb, items);
 
         return sb.ToString();
+    }
+
+    // S3: 按可清理类别聚合 (A/B), 回答"哪类能省多少、怎么省"。
+    private void AppendCleanupCategories(StringBuilder sb, IReadOnlyList<DecisionItem> items)
+    {
+        var cats = CleanupAggregator.Aggregate(items);
+        sb.AppendLine("## 可清理类别 (A/B, 按类别聚合)").AppendLine();
+        if (cats.Count == 0)
+        {
+            sb.AppendLine("_未发现可清理类别。_").AppendLine();
+            return;
+        }
+        sb.AppendLine("| 类别 | 项数 | 可回收(去重) | 建议清理方式 |");
+        sb.AppendLine("|---|---|---|---|");
+        foreach (var c in cats)
+            sb.AppendLine($"| {Cell(c.Name)} | {c.ItemCount} | {Size(c.ReclaimableSize)} | {Cell(c.RecommendedAction)} |");
+        sb.AppendLine().AppendLine("> 仍不会自动删除: 以上仅给出每类的可回收空间与官方清理方式, 由你决定。").AppendLine();
     }
 
     private void AppendRiskSummary(StringBuilder sb, IReadOnlyList<DecisionItem> items)

@@ -4,6 +4,7 @@ using CleanScope.App.Wpf.Composition;
 using CleanScope.App.Wpf.Mvvm;
 using CleanScope.Domain.Entities;
 using CleanScope.Domain.Enums;
+using CleanScope.Domain.Models;
 
 namespace CleanScope.App.Wpf.ViewModels;
 
@@ -34,6 +35,12 @@ public sealed class ReportViewModel : ViewModelBase
     public AsyncRelayCommand RemoveIgnoreCommand { get; }
 
     public ObservableCollection<IgnoreEntryViewModel> Ignores { get; } = new();
+    public ObservableCollection<CleanupCategoryViewModel> CleanupCategories { get; } = new();
+
+    private string _reclaimableTotal = "";
+    public string ReclaimableTotal { get => _reclaimableTotal; private set => SetField(ref _reclaimableTotal, value); }
+
+    public bool HasCategories => CleanupCategories.Count > 0;
 
     private string _exportPath;
     public string ExportPath { get => _exportPath; set => SetField(ref _exportPath, value); }
@@ -58,6 +65,10 @@ public sealed class ReportViewModel : ViewModelBase
     {
         _session = session;
         ExportStatus = "";
+        CleanupCategories.Clear();
+        foreach (var c in session.CleanupCategories) CleanupCategories.Add(new CleanupCategoryViewModel(c));
+        ReclaimableTotal = Common.Format.HumanSize(session.ReclaimableEstimate);
+        OnPropertyChanged(nameof(HasCategories));
         ExportCommand.RaiseCanExecuteChanged();
     }
 
@@ -132,6 +143,25 @@ public sealed class ReportViewModel : ViewModelBase
         var dir = Directory.Exists(docs) ? docs : Path.GetTempPath();
         return Path.Combine(dir, $"CleanScope-报告-{DateTime.Now:yyyyMMdd-HHmmss}.md");
     }
+}
+
+/// <summary>可清理类别展示 (S3): 类别 + 项数 + 可回收大小 + 官方清理方式。</summary>
+public sealed class CleanupCategoryViewModel
+{
+    public CleanupCategoryViewModel(CleanupCategory c)
+    {
+        Name = c.Name;
+        ItemCount = c.ItemCount;
+        ReclaimableText = Common.Format.HumanSize(c.ReclaimableSize);
+        RiskText = c.TopRisk.ToString();
+        RecommendedAction = c.RecommendedAction;
+    }
+
+    public string Name { get; }
+    public int ItemCount { get; }
+    public string ReclaimableText { get; }
+    public string RiskText { get; }
+    public string RecommendedAction { get; }
 }
 
 /// <summary>忽略名单条目展示。</summary>

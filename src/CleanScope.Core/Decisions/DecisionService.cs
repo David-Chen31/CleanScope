@@ -71,7 +71,18 @@ public sealed class DecisionService : IDecisionService
             RiskLevel: a.Risk.Level,
             RecommendedAction: RecommendedActionOf(a, validatedAi),
             Explanation: ExplanationOf(a, validatedAi),
-            EvidenceChain: a.Risk.EvidenceChain);
+            EvidenceChain: a.Risk.EvidenceChain,
+            Category: CategoryOf(a));
+    }
+
+    // 清理类别: 规则类别优先; 无规则但被缓存启发命中 → 推断类别 (供 S3 按类别聚合)。
+    private static string? CategoryOf(FileAnalysis a)
+    {
+        if (!string.IsNullOrWhiteSpace(a.RuleMatch?.Category))
+            return a.RuleMatch!.Category;
+        if (a.Risk.Factors.Any(f => f.Contains("可重建缓存", StringComparison.Ordinal)))
+            return "可重建缓存(按目录名推断)";
+        return null;
     }
 
     private static string? OwnerOf(FileAnalysis a, AiExplanation? ai)

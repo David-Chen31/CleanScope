@@ -1,5 +1,6 @@
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
+using CleanScope.Reporting;
 
 namespace CleanScope.App.Wpf.ViewModels;
 
@@ -11,11 +12,15 @@ public sealed class ScanSession
         TargetPath = targetPath;
         Report = report;
         Rows = rows;
+        CleanupCategories = CleanupAggregator.Aggregate(report.Items);
     }
 
     public string TargetPath { get; }
     public ScanReport Report { get; }
     public IReadOnlyList<FileRowViewModel> Rows { get; }
+
+    /// <summary>可清理类别聚合 (S3): 每类去重可回收大小 + 官方清理方式。</summary>
+    public IReadOnlyList<CleanupCategory> CleanupCategories { get; }
 
     public long TotalSize => Report.Task.TotalSize ?? 0;
     public long FileCount => Report.Task.FileCount ?? 0;

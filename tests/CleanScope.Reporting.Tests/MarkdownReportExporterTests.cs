@@ -69,6 +69,30 @@ public sealed class MarkdownReportExporterTests
     }
 
     [Fact]
+    public void Cleanup_categories_aggregate_ab_by_category_using_exclusive_size()
+    {
+        var items = new[]
+        {
+            new DecisionItem(@"C:\a\.nuget\packages", 1_000, null, RiskLevel.B, "用 dotnet nuget locals all --clear",
+                null, new long[] { 1 }, ExclusiveSize: 1_000, Category: "NuGet 全局包"),
+            new DecisionItem(@"C:\b\.nuget\packages", 500, null, RiskLevel.B, "用 dotnet nuget locals all --clear",
+                null, new long[] { 2 }, ExclusiveSize: 500, Category: "NuGet 全局包"),
+            new DecisionItem(@"C:\c\Cache", 2_000, null, RiskLevel.A, "可清理",
+                null, new long[] { 3 }, ExclusiveSize: 2_000, Category: "可重建缓存(按目录名推断)"),
+            new DecisionItem(@"C:\d\System32", 9_999, null, RiskLevel.D, "严禁删除",
+                null, new long[] { 4 }, ExclusiveSize: 9_999, Category: null),  // D 不计入
+        };
+
+        var cats = CleanupAggregator.Aggregate(items);
+
+        Assert.Equal(2, cats.Count);                                  // 仅 A/B 两类
+        Assert.Equal("可重建缓存(按目录名推断)", cats[0].Name);        // 2000 最大, 排前
+        Assert.Equal(1_500, cats.Single(c => c.Name == "NuGet 全局包").ReclaimableSize);  // 合并去重求和
+        Assert.Equal(2, cats.Single(c => c.Name == "NuGet 全局包").ItemCount);
+        Assert.DoesNotContain(cats, c => c.TopRisk == RiskLevel.D);   // 高风险不进可清理
+    }
+
+    [Fact]
     public async Task Export_writes_utf8_file()
     {
         var path = Path.Combine(Path.GetTempPath(), "cs_report_" + Guid.NewGuid().ToString("N"), "out.md");

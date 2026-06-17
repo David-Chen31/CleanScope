@@ -8,6 +8,43 @@
              mc:Ignorable="d" d:DesignWidth="860">
     <StackPanel>
 
+        <!-- 可清理类别聚合 (S3) -->
+        <Border Style="{StaticResource Cards}"
+                Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <TextBlock Text="可清理类别（按类别聚合，A/B）" Style="{StaticResource H2}"/>
+                <TextBlock Style="{StaticResource Sub}" Margin="0,0,0,8">
+                    <Run Text="预计可回收（去重，仍建议确认）："/><Run Text="{Binding ReclaimableTotal}" FontWeight="Bold" Foreground="#1E7E34"/>
+                    <Run Text="　— 仅给出可回收空间与官方清理方式，绝不自动删除。"/>
+                </TextBlock>
+                <ItemsControl ItemsSource="{Binding CleanupCategories}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+                                        <TextBlock Foreground="{StaticResource Muted}" FontSize="11">
+                                            <Run Text="{Binding ItemCount}"/><Run Text=" 项 · "/><Run Text="{Binding RiskText}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{Binding ReclaimableText}" FontWeight="Bold"
+                                               Foreground="#1E7E34" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding RecommendedAction}" TextWrapping="Wrap"
+                                               Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
         <!-- 报告导出 -->
         <Border Style="{StaticResource Cards}">
             <StackPanel>
