@@ -89,6 +89,10 @@ public sealed class FileRowViewModel
     public bool HasRunCommand => ActionKind == CleanupActionKind.RunCommand && !string.IsNullOrWhiteSpace(Command);
     public bool HasUninstall => ActionKind == CleanupActionKind.Uninstall;
 
+    /// <summary>S-E: 是否提供「移入回收站」入口。仅"可清理"桶 (A/B)、非容器、未被占用;
+    /// 安全闸门仍会独立复核 (黑名单/容器/占用/风险), 此处只决定是否渲染按钮。</summary>
+    public bool CanRecycle => Bucket == CleanupBucket.Cleanable && !IsContainer && !IsOccupied;
+
     // —— 详情属性 ——
     public bool IsDirectory { get; }
     public bool IsReparsePoint { get; }

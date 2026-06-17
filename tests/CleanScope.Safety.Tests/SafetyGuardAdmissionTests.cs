@@ -39,10 +39,11 @@ public sealed class SafetyGuardAdmissionTests
     [InlineData(RiskLevel.D)]
     [InlineData(RiskLevel.E)]
     [InlineData(RiskLevel.C)]
-    [InlineData(RiskLevel.B)]
+    // 注: B 现属"可清理"桶, 不再被 C4 按等级拒 (启用删除后可移入回收站); 故不在此理论内,
+    // 改由 SafetyGuardDeleteEnabledTests 覆盖。C/D/E 仍按等级拒。
     public void High_risk_delete_rejected(RiskLevel level)
     {
-        var guard = new SafetyGuard(new FakeWindowsAccess());
+        var guard = new SafetyGuard(new FakeWindowsAccess(), deleteEnabled: true);
         var d = guard.Evaluate(Delete(@"D:\data\app\big.vhdx"), null, Risk(level));
 
         Assert.Equal(GuardOutcome.Rejected, d.Outcome);

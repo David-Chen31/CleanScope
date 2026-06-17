@@ -30,6 +30,17 @@ internal sealed class FakeAudit : IAuditLogRepository
         => Task.FromResult<IReadOnlyList<ActionLog>>(Added);
 }
 
+internal sealed class FakeRecycleBin : IRecycleBin
+{
+    public List<string> Sent { get; } = new();
+    public bool ThrowOnSend { get; set; }
+    public void Send(string path)
+    {
+        if (ThrowOnSend) throw new IOException("recycle failed");
+        Sent.Add(path);
+    }
+}
+
 internal sealed class FakeIgnore : IIgnoreRepository
 {
     public List<IgnoreEntry> Added { get; } = new();

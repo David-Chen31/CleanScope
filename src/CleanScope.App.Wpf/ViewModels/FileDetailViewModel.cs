@@ -31,6 +31,7 @@ public sealed class FileDetailViewModel : ViewModelBase
         CopyCommandCommand = new AsyncRelayCommand(_ => CopyCommandAsync());
         UninstallCommand = new AsyncRelayCommand(_ =>
             DoActionAsync(ActionType.OpenSettings, target: "ms-settings:appsfeatures"));
+        MoveToRecycleBinCommand = new AsyncRelayCommand(_ => MoveToRecycleBinAsync());
     }
 
     public RelayCommand BackCommand { get; }
@@ -40,6 +41,7 @@ public sealed class FileDetailViewModel : ViewModelBase
     public AsyncRelayCommand RunCommandCommand { get; }     // S-D: 运行官方清理命令
     public AsyncRelayCommand CopyCommandCommand { get; }    // S-D: 复制官方清理命令
     public AsyncRelayCommand UninstallCommand { get; }      // S-D: 打开卸载程序
+    public AsyncRelayCommand MoveToRecycleBinCommand { get; }  // S-E: 移入回收站 (可恢复, 两步确认)
 
     private FileRowViewModel? _row;
     public FileRowViewModel? Row { get => _row; private set => SetField(ref _row, value); }
@@ -102,15 +104,43 @@ public sealed class FileDetailViewModel : ViewModelBase
         }
     }
 
-    // 以"移入回收站"意图询问闸门 —— MVP 必被拒 (SR-1)。纯判定, 绝不执行。
+    // 以"移入回收站"意图询问闸门 (纯判定, 绝不执行)。A/B 可清理项放行 (仅回收站可恢复); 其余拒绝并给理由。
     private void EvaluateGate(FileRowViewModel row)
     {
         var request = new ActionRequest(null, row.Path, ActionType.MoveToRecycleBin);
         var decision = _services.SafetyGuard.Evaluate(request, row.Analysis.RuleMatch, row.Analysis.Risk);
-        var head = decision.Outcome == GuardOutcome.Rejected ? "🔒 删除被安全闸门拒绝" : "⚠ 闸门返回放行（MVP 不应出现）";
+        var head = decision.Outcome == GuardOutcome.Rejected ? "🔒 不可删除" : "✅ 可移入回收站（可恢复）";
         GuardVerdict = string.IsNullOrWhiteSpace(decision.RecommendedAlternative)
             ? $"{head}：{decision.Reason}"
             : $"{head}：{decision.Reason}　建议：{decision.RecommendedAlternative}";
+    }
+
+    // S-E: 移入回收站 (可恢复)。两步确认 (C8) → 闸门复核 → 执行器先写审计后移入回收站。绝不永久删除。
+    private async Task MoveToRecycleBinAsync()
+    {
+        if (Row is null) return;
+
+        // 闸门先判: 被拒则直接告知理由, 连确认框都不弹。
+        var probe = new ActionRequest(null, Row.Path, ActionType.MoveToRecycleBin);
+        var verdict = _services.SafetyGuard.Evaluate(probe, Row.Analysis.RuleMatch, Row.Analysis.Risk);
+        if (verdict.Outcome != GuardOutcome.Allowed)
+        {
+            ActionStatus = $"操作被拒：{verdict.Reason}";
+            return;
+        }
+
+        // 两步确认 (C8): 明确告知"移入回收站、可还原、非永久删除"。
+        var confirm = MessageBox.Show(
+            $"确定把以下项移入回收站吗？（可从回收站还原，非永久删除）\n\n{Row.Path}\n\n大小：{Row.SizeText}　归属：{Row.OwnerApp ?? "未知"}",
+            "移入回收站 — CleanScope",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+        if (confirm != MessageBoxResult.OK)
+        {
+            ActionStatus = "已取消，未做任何改动。";
+            return;
+        }
+
+        await DoActionAsync(ActionType.MoveToRecycleBin);
     }
 
     private async Task CopyPathAsync()
@@ -160,6 +190,7 @@ public sealed class FileDetailViewModel : ViewModelBase
         ActionType.CopyPath => "已复制路径。",
         ActionType.OpenSettings => "已打开「应用和功能」，可在此卸载对应程序。",
         ActionType.RunCleanupCommand => "已在终端运行官方清理命令。",
+        ActionType.MoveToRecycleBin => "已移入回收站（可在回收站还原，非永久删除）。",
         _ => "操作已完成。",
     };
 }

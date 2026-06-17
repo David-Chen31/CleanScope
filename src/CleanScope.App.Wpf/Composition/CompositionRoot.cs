@@ -44,9 +44,11 @@ public static class CompositionRoot
         var ignore = new IgnoreRepository(provider);
         var audit = new AuditLogRepository(provider);
 
-        // —— 安全闸门 + 执行器 (唯一可改盘路径; MVP deleteEnabled=false ⇒ 零删除) ——
-        var safety = new SafetyGuard(windows);
-        var executor = new ActionExecutor(new ShellLauncher(), audit, ignore, AppVersion);
+        // —— 安全闸门 + 执行器 (唯一可改盘路径; S-E: 桌面端开启删除能力) ——
+        // deleteEnabled=true ⇒ 仅"可清理"桶 (A/B)、非黑名单/非容器/未占用项可放行, 且**仅移入回收站 (可恢复)**;
+        // 系统关键/容器/C-E/占用一律拒。执行器先写审计 (SR-9) 再经回收站端口删除 (无永久删除路径)。
+        var safety = new SafetyGuard(windows, deleteEnabled: true);
+        var executor = new ActionExecutor(new ShellLauncher(), audit, ignore, AppVersion, new WindowsRecycleBin());
 
         // —— AI 旁路 (可选): 脱敏 → 解释 → 校验。未配置可用密钥 ⇒ 纯本地规则/风险 ——
         ISanitizationGateway? sanitizer = null;

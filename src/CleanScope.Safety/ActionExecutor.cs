@@ -5,24 +5,28 @@ namespace CleanScope.Safety;
 ///
 /// 红线:
 ///  - **无任何永久删除代码路径** (IR-1/SR-3): 本类不引用 File.Delete/Directory.Delete; 无批量删除 (IR-3)。
+///    删除唯一出口是 <see cref="IRecycleBin"/> (可恢复, 移入回收站); 永久删除 API 从不出现。
 ///  - 先写审计后执行 (SR-9): 审计落库失败 → 中止操作, 绝不执行。
-///  - MVP 仅辅助操作 (打开目录/复制路径/跳转设置/展示命令/加忽略/导出); 这些均无破坏性。
-///  - <see cref="ActionType.MoveToRecycleBin"/> 在 MVP 无实现 (闸门也从不放行) → 返回 Failed, 不触碰任何文件。
+///  - 辅助操作 (打开目录/复制路径/跳转设置/展示命令/加忽略/导出) 均无破坏性。
+///  - <see cref="ActionType.MoveToRecycleBin"/> 仅在闸门放行 + 已装配回收站端口时执行; 未装配 → Failed, 不触碰文件。
 /// </summary>
 public sealed class ActionExecutor : IActionExecutor
 {
     private readonly IShellLauncher _shell;
     private readonly IAuditLogRepository _audit;
     private readonly IIgnoreRepository? _ignore;
+    private readonly IRecycleBin? _recycleBin;
     private readonly string _appVersion;
 
     public ActionExecutor(
         IShellLauncher shell, IAuditLogRepository audit,
-        IIgnoreRepository? ignore = null, string appVersion = "0.1.0")
+        IIgnoreRepository? ignore = null, string appVersion = "0.1.0",
+        IRecycleBin? recycleBin = null)
     {
         _shell = shell;
         _audit = audit;
         _ignore = ignore;
+        _recycleBin = recycleBin;
         _appVersion = appVersion;
     }
 
@@ -40,7 +44,9 @@ public sealed class ActionExecutor : IActionExecutor
         }
 
         // SR-9: 先写审计后执行。审计失败 → 中止 (不执行任何操作)。
-        var planned = Log(request, ActionResult.Success, rejectReason: null);
+        // 移入回收站为可恢复操作 → 记录回收站定位, 供审计与还原参考。
+        var recycleLocation = request.Action == ActionType.MoveToRecycleBin ? "Windows 回收站 (可恢复)" : null;
+        var planned = Log(request, ActionResult.Success, rejectReason: null, recycleBinLocation: recycleLocation);
         try
         {
             await _audit.AddAsync(planned, ct);
@@ -89,23 +95,28 @@ public sealed class ActionExecutor : IActionExecutor
             case ActionType.ExportReport:
                 break;
 
-            // 删除: MVP 无实现, 且不存在任何永久删除调用 (IR-1)。闸门从不放行至此。
+            // 删除: 仅"移入回收站"(可恢复)。无永久删除调用 (IR-1/SR-3)。已经闸门放行 + 先写审计 (SR-9)。
+            // 未装配回收站端口 → 安全失败 (不触碰任何文件)。
             case ActionType.MoveToRecycleBin:
-                throw new NotSupportedException("当前版本不提供删除功能 (无永久删除代码路径, IR-1/SR-3)。");
+                if (_recycleBin is null)
+                    throw new NotSupportedException("回收站端口未装配, 操作中止 (不触碰任何文件)。");
+                _recycleBin.Send(request.TargetPath);
+                break;
 
             default:
                 throw new NotSupportedException($"未知操作: {request.Action}");
         }
     }
 
-    private ActionLog Log(ActionRequest request, ActionResult result, string? rejectReason) => new(
+    private ActionLog Log(ActionRequest request, ActionResult result, string? rejectReason,
+        string? recycleBinLocation = null) => new(
         Id: 0,
         FileId: request.FileId,
         TargetPath: request.TargetPath,
         Action: request.Action,
         BeforeState: null,
-        RecycleBinLocation: null,
-        Recoverable: true,             // 辅助操作无破坏性, 无需恢复
+        RecycleBinLocation: recycleBinLocation,
+        Recoverable: true,             // 辅助操作无破坏性; 回收站删除可还原 → 均可恢复
         Operator: Operator.User,
         Result: result,
         RejectReason: rejectReason,

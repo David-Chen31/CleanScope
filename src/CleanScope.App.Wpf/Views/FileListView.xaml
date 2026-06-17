@@ -16,7 +16,7 @@
                     <Button Content="按分类" Command="{Binding SortByBucketCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
                     <Button Content="按大小" Command="{Binding SortBySizeCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
                     <Button Content="按风险" Command="{Binding SortByRiskCommand}" Style="{StaticResource Ghost}"/>
-                    <TextBlock Text="（点击任意行查看详情与证据链；本版本不提供删除按钮）"
+                    <TextBlock Text="（点击任意行查看详情与证据链；可清理项可在详情页移入回收站，可还原）"
                                VerticalAlignment="Center" Margin="16,0,0,0" Style="{StaticResource Sub}"/>
                 </StackPanel>
             </StackPanel>

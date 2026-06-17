@@ -77,13 +77,55 @@ public sealed class ActionExecutorTests
         Assert.Equal("命中黑名单", log.RejectReason);
     }
 
-    [Fact] // 删除: 即便被错误放行也无删除代码路径 → Failed, 不触碰文件 (IR-1)
-    public async Task MoveToRecycleBin_has_no_delete_path()
+    [Fact] // 未装配回收站端口: 即便放行也无删除发生 → 安全 Failed, 不触碰文件 (IR-1)
+    public async Task MoveToRecycleBin_without_recycler_is_safe_failed()
     {
-        var (exec, shell, _, _) = New();
+        var (exec, shell, _, _) = New();   // New() 不装配 IRecycleBin
         var log = await exec.ExecuteAsync(new ActionRequest(1, @"C:\x\f", ActionType.MoveToRecycleBin), Allowed);
 
-        Assert.Equal(ActionResult.Failed, log.Result);    // 无实现, 安全失败
+        Assert.Equal(ActionResult.Failed, log.Result);
         Assert.Empty(shell.OpenedFolders);
+    }
+
+    [Fact] // S-E: 已放行 + 装配回收站端口 → 移入回收站 + 先写审计 (SR-9); 审计标记可恢复+回收站定位。
+    public async Task MoveToRecycleBin_recycles_and_audits_first()
+    {
+        var shell = new FakeShellLauncher();
+        var audit = new FakeAudit();
+        var bin = new FakeRecycleBin();
+        var exec = new ActionExecutor(shell, audit, null, "test", bin);
+
+        var log = await exec.ExecuteAsync(new ActionRequest(1, @"C:\Users\me\AppData\Local\App\Cache",
+            ActionType.MoveToRecycleBin), Allowed);
+
+        Assert.Equal(ActionResult.Success, log.Result);
+        Assert.Contains(@"C:\Users\me\AppData\Local\App\Cache", bin.Sent);   // 已移入回收站
+        Assert.Single(audit.Added);                                          // 先写审计 (SR-9)
+        Assert.True(audit.Added[0].Recoverable);
+        Assert.False(string.IsNullOrWhiteSpace(audit.Added[0].RecycleBinLocation));
+    }
+
+    [Fact] // 被拒 → 绝不触碰回收站
+    public async Task Rejected_recycle_does_not_touch_recycle_bin()
+    {
+        var bin = new FakeRecycleBin();
+        var exec = new ActionExecutor(new FakeShellLauncher(), new FakeAudit(), null, "test", bin);
+
+        var log = await exec.ExecuteAsync(new ActionRequest(1, @"C:\x\f", ActionType.MoveToRecycleBin), Rejected);
+
+        Assert.Equal(ActionResult.Rejected, log.Result);
+        Assert.Empty(bin.Sent);
+    }
+
+    [Fact] // 回收站操作本身失败 (如目标消失) → Failed, 不抛出, 上层可读原因
+    public async Task Recycle_bin_failure_is_reported_as_failed()
+    {
+        var bin = new FakeRecycleBin { ThrowOnSend = true };
+        var exec = new ActionExecutor(new FakeShellLauncher(), new FakeAudit(), null, "test", bin);
+
+        var log = await exec.ExecuteAsync(new ActionRequest(1, @"C:\x\f", ActionType.MoveToRecycleBin), Allowed);
+
+        Assert.Equal(ActionResult.Failed, log.Result);
+        Assert.Empty(bin.Sent);
     }
 }

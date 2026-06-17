@@ -35,7 +35,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
 
     public AppServices Services { get; }
     public string AiBadge { get; }
-    public string Title => $"CleanScope {Services.AppVersion} — 只读分析，绝不删除你的文件";
+    public string Title => $"CleanScope {Services.AppVersion} — 分析为主；删除仅对可清理项、且只移入回收站（可还原）";
 
     private object _current;
     public object CurrentView

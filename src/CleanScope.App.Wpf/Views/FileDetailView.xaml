@@ -166,12 +166,15 @@
         <!-- 安全闸门判定 + 辅助操作 (无删除入口) -->
         <Border Style="{StaticResource Cards}">
             <StackPanel>
-                <TextBlock Text="操作（均为只读/辅助，无删除）" Style="{StaticResource H2}"/>
+                <TextBlock Text="操作" Style="{StaticResource H2}"/>
                 <Border Padding="10" CornerRadius="6" Background="#F1F5FB" Margin="0,0,0,10">
                     <TextBlock Text="{Binding GuardVerdict}" Foreground="#1F2933" TextWrapping="Wrap"/>
                 </Border>
+                <!-- S-E 删除入口: 仅"可清理"(A/B) 项显示, 移入回收站可还原; 经两步确认+闸门复核+审计。 -->
                 <!-- S-D 推荐动作: 命令型→运行/复制官方命令; 安装目录→卸载程序; 通用→定位/复制路径/忽略 -->
                 <WrapPanel>
+                    <Button Content="🗑 移入回收站（可还原）" Command="{Binding MoveToRecycleBinCommand}" Style="{StaticResource Primary}"
+                            Margin="0,0,8,8" Visibility="{Binding Row.CanRecycle, Converter={StaticResource BoolToVis}}"/>
                     <Button Content="▶ 运行官方清理命令" Command="{Binding RunCommandCommand}" Style="{StaticResource Primary}"
                             Margin="0,0,8,8" Visibility="{Binding Row.HasRunCommand, Converter={StaticResource BoolToVis}}"/>
                     <Button Content="复制清理命令" Command="{Binding CopyCommandCommand}" Style="{StaticResource Ghost}"
