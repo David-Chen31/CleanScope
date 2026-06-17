@@ -22,7 +22,10 @@
 
             <ListView ItemsSource="{Binding View}" SelectedItem="{Binding Selected}"
                       BorderThickness="0" Background="Transparent"
-                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      VirtualizingPanel.ScrollUnit="Pixel">
                 <ListView.View>
                     <GridView>
                         <GridViewColumn Header="风险" Width="70">

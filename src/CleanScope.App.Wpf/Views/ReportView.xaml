@@ -6,6 +6,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              d:DataContext="{d:DesignInstance vm:ReportViewModel}"
              mc:Ignorable="d" d:DesignWidth="860">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel>
 
         <!-- 可清理类别聚合 (S3) -->
@@ -115,4 +116,5 @@
         </Border>
 
     </StackPanel>
+  </ScrollViewer>
 </UserControl>

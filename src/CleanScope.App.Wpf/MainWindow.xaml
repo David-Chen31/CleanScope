@@ -76,9 +76,10 @@
                 <TextBlock Text="{Binding Title}" Style="{StaticResource H2}" Margin="0"/>
             </Border>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,18">
-                <ContentControl Content="{Binding CurrentView}"/>
-            </ScrollViewer>
+            <!-- 不再用外层 ScrollViewer 包裹: 否则给内部 ListView 无限高度, 关闭 UI 虚拟化导致卡顿。
+                 各页自行管理滚动 (列表/空间地图自带滚动并虚拟化; 其余页内置 ScrollViewer)。 -->
+            <ContentControl Grid.Row="1" Content="{Binding CurrentView}" Margin="24,18"
+                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
         </Grid>
     </Grid>
 </Window>

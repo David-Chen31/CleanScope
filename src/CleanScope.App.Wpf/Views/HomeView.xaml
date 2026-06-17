@@ -6,6 +6,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              d:DataContext="{d:DesignInstance vm:HomeViewModel}"
              mc:Ignorable="d" d:DesignWidth="860">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel>
 
         <!-- 磁盘容量 -->
@@ -101,4 +102,5 @@
         </Border>
 
     </StackPanel>
+  </ScrollViewer>
 </UserControl>

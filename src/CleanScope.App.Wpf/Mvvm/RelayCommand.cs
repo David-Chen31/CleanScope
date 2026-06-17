@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using CleanScope.App.Wpf.Common;
 
 namespace CleanScope.App.Wpf.Mvvm;
 
@@ -48,6 +49,7 @@ public sealed class AsyncRelayCommand : ICommand
         _running = true;
         RaiseCanExecuteChanged();
         try { await _execute(parameter); }
+        catch (Exception ex) { AppLog.Error("AsyncRelayCommand", ex); }   // async void: 绝不让命令异常闪退
         finally { _running = false; RaiseCanExecuteChanged(); }
     }
 
