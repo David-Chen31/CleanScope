@@ -49,6 +49,7 @@ public sealed class MarkdownReportExporter : IReportExporter
         sb.AppendLine();
 
         AppendRiskSummary(sb, items);
+        AppendSoftwareUsage(sb, items);
         AppendCleanupCategories(sb, items);
         AppendTopN(sb, items, 20);
         AppendAiInvestigation(sb, items);
@@ -73,6 +74,23 @@ public sealed class MarkdownReportExporter : IReportExporter
         foreach (var c in cats)
             sb.AppendLine($"| {Cell(c.Name)} | {c.ItemCount} | {Size(c.ReclaimableSize)} | {Cell(c.RecommendedAction)} |");
         sb.AppendLine().AppendLine("> 仍不会自动删除: 以上仅给出每类的可回收空间与官方清理方式, 由你决定。").AppendLine();
+    }
+
+    // S-F: 按软件占用 —— 回答"空间被哪些软件占了, 各能清多少", 比按风险更贴近用户语言。
+    private static void AppendSoftwareUsage(StringBuilder sb, IReadOnlyList<DecisionItem> items)
+    {
+        var soft = SoftwareAggregator.Aggregate(items);
+        sb.AppendLine("## 按软件占用 (谁占了我的空间)").AppendLine();
+        if (soft.Count == 0)
+        {
+            sb.AppendLine("_无可归并的软件项。_").AppendLine();
+            return;
+        }
+        sb.AppendLine("| 软件/来源 | 项数 | 占用(去重) | 其中可清理(A/B) |");
+        sb.AppendLine("|---|---|---|---|");
+        foreach (var s in soft.Take(30))
+            sb.AppendLine($"| {Cell(s.Name)} | {s.ItemCount} | {Size(s.TotalSize)} | {Size(s.CleanableSize)} |");
+        sb.AppendLine().AppendLine("> 占用为去重独占大小; “可清理”为该软件名下 A/B 项 (仍建议确认/官方方式)。").AppendLine();
     }
 
     private void AppendRiskSummary(StringBuilder sb, IReadOnlyList<DecisionItem> items)

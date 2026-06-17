@@ -186,6 +186,14 @@ static void PrintSummary(ScanAndAnalyzeResult result, TimeSpan elapsed)
             Console.WriteLine($"  [{c.TopRisk}] {HumanSize(c.ReclaimableSize),10}  {c.Name} ({c.ItemCount} 项) — {c.RecommendedAction}");
     }
 
+    var soft = SoftwareAggregator.Aggregate(items);
+    if (soft.Count > 0)
+    {
+        Console.WriteLine("\n按软件占用 (谁占了我的空间, 去重):");
+        foreach (var s in soft.Take(10))
+            Console.WriteLine($"  {HumanSize(s.TotalSize),10}  {s.Name} ({s.ItemCount} 项, 可清理 {HumanSize(s.CleanableSize)})");
+    }
+
     var high = items.Where(i => i.RiskLevel is RiskLevel.D or RiskLevel.E).ToList();
     if (high.Count > 0)
         Console.WriteLine($"\n⚠️ {high.Count} 项为 D/E 级 —— 不建议删除。");

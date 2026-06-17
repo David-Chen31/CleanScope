@@ -79,6 +79,17 @@ public record CleanupCategory(
     RiskLevel TopRisk,
     string RecommendedAction);
 
+/// <summary>
+/// 按软件聚合 (S-F): 把归属相同的项归并, 回答"我的空间被哪些软件占了 + 各能清多少"。
+/// 比按风险更贴近用户语言。<see cref="TotalSize"/>/<see cref="CleanableSize"/> 均为去重独占大小之和。
+/// </summary>
+public record SoftwareUsage(
+    string Name,
+    int ItemCount,
+    long TotalSize,         // 该软件名下全部项的去重独占大小之和
+    long CleanableSize,     // 其中 A/B 可清理部分 (去重)
+    RiskLevel TopRisk);
+
 /// <summary>扫描报告 (报告导出输入)。</summary>
 public record ScanReport(
     ScanTask Task,

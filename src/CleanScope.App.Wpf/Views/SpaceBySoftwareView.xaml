@@ -1,0 +1,70 @@
+<UserControl x:Class="CleanScope.App.Wpf.Views.SpaceBySoftwareView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:CleanScope.App.Wpf.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DataContext="{d:DesignInstance vm:SpaceBySoftwareViewModel}"
+             mc:Ignorable="d" d:DesignWidth="860">
+    <Border Style="{StaticResource Cards}">
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <TextBlock Text="按软件占用" Style="{StaticResource H2}"/>
+                <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}"/>
+                <TextBlock Text="（展开任一软件查看其名下文件；点击文件查看详情与清理建议）"
+                           Style="{StaticResource Sub}" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Groups}"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Expander Margin="0,0,0,6">
+                                <Expander.Header>
+                                    <StackPanel Orientation="Horizontal" Margin="2">
+                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <Border Background="#D7F0DD" CornerRadius="4" Padding="8,1" Margin="10,0,0,0"
+                                                Visibility="{Binding HasCleanable, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Foreground="#1B5E33" FontSize="12">
+                                                <Run Text="可清理 "/><Run Text="{Binding CleanableText, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </Border>
+                                    </StackPanel>
+                                </Expander.Header>
+
+                                <ItemsControl ItemsSource="{Binding Items}" Margin="16,6,0,6">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Command="{Binding DataContext.OpenDetailCommand,
+                                                        RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    HorizontalContentAlignment="Stretch" Cursor="Hand"
+                                                    Background="Transparent" BorderThickness="0" Padding="4,3">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="92"/>
+                                                        <ColumnDefinition Width="92"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Background="{Binding Bucket, Converter={StaticResource BucketToBrush}}"
+                                                            CornerRadius="4" Padding="6,1" HorizontalAlignment="Left">
+                                                        <TextBlock Text="{Binding BucketLabel}" Foreground="#222" FontSize="12"/>
+                                                    </Border>
+                                                    <TextBlock Grid.Column="1" Text="{Binding SizeText}" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding Path}" TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding Path}" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>

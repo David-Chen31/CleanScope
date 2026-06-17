@@ -51,12 +51,13 @@
             <StackPanel Margin="18,24">
                 <TextBlock Text="CleanScope" Foreground="White" FontSize="22" FontWeight="Bold"/>
                 <TextBlock Text="C 盘 AI 清理助手" Foreground="#8FA0B5" Margin="0,2,0,2"/>
-                <TextBlock Text="只读分析 · 绝不自动删除" Foreground="#5FC88F" FontSize="11" Margin="0,0,0,28"/>
+                <TextBlock Text="删除仅移入回收站 · 可还原" Foreground="#5FC88F" FontSize="11" Margin="0,0,0,28"/>
 
                 <Button Content="① 概览 / 扫描" Command="{Binding GoHomeCommand}" Style="{StaticResource NavBtn}"/>
                 <Button Content="② 空间地图" Command="{Binding GoMapCommand}" Style="{StaticResource NavBtn}"/>
                 <Button Content="③ 文件清单" Command="{Binding GoListCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="④ 报告 / 忽略名单" Command="{Binding GoReportCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="④ 按软件" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="⑤ 报告 / 忽略名单" Command="{Binding GoReportCommand}" Style="{StaticResource NavBtn}"/>
 
                 <Border Margin="0,28,0,0" Padding="10" CornerRadius="6" Background="#16202E">
                     <TextBlock Text="{Binding AiBadge}" Foreground="#8FA0B5" FontSize="11" TextWrapping="Wrap"/>

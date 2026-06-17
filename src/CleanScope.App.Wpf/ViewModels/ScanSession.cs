@@ -50,4 +50,5 @@ public interface INavigationHost
     void ShowList();
     void ShowDetail(FileRowViewModel row);
     void ShowReport();
+    void ShowBySoftware();
 }

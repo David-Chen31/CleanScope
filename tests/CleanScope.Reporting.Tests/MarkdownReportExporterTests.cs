@@ -114,6 +114,22 @@ public sealed class MarkdownReportExporterTests
         Assert.Contains("真实占用(去重)", md);
     }
 
+    [Fact] // S-F: 报告含"按软件占用"节, 列出软件 + 去重占用 + 可清理。
+    public void Report_contains_by_software_section()
+    {
+        var task = new ScanTask(1, @"C:\", ScanMode.Normal, ScanStatus.Completed,
+            new DateTime(2026, 6, 14, 9, 0, 0, DateTimeKind.Utc), null, 1000, 1, "0.1.0");
+        var items = new[]
+        {
+            new DecisionItem(@"C:\a\.nuget\packages", 1_500_000_000, "NuGet", RiskLevel.B,
+                "用 dotnet nuget locals all --clear", null, new long[] { 1 }, ExclusiveSize: 1_500_000_000),
+        };
+        var md = new MarkdownReportExporter().BuildMarkdown(new ScanReport(task, items));
+
+        Assert.Contains("## 按软件占用", md);
+        Assert.Contains("NuGet", md);
+    }
+
     [Fact] // S-C: 有 AI 调查推测 → 报告出现"AI 调查"节, 含"AI 推测/仅供参考"声明 + 推测文本。
     public void Ai_investigation_section_renders_when_present()
     {
