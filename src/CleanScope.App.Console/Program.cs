@@ -169,9 +169,10 @@ static void PrintSummary(ScanAndAnalyzeResult result, TimeSpan elapsed)
     var reclaimable = items.Where(i => i.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(i => i.ExclusiveSize);
     Console.WriteLine($"  可清理估算(A+B, 去重, 仍建议确认): {HumanSize(reclaimable)}");
 
-    Console.WriteLine("\nTop 10 占用大头:");
-    foreach (var (i, n) in items.OrderByDescending(i => i.Size).Take(10).Select((x, idx) => (x, idx + 1)))
-        Console.WriteLine($"  {n,2}. [{i.RiskLevel}] {HumanSize(i.Size),10}  {i.Path}");
+    Console.WriteLine("\nTop 10 占用大头 (按真实占用/叶子贡献):");
+    foreach (var (i, n) in items.OrderByDescending(i => i.ExclusiveSize).ThenByDescending(i => i.Size)
+                                .Take(10).Select((x, idx) => (x, idx + 1)))
+        Console.WriteLine($"  {n,2}. [{i.RiskLevel}] {HumanSize(i.ExclusiveSize),10}  {i.Path}");
 
     var cats = CleanupAggregator.Aggregate(items);
     if (cats.Count > 0)
