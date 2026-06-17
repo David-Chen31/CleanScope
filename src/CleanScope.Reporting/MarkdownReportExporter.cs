@@ -59,15 +59,17 @@ public sealed class MarkdownReportExporter : IReportExporter
     private void AppendRiskSummary(StringBuilder sb, IReadOnlyList<DecisionItem> items)
     {
         sb.AppendLine("## 风险统计").AppendLine();
-        sb.AppendLine("| 等级 | 数量 | 分析项占用 |");
+        sb.AppendLine("| 等级 | 数量 | 占用(去重) |");
         sb.AppendLine("|---|---|---|");
         foreach (var level in new[] { RiskLevel.A, RiskLevel.B, RiskLevel.C, RiskLevel.D, RiskLevel.E })
         {
             var g = items.Where(i => i.RiskLevel == level).ToList();
-            sb.AppendLine($"| {RiskLabel(level)} | {g.Count} | {Size(g.Sum(i => i.Size))} |");
+            // 用独占大小求和: 同一批字节不因父子目录同时入选而被重复计入。
+            sb.AppendLine($"| {RiskLabel(level)} | {g.Count} | {Size(g.Sum(i => i.ExclusiveSize))} |");
         }
-        var reclaimable = items.Where(i => i.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(i => i.Size);
-        sb.AppendLine().AppendLine($"可清理估算 (A+B, 仍建议确认): **{Size(reclaimable)}**").AppendLine();
+        var reclaimable = items.Where(i => i.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(i => i.ExclusiveSize);
+        sb.AppendLine().AppendLine($"可清理估算 (A+B, 去重, 仍建议确认): **{Size(reclaimable)}**");
+        sb.AppendLine().AppendLine("> 占用为**去重独占大小**(每个字节只归属最深的被分析目录), 故各级之和不超过磁盘实际占用; TopN 仍按目录聚合大小展示。").AppendLine();
     }
 
     private void AppendTopN(StringBuilder sb, IReadOnlyList<DecisionItem> items, int n)

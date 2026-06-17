@@ -24,6 +24,7 @@ public sealed class FileRowViewModel
         Path = item.Path;
         Name = node.Name;
         Size = item.Size;
+        ExclusiveSize = item.ExclusiveSize;
         RiskLevel = item.RiskLevel;
         OwnerApp = item.OwnerApp;
         RecommendedAction = item.RecommendedAction;
@@ -62,6 +63,7 @@ public sealed class FileRowViewModel
     public string Path { get; }
     public string Name { get; }
     public long Size { get; }
+    public long ExclusiveSize { get; }
     public string SizeText => Format.HumanSize(Size);
     public RiskLevel RiskLevel { get; }
     public string RiskText => RiskLevel.ToString();

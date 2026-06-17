@@ -153,15 +153,15 @@ static void PrintSummary(ScanAndAnalyzeResult result, TimeSpan elapsed)
     Console.WriteLine($"\n扫描完成, 用时 {elapsed.TotalSeconds:0.0}s。");
     Console.WriteLine($"总占用(根聚合): {HumanSize(t.TotalSize ?? 0)}　文件/目录数: {t.FileCount}");
 
-    Console.WriteLine("\n风险分级统计:");
+    Console.WriteLine("\n风险分级统计 (占用为去重独占大小, 不重复计入父子目录):");
     foreach (var level in new[] { RiskLevel.A, RiskLevel.B, RiskLevel.C, RiskLevel.D, RiskLevel.E })
     {
         var g = items.Where(i => i.RiskLevel == level).ToList();
         if (g.Count > 0)
-            Console.WriteLine($"  {level}: {g.Count} 项, {HumanSize(g.Sum(i => i.Size))}");
+            Console.WriteLine($"  {level}: {g.Count} 项, {HumanSize(g.Sum(i => i.ExclusiveSize))}");
     }
-    var reclaimable = items.Where(i => i.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(i => i.Size);
-    Console.WriteLine($"  可清理估算(A+B, 仍建议确认): {HumanSize(reclaimable)}");
+    var reclaimable = items.Where(i => i.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(i => i.ExclusiveSize);
+    Console.WriteLine($"  可清理估算(A+B, 去重, 仍建议确认): {HumanSize(reclaimable)}");
 
     Console.WriteLine("\nTop 10 占用大头:");
     foreach (var (i, n) in items.OrderByDescending(i => i.Size).Take(10).Select((x, idx) => (x, idx + 1)))

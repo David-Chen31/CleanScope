@@ -104,4 +104,30 @@ public sealed class DecisionServiceTests
         }).Single();
         Assert.Equal("Visual Studio", item.OwnerApp);
     }
+
+    // S1: 独占大小修复父子目录重复计数 —— 嵌套祖先各自扣除其最近子孙, 全集之和=真实占用。
+    [Fact]
+    public void Exclusive_size_avoids_parent_child_double_counting()
+    {
+        var items = Svc.Summarize(new[]
+        {
+            Analysis(@"C:\",                          1000, RiskLevel.E, new[] { 1L }),
+            Analysis(@"C:\Users",                      600, RiskLevel.E, new[] { 2L }),
+            Analysis(@"C:\Users\a\Temp",               400, RiskLevel.A, new[] { 3L }),  // Users 的子孙
+            Analysis(@"C:\Windows",                    300, RiskLevel.D, new[] { 4L }),  // C:\ 的子孙
+        });
+
+        long Ex(string p) => items.Single(i => i.Path == p).ExclusiveSize;
+
+        // C:\ 扣除最近子孙 Users(600) 和 Windows(300) → 100; Users 扣除 Temp(400) → 200。
+        Assert.Equal(100, Ex(@"C:\"));
+        Assert.Equal(200, Ex(@"C:\Users"));
+        Assert.Equal(400, Ex(@"C:\Users\a\Temp"));   // 叶子保留自身
+        Assert.Equal(300, Ex(@"C:\Windows"));
+
+        // 关键不变量: 独占大小之和 = 根聚合大小 (每个字节只计一次)。
+        Assert.Equal(1000, items.Sum(i => i.ExclusiveSize));
+        // 聚合 Size 求和会重复计数 (2300 > 1000), 证明修复必要。
+        Assert.Equal(2300, items.Sum(i => i.Size));
+    }
 }

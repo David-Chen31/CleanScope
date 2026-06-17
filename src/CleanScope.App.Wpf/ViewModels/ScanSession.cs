@@ -21,12 +21,13 @@ public sealed class ScanSession
     public long FileCount => Report.Task.FileCount ?? 0;
 
     public int Count(RiskLevel level) => Rows.Count(r => r.RiskLevel == level);
-    public long SizeOf(RiskLevel level) => Rows.Where(r => r.RiskLevel == level).Sum(r => r.Size);
+    // 占用统计用去重独占大小 (S1): 父子目录同时入选时, 同一批字节不被重复计入。
+    public long SizeOf(RiskLevel level) => Rows.Where(r => r.RiskLevel == level).Sum(r => r.ExclusiveSize);
 
     public int HighRiskCount => Rows.Count(r => r.IsHighRisk);
 
-    /// <summary>可清理估算 (A+B; 仍建议用户确认/官方方式)。</summary>
-    public long ReclaimableEstimate => Rows.Where(r => r.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(r => r.Size);
+    /// <summary>可清理估算 (A+B, 去重; 仍建议用户确认/官方方式)。</summary>
+    public long ReclaimableEstimate => Rows.Where(r => r.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(r => r.ExclusiveSize);
 }
 
 /// <summary>导航宿主契约 (Shell 实现)。子页通过它跳转, 不互相直接耦合。</summary>

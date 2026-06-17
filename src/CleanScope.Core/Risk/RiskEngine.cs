@@ -26,6 +26,14 @@ public sealed class RiskEngine : IRiskEngine
         @"\\AppData\\Roaming\\[^\\]+",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    // S5: 目录名明确表明为"可重建缓存/临时/日志/崩溃转储"的信号 (仅用于目录, 降低 E 泛滥)。
+    // 命中 → B (走官方方式清理), 而非 E。永不置 canDelete (MVP 零删除, 安全闸门仍拦一切删除)。
+    private static readonly HashSet<string> CacheLeafNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "temp", "tmp", "log", "logs", "crashpad", "crashdumps", "crashes",
+        "blob_storage", "thumbnails", "thumbcache", "webcache", "inetcache",
+    };
+
     public RiskAssessment Assess(
         FileNode node, EvidenceBundle evidence, RuleMatch? ruleMatch, IReadOnlyList<AttributionCandidate> attributions)
     {
@@ -84,6 +92,11 @@ public sealed class RiskEngine : IRiskEngine
         if (PersonalDataRx.IsMatch(path))
             return Build(node, evidence, RiskLevel.C, 50, new[] { "用户个人数据 (误删=数据丢失)" }, 0.75, false);
 
+        // S5: 目录名表明为可重建缓存/临时/日志 → B (从 E 里救出, 让真实可回收空间显形)。
+        if (node.IsDirectory && IsRebuildableCacheDir(node.Name))
+            return Build(node, evidence, RiskLevel.B, 35,
+                new[] { "目录名表明为可重建缓存/临时, 建议用官方方式清理" }, 0.55, canDelete: false);
+
         if (RoamingAppDataRx.IsMatch(path))
             return Build(node, evidence, RiskLevel.C, 50, new[] { "应用数据/配置 (删后软件重置或丢登录态)" }, 0.6, false);
 
@@ -94,6 +107,11 @@ public sealed class RiskEngine : IRiskEngine
         // Q4: 证据不足/来源不明 → E (无法判断, 不建议删除)。
         return Build(node, evidence, RiskLevel.E, 85, new[] { "证据不足/来源不明, 无法判断" }, 0.2, false);
     }
+
+    // 目录名 (叶子) 是否表明可重建缓存: 含 "cache" 或属已知缓存/临时/日志/崩溃名。
+    private static bool IsRebuildableCacheDir(string leaf) =>
+        !string.IsNullOrEmpty(leaf) &&
+        (leaf.Contains("cache", StringComparison.OrdinalIgnoreCase) || CacheLeafNames.Contains(leaf));
 
     private static bool IsInUse(EvidenceBundle evidence) =>
         evidence.Metadata?.InUse == true ||

@@ -86,6 +86,36 @@ public sealed class RiskEngineTests
         Assert.NotEmpty(r.EvidenceChain);          // 即便 E 也有观测证据 (SR-5)
     }
 
+    // S5: 无规则命中但目录名表明可重建缓存 → B (从 E 救出), 但绝不可直删。
+    [Theory]
+    [InlineData(@"C:\Users\me\AppData\Local\Google\Chrome\User Data\Default\Cache")]
+    [InlineData(@"C:\Users\me\AppData\Local\Slack\GPUCache")]
+    [InlineData(@"C:\Users\me\AppData\Roaming\Code\Code Cache")]
+    [InlineData(@"C:\Users\me\AppData\Local\SomeApp\logs")]
+    [InlineData(@"C:\Users\me\AppData\Local\SomeApp\Crashpad")]
+    public void Cache_like_directory_without_rule_yields_B(string path)
+    {
+        var r = Assess(Node(path, isDir: true), null);
+        Assert.Equal(RiskLevel.B, r.Level);
+        Assert.False(r.CanDeleteDirectly);         // 启发式不授予直删权
+    }
+
+    [Fact]
+    public void Cache_heuristic_only_applies_to_directories_not_files()
+    {
+        // 名为 CacheManager.dll 的文件不应被误判为可清理缓存。
+        var r = Assess(Node(@"C:\Program Files\App\CacheManager.dll", isDir: false), null);
+        Assert.NotEqual(RiskLevel.B, r.Level);
+    }
+
+    [Fact]
+    public void System_critical_rule_overrides_cache_name()
+    {
+        // 即使叫 Temp, 命中系统关键 D 规则仍恒 D (规则权威优先于启发式)。
+        var r = Assess(Node(@"C:\Windows\Temp", isDir: true), Rm(RiskLevel.D, systemCritical: true));
+        Assert.Equal(RiskLevel.D, r.Level);
+    }
+
     [Fact]
     public void Wsl_vhdx_in_use_yields_D_via_rule()
     {

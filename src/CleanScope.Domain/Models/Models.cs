@@ -45,7 +45,12 @@ public record FileAnalysis(
     RiskAssessment Risk,
     AiExplanation? Explanation);
 
-/// <summary>决策视图项 (DecisionService 输出, 面向用户展示)。</summary>
+/// <summary>
+/// 决策视图项 (DecisionService 输出, 面向用户展示)。
+/// <paramref name="Size"/> 为聚合大小 (目录含全部子孙, 用于"最大文件夹"展示);
+/// <paramref name="ExclusiveSize"/> 为去重独占大小 —— 每个字节只归属到最深的被分析节点,
+/// 用于"占用统计 / 可清理估算"求和时避免父子目录重复计数 (同一字节只计一次)。
+/// </summary>
 public record DecisionItem(
     string Path,
     long Size,
@@ -53,7 +58,8 @@ public record DecisionItem(
     RiskLevel RiskLevel,
     string RecommendedAction,
     string? Explanation,
-    IReadOnlyList<long> EvidenceChain);
+    IReadOnlyList<long> EvidenceChain,
+    long ExclusiveSize = 0);
 
 /// <summary>扫描报告 (报告导出输入)。</summary>
 public record ScanReport(

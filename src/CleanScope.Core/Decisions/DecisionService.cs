@@ -15,12 +15,49 @@ public sealed class DecisionService : IDecisionService
     {
         ArgumentNullException.ThrowIfNull(analyses);
 
-        return analyses
-            .Select(ToItem)
+        var items = analyses.Select(ToItem).ToList();
+        var exclusive = ComputeExclusiveSizes(items);
+
+        return items
+            .Select(i => i with { ExclusiveSize = exclusive[i.Path] })
             // 按风险分组 (A→E), 组内按占用大小降序 (大头优先)。
             .OrderBy(i => i.RiskLevel)
             .ThenByDescending(i => i.Size)
             .ToList();
+    }
+
+    /// <summary>
+    /// 计算独占大小 (S1: 修复父子目录重复计数)。目录的聚合 Size 含全部子孙, 若父目录与其子目录
+    /// 都在分析集中, 求和会重复计入同一批字节。此处把每个被分析节点的大小从其"最近的被分析祖先"中扣除,
+    /// 使每个字节只归属到最深的被分析节点; 全集独占大小之和 = 真实占用 (不超过磁盘实际)。
+    /// </summary>
+    private static IReadOnlyDictionary<string, long> ComputeExclusiveSizes(IReadOnlyList<DecisionItem> items)
+    {
+        var exclusive = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        foreach (var i in items) exclusive[i.Path] = i.Size;  // 同路径去重 (后者覆盖, 实际不应重复)
+
+        var paths = new HashSet<string>(exclusive.Keys, StringComparer.OrdinalIgnoreCase);
+        foreach (var i in items)
+        {
+            var ancestor = NearestAncestorInSet(i.Path, paths);
+            if (ancestor is not null && !string.Equals(ancestor, i.Path, StringComparison.OrdinalIgnoreCase))
+                exclusive[ancestor] -= i.Size;
+        }
+        return exclusive;
+    }
+
+    // 最近的祖先目录 (按路径段, 不含自身); 不在集合中则继续上溯, 到根仍无则 null。
+    private static string? NearestAncestorInSet(string path, HashSet<string> set)
+    {
+        var dir = System.IO.Path.GetDirectoryName(path);
+        while (!string.IsNullOrEmpty(dir))
+        {
+            if (set.Contains(dir)) return dir;
+            var parent = System.IO.Path.GetDirectoryName(dir);
+            if (string.Equals(parent, dir, StringComparison.Ordinal)) break;
+            dir = parent;
+        }
+        return null;
     }
 
     private static DecisionItem ToItem(FileAnalysis a)

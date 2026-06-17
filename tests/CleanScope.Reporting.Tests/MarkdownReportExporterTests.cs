@@ -17,11 +17,11 @@ public sealed class MarkdownReportExporterTests
         var items = new[]
         {
             new DecisionItem(@"C:\Users\alice\AppData\Local\Temp", 2_000_000_000, null,
-                RiskLevel.A, "通常可清理", "用户临时目录", new long[] { 1 }),
+                RiskLevel.A, "通常可清理", "用户临时目录", new long[] { 1 }, ExclusiveSize: 2_000_000_000),
             new DecisionItem(@"C:\Windows\System32", 1_000_000_000, null,
-                RiskLevel.D, "不建议删除", "命中系统关键黑名单", new long[] { 2 }),
+                RiskLevel.D, "不建议删除", "命中系统关键黑名单", new long[] { 2 }, ExclusiveSize: 1_000_000_000),
             new DecisionItem(@"C:\Users\alice\AppData\Local\xyz", 500, null,
-                RiskLevel.E, "无法判断, 不建议删除", "证据不足", new long[] { 3 }),
+                RiskLevel.E, "无法判断, 不建议删除", "证据不足", new long[] { 3 }, ExclusiveSize: 500),
         };
         return new ScanReport(task, items);
     }
