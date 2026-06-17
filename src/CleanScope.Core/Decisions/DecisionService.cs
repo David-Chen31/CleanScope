@@ -137,12 +137,16 @@ public sealed class DecisionService : IDecisionService
         return DefaultActionFor(a.Risk.Level);
     }
 
-    // 已校验 AI 措辞 (推测) 优先; 否则呈现事实因素。
+    // 已校验 AI 措辞 (推测) 优先; 否则: 系统/共享路径先给"用途"(SystemOrigin), 再附事实因素。
     private static string? ExplanationOf(FileAnalysis a, AiExplanation? ai)
     {
         if (!string.IsNullOrWhiteSpace(ai?.UserFriendlyExplanation))
             return ai!.UserFriendlyExplanation;
-        return a.Risk.Factors.Count > 0 ? string.Join("; ", a.Risk.Factors) : null;
+
+        var factors = a.Risk.Factors.Count > 0 ? string.Join("; ", a.Risk.Factors) : null;
+        var purpose = Attribution.SystemOrigin.Resolve(a.Node.RealPath ?? a.Node.Path)?.Purpose;
+        if (purpose is null) return factors;
+        return factors is null ? $"用途: {purpose}" : $"用途: {purpose}; {factors}";
     }
 
     private static string DefaultActionFor(RiskLevel level) => level switch

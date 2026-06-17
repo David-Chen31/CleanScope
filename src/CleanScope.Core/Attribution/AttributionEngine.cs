@@ -35,14 +35,19 @@ public sealed class AttributionEngine : IAttributionEngine
             Fuse(acc, name, conf, e.Id);
         }
 
-        // S4: 无任何事实候选时, 从路径模式推断一个低置信候选 (填补"小文件夹无归属"的空白)。
-        // 置信度刻意低于 0.8, 不驱动风险判定 (仅供展示); 不与事实候选混淆 (仅在事实为空时启用)。
+        // 无任何事实候选时: 先按路径段推断应用 (S4), 再按系统/共享路径表给来源 (SystemOrigin)。
+        // 目标: 让系统文件 (Windows/共享组件/临时…) 也有"来源", 不落进"未归类"。均为低置信展示, 不驱动风险。
         if (acc.Count == 0)
         {
-            var inferred = PathPatternCandidate(node.RealPath ?? node.Path);
-            return inferred is null
-                ? Array.Empty<AttributionCandidate>()     // AS-8: 仍未知, 不臆造
-                : new[] { new AttributionCandidate(0, node.Id, inferred, 0.5, 1, Array.Empty<long>(), Source: "路径推断") };
+            var path = node.RealPath ?? node.Path;
+            var inferred = PathPatternCandidate(path);
+            if (inferred is not null)
+                return new[] { new AttributionCandidate(0, node.Id, inferred, 0.5, 1, Array.Empty<long>(), Source: "路径推断") };
+
+            if (SystemOrigin.Resolve(path) is { } origin)
+                return new[] { new AttributionCandidate(0, node.Id, origin.Owner, 0.85, 1, Array.Empty<long>(), Source: "系统目录") };
+
+            return Array.Empty<AttributionCandidate>();   // AS-8: 仍未知, 不臆造
         }
 
         // 规则类别可佐证 (非新增候选): 若类别提及某候选名, 略增其置信度。
@@ -179,11 +184,16 @@ public sealed class AttributionEngine : IAttributionEngine
         }
 
         // 3) Program Files / Program Files (x86) / ProgramData 下第一段 = 厂商/应用。
+        //    若第一段是共享/噪声段 (如 Common Files), 取下一段 (如 Common Files\Adobe → Adobe)。
         var pi = Array.FindIndex(segs, s =>
             s.StartsWith("Program Files", StringComparison.OrdinalIgnoreCase) ||
             s.Equals("ProgramData", StringComparison.OrdinalIgnoreCase));
         if (pi >= 0 && pi + 1 < segs.Length)
-            return Friendly(segs[pi + 1]);
+        {
+            var first = Friendly(segs[pi + 1]);
+            if (first is not null) return first;
+            if (pi + 2 < segs.Length) return Friendly(segs[pi + 2]);   // 跳过 Common Files 等共享段
+        }
 
         return null;
     }

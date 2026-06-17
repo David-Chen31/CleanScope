@@ -69,6 +69,32 @@ public sealed class AttributionEngineTests
         Assert.Equal("路径推断", cands[0].Source);             // S-G: 来源诚实标注 (非事实证据)
     }
 
+    [Theory] // 系统/共享路径 → 给系统来源 (不落"未归类"), 来源标"系统目录"
+    [InlineData(@"C:\Windows\WinSxS", "Windows 系统")]
+    [InlineData(@"C:\pagefile.sys", "Windows 系统")]
+    [InlineData(@"C:\Program Files\Common Files", "共享组件 (多程序)")]
+    public void System_paths_get_system_origin(string path, string expected)
+    {
+        var node = new FileNode(0, 0, null, path, null, "leaf", true, false, 1,
+            null, null, null, AccessState.Accessible, null, default);
+        var cands = Engine.Attribute(node, new EvidenceBundle(0, null, Array.Empty<Evidence>()), null);
+
+        Assert.Single(cands);
+        Assert.Equal(expected, cands[0].AppName);
+        Assert.Equal("系统目录", cands[0].Source);
+    }
+
+    [Fact] // Common Files\<App> → 取更深段 (Adobe), 而非笼统"共享组件"
+    public void Common_files_subdir_attributes_to_inner_app()
+    {
+        var node = new FileNode(0, 0, null, @"C:\Program Files\Common Files\Adobe", null, "Adobe", true, false, 1,
+            null, null, null, AccessState.Accessible, null, default);
+        var cands = Engine.Attribute(node, new EvidenceBundle(0, null, Array.Empty<Evidence>()), null);
+
+        Assert.Single(cands);
+        Assert.Equal("Adobe", cands[0].AppName);
+    }
+
     [Fact] // 有事实证据时不启用路径推断 (事实优先, 不被稀释)
     public void Path_pattern_not_used_when_facts_exist()
     {
