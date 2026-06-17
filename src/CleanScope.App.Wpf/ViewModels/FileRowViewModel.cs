@@ -54,6 +54,7 @@ public sealed class FileRowViewModel
         RiskFactors = risk.Factors;
 
         Ai = analysis.Explanation is { Validated: true } ai ? new AiExplanationViewModel(ai) : null;
+        AiInvestigation = item.AiInvestigation;
     }
 
     public DecisionItem Item { get; }
@@ -118,6 +119,10 @@ public sealed class FileRowViewModel
     /// <summary>仅当 AI 解释通过校验 (Validated) 才有值; 未校验一律不展示 (架构§5)。</summary>
     public AiExplanationViewModel? Ai { get; }
     public bool HasAi => Ai is not null;
+
+    /// <summary>S-C: AI 对未知项的调查推测 (已校验, 仅供参考, 不改判风险)。批量调查或详情按需均可填充。</summary>
+    public string? AiInvestigation { get; }
+    public bool HasAiInvestigation => !string.IsNullOrWhiteSpace(AiInvestigation);
 }
 
 /// <summary>归因候选展示 (应用名 + 置信度)。非单一答案, 按置信度排序。</summary>

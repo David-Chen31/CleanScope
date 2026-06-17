@@ -50,7 +50,7 @@ public sealed class ScanAndAnalyzeUseCase
 
     public async Task<ScanAndAnalyzeResult> ExecuteAsync(
         ScanOptions options, IProgress<ScanProgress>? progress = null, CancellationToken ct = default,
-        AiMode aiMode = AiMode.OnDemand)
+        AiMode aiMode = AiMode.OnDemand, int maxInvestigations = 30)
     {
         ArgumentNullException.ThrowIfNull(options);
         var startedAt = DateTime.UtcNow;
@@ -72,13 +72,17 @@ public sealed class ScanAndAnalyzeUseCase
             analyses.Add(new FileAnalysis(node, bundle, ruleMatch, attributions, risk, Explanation: null));
         }
 
-        // AI 旁路 (S6): 仅 Batch 模式下扫描后并发+缓存批量解释; OnDemand 模式下扫描秒级返回, 详情页按需解释。
-        if (aiMode == AiMode.Batch && AiEnabled)
+        // AI 旁路: 按模式注解。AI 永不进入裁决, 仅旁路解释/调查 (脱敏→解释→校验)。
+        //  - Batch: 对所有项 (最贵)。
+        //  - InvestigateUnknowns (S-C): 仅对"真正三无"未知项 (E, 非容器), 按大小取前 maxInvestigations 个,
+        //    让 AI 真正参与"消化无法判断" —— 数量可控, 不拖慢扫描。
+        //  - OnDemand: 扫描不解释, 详情页按需。
+        if (AiEnabled)
         {
-            var explanations = await _annotator.AnnotateAllAsync(analyses, maxParallel: 8, ct);
-            for (var i = 0; i < analyses.Count; i++)
-                if (explanations[i] is { } ex)
-                    analyses[i] = analyses[i] with { Explanation = ex };
+            if (aiMode == AiMode.Batch)
+                await AnnotateAsync(analyses, Enumerable.Range(0, analyses.Count).ToList(), ct);
+            else if (aiMode == AiMode.InvestigateUnknowns)
+                await AnnotateAsync(analyses, SelectUnknowns(analyses, maxInvestigations), ct);
         }
 
         var decisions = _decision.Summarize(analyses);
@@ -87,6 +91,28 @@ public sealed class ScanAndAnalyzeUseCase
             startedAt, DateTime.UtcNow, totalSize, observed, _appVersion);
 
         return new ScanAndAnalyzeResult(new ScanReport(task, decisions), decisions, analyses);
+    }
+
+    // S-C: 选出"真正三无"未知项的下标 —— E 级、非容器 (容器只是浏览入口, 不需调查),
+    // 按聚合大小降序取前 cap 个 (优先调查占地方的未知大头)。
+    private static List<int> SelectUnknowns(IReadOnlyList<FileAnalysis> analyses, int cap) =>
+        analyses
+            .Select((a, idx) => (a, idx))
+            .Where(x => x.a.Risk.Level == RiskLevel.E && !x.a.Risk.IsContainer)
+            .OrderByDescending(x => x.a.Node.Size)
+            .Take(Math.Max(0, cap))
+            .Select(x => x.idx)
+            .ToList();
+
+    // 对给定下标子集并发+缓存跑 AI 注解, 校验通过则写回 Explanation (原地替换 record)。
+    private async Task AnnotateAsync(List<FileAnalysis> analyses, IReadOnlyList<int> indices, CancellationToken ct)
+    {
+        if (indices.Count == 0) return;
+        var subset = indices.Select(i => analyses[i]).ToList();
+        var explanations = await _annotator.AnnotateAllAsync(subset, maxParallel: 8, ct);
+        for (var j = 0; j < indices.Count; j++)
+            if (explanations[j] is { } ex)
+                analyses[indices[j]] = analyses[indices[j]] with { Explanation = ex };
     }
 
     // 同步派发的 IProgress (默认 Progress<T> 经 SynchronizationContext 异步派发, 编排里需即时计数)。

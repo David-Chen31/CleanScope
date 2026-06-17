@@ -5,8 +5,14 @@ using CleanScope.Domain.Models;
 
 namespace CleanScope.Application;
 
-/// <summary>AI 解释触发模式 (S6): OnDemand=扫描不批量解释 (快, 详情页按需), Batch=扫描后并发批量解释。</summary>
-public enum AiMode { OnDemand, Batch }
+/// <summary>
+/// AI 解释触发模式:
+///  - <see cref="OnDemand"/> (S6): 扫描不批量解释 (快), 详情页按需解释单项。
+///  - <see cref="InvestigateUnknowns"/> (S-C): 扫描后仅对少量"真正三无"未知项 (E 级, 非容器) 并发+缓存跑 AI 调查,
+///    把推测写入报告, 让 AI 真正参与"消化无法判断"。代价可控 (E 项通常几十个)。
+///  - <see cref="Batch"/>: 扫描后对所有项并发批量解释 (最贵, 一般不用)。
+/// </summary>
+public enum AiMode { OnDemand, InvestigateUnknowns, Batch }
 
 /// <summary>
 /// AI 旁路注解器 (S6 性能): 把 脱敏→解释→校验 三步封装, 并加 (a) 按脱敏路径模式缓存,

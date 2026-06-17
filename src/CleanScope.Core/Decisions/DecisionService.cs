@@ -75,7 +75,19 @@ public sealed class DecisionService : IDecisionService
             Category: CategoryOf(a),
             IsContainer: a.Risk.IsContainer,
             ActionKind: ActionKindOf(a),
-            Command: a.RuleMatch?.Command);
+            Command: a.RuleMatch?.Command,
+            AiInvestigation: AiInvestigationOf(validatedAi));
+    }
+
+    // S-C: AI 对未知项的调查推测 (已校验), 作为独立、明确标注的"推测", 与规则/风险事实区分开。
+    // 仅当 AI 真给出"是什么/为什么"时才有值; 否则 null (报告/UI 不显示 AI 行)。
+    private static string? AiInvestigationOf(AiExplanation? ai)
+    {
+        if (ai is null) return null;
+        var what = ai.WhatIsIt?.Trim();
+        var why = ai.UserFriendlyExplanation?.Trim();
+        var text = string.Join(" ", new[] { what, why }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        return string.IsNullOrWhiteSpace(text) ? null : text;
     }
 
     // S-D 推荐动作: 命令型(规则带 command) → RunCommand; 容器/D/E/系统关键 → None;

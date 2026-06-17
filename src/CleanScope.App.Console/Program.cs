@@ -48,7 +48,7 @@ try
     ISanitizationGateway? sanitizer = null;
     IExplanationService? explanation = null;
     IAiOutputValidator? validator = null;
-    if (opts.Has("--ai"))
+    if (opts.Has("--ai") || opts.Has("--ai-all"))
     {
         var aiOptions = AiOptions.Load(ResolveAiConfig());
         if (aiOptions.IsUsable)
@@ -81,8 +81,11 @@ try
     Console.WriteLine($"开始扫描: {target} (TopN={top}, 模式={mode})");
     var progress = new ConsoleProgress();
     var sw = System.Diagnostics.Stopwatch.StartNew();
-    // --ai 时批量并发解释 (S6: 并发+缓存, 不再逐项串行); 否则纯本地, 扫描秒级。
-    var aiMode = opts.Has("--ai") ? AiMode.Batch : AiMode.OnDemand;
+    // S-C: --ai 时仅对"真正三无"未知项 (E) 并发+缓存跑 AI 调查 (数量可控, 不拖慢扫描);
+    // --ai-all 才对全部项跑 (最贵)。否则纯本地, 扫描秒级。AI 仅旁路, 不改判风险。
+    var aiMode = opts.Has("--ai-all") ? AiMode.Batch
+        : opts.Has("--ai") ? AiMode.InvestigateUnknowns
+        : AiMode.OnDemand;
     var result = await useCase.ExecuteAsync(scanOptions, progress, default, aiMode);
     sw.Stop();
     progress.Done();
@@ -120,9 +123,10 @@ catch (Exception ex)
 
 static void PrintUsage()
 {
-    Console.WriteLine("用法: cleanscope scan <path> [--report out.md] [--top N] [--admin] [--sanitize] [--ai] [--rules <dir>]");
+    Console.WriteLine("用法: cleanscope scan <path> [--report out.md] [--top N] [--admin] [--sanitize] [--ai|--ai-all] [--rules <dir>]");
     Console.WriteLine("  只读扫描指定路径, 按风险分级并可导出 Markdown 报告。绝不删除文件。");
-    Console.WriteLine("  --ai: 启用 AI 解释 (脱敏后出云, 需 appsettings.ai.local.json 或环境变量); AI 仅建议, 不改判风险。");
+    Console.WriteLine("  --ai: 仅对未知项 (E) 跑 AI 调查, 推测写入报告 (脱敏后出云, 需 appsettings.ai.local.json 或环境变量); AI 仅建议, 不改判风险。");
+    Console.WriteLine("  --ai-all: 对全部项跑 AI 解释 (最贵, 一般不需要)。");
 }
 
 // 定位 AI 配置 (appsettings.ai.local.json, 已 gitignore): 输出目录旁或仓库根。

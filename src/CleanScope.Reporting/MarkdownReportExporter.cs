@@ -51,6 +51,7 @@ public sealed class MarkdownReportExporter : IReportExporter
         AppendRiskSummary(sb, items);
         AppendCleanupCategories(sb, items);
         AppendTopN(sb, items, 20);
+        AppendAiInvestigation(sb, items);
         AppendHighRisk(sb, items);
         AppendDetails(sb, items);
 
@@ -108,6 +109,23 @@ public sealed class MarkdownReportExporter : IReportExporter
         for (var i = 0; i < top.Count; i++)
             sb.AppendLine($"| {i + 1} | `{P(top[i].Path)}` | {Size(top[i].ExclusiveSize)} | {Size(top[i].Size)} | {BucketLabel(top[i])} | {Cell(top[i].RecommendedAction)} |");
         sb.AppendLine().AppendLine("> “真实占用”= 去重独占大小 (不含已单列的子目录); “聚合大小”= 含全部子孙。").AppendLine();
+    }
+
+    // S-C: AI 调查未知项。AI 不进裁决 (风险仍由本地引擎权威判定), 仅对"真正三无"未知项给推测,
+    // 帮用户消化"无法判断"。明确标注"AI 推测, 仅供参考, 不改变风险等级"。
+    private void AppendAiInvestigation(StringBuilder sb, IReadOnlyList<DecisionItem> items)
+    {
+        var investigated = items.Where(i => !string.IsNullOrWhiteSpace(i.AiInvestigation)).ToList();
+        if (investigated.Count == 0) return;   // 未启用 AI 调查则整节省略
+
+        sb.AppendLine("## 🔍 AI 调查 (未知项推测)").AppendLine();
+        sb.AppendLine("> 以下为 **AI 推测, 仅供参考**, 不改变风险等级 (风险仍由本地规则/引擎权威判定)。AI 仅用于帮助理解「无法判断」的项。");
+        sb.AppendLine();
+        sb.AppendLine("| 路径 | 大小 | 风险 | AI 推测 |");
+        sb.AppendLine("|---|---|---|---|");
+        foreach (var i in investigated.OrderByDescending(i => i.ExclusiveSize))
+            sb.AppendLine($"| `{P(i.Path)}` | {Size(i.Size)} | {RiskLabel(i.RiskLevel)} | {Cell(i.AiInvestigation)} |");
+        sb.AppendLine();
     }
 
     private void AppendHighRisk(StringBuilder sb, IReadOnlyList<DecisionItem> items)

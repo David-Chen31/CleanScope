@@ -114,6 +114,32 @@ public sealed class MarkdownReportExporterTests
         Assert.Contains("真实占用(去重)", md);
     }
 
+    [Fact] // S-C: 有 AI 调查推测 → 报告出现"AI 调查"节, 含"AI 推测/仅供参考"声明 + 推测文本。
+    public void Ai_investigation_section_renders_when_present()
+    {
+        var task = new ScanTask(1, @"C:\", ScanMode.Normal, ScanStatus.Completed,
+            new DateTime(2026, 6, 14, 9, 0, 0, DateTimeKind.Utc), null, 1000, 1, "0.1.0");
+        var items = new[]
+        {
+            new DecisionItem(@"C:\Users\me\Weird\blob", 4_000, null, RiskLevel.E,
+                "无法判断, 不建议删除", "证据不足", new long[] { 1 }, ExclusiveSize: 4_000,
+                AiInvestigation: "某软件遗留数据 这看起来像缓存。"),
+        };
+        var md = new MarkdownReportExporter().BuildMarkdown(new ScanReport(task, items));
+
+        Assert.Contains("## 🔍 AI 调查", md);
+        Assert.Contains("AI 推测", md);                          // 明确标注非权威
+        Assert.Contains("不改变风险等级", md);
+        Assert.Contains("某软件遗留数据 这看起来像缓存。", md);   // 推测文本入表
+    }
+
+    [Fact] // 未启用 AI 调查 (无 AiInvestigation) → 整节省略, 不留空标题。
+    public void Ai_investigation_section_omitted_when_absent()
+    {
+        var md = new MarkdownReportExporter().BuildMarkdown(Report());
+        Assert.DoesNotContain("## 🔍 AI 调查", md);
+    }
+
     [Fact]
     public async Task Export_writes_utf8_file()
     {
