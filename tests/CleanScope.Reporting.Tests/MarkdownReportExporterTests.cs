@@ -32,7 +32,7 @@ public sealed class MarkdownReportExporterTests
         var md = new MarkdownReportExporter().BuildMarkdown(Report());
 
         Assert.Contains("# CleanScope 扫描报告", md);
-        Assert.Contains("不会自动删除任何文件", md);     // 零删除声明
+        Assert.Contains("删除决策始终由你做出", md);     // 删除决策权声明
         Assert.Contains("## 风险统计", md);
         Assert.Contains("## 占用大头", md);
         Assert.Contains("## ⚠️ 高风险提醒", md);
@@ -112,6 +112,26 @@ public sealed class MarkdownReportExporterTests
         var md = new MarkdownReportExporter().BuildMarkdown(Report());
         Assert.Contains("叶子贡献", md);                         // S7: 标题点明按真实占用排序
         Assert.Contains("真实占用(去重)", md);
+    }
+
+    [Fact] // S-H: 有整盘 AI 参谋 → 报告出现"AI 清理参谋"节 + 仅供参考声明 + 原文; 无则省略。
+    public void Ai_cleanup_advice_section_renders_when_present()
+    {
+        var task = new ScanTask(1, @"C:\", ScanMode.Normal, ScanStatus.Completed,
+            new DateTime(2026, 6, 14, 9, 0, 0, DateTimeKind.Utc), null, 1000, 1, "0.1.0");
+        var items = new[]
+        {
+            new DecisionItem(@"C:\a", 1000, "App", RiskLevel.B, "建议", null, new long[] { 1 }, ExclusiveSize: 1000),
+        };
+        var withAdvice = new ScanReport(task, items, AiCleanupAdvice: "- 你有两套 Python，建议保留其一。");
+        var md = new MarkdownReportExporter().BuildMarkdown(withAdvice);
+
+        Assert.Contains("## 🧭 AI 清理参谋", md);
+        Assert.Contains("AI 建议", md);
+        Assert.Contains("两套 Python", md);
+
+        var noAdvice = new MarkdownReportExporter().BuildMarkdown(new ScanReport(task, items));
+        Assert.DoesNotContain("## 🧭 AI 清理参谋", noAdvice);
     }
 
     [Fact] // S-F: 报告含"按软件占用"节, 列出软件 + 去重占用 + 可清理。

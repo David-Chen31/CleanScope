@@ -90,10 +90,21 @@ public record SoftwareUsage(
     long CleanableSize,     // 其中 A/B 可清理部分 (去重)
     RiskLevel TopRisk);
 
-/// <summary>扫描报告 (报告导出输入)。</summary>
+/// <summary>
+/// 整盘清理参谋的输入 (S-H): **脱敏聚合**——只含软件名/类别名/容量/计数, **绝无路径与文件内容**,
+/// 因此可安全出云 (PR-1)。AI 据此做跨项推理 (冗余工具链/重复缓存/优先级)。
+/// </summary>
+public record CleanupSummary(
+    long TotalSize,
+    long ReclaimableSize,
+    IReadOnlyList<SoftwareUsage> Software,
+    IReadOnlyList<CleanupCategory> Categories);
+
+/// <summary>扫描报告 (报告导出输入)。<paramref name="AiCleanupAdvice"/> 为可选的整盘 AI 参谋文本 (S-H)。</summary>
 public record ScanReport(
     ScanTask Task,
-    IReadOnlyList<DecisionItem> Items);
+    IReadOnlyList<DecisionItem> Items,
+    string? AiCleanupAdvice = null);
 
 /// <summary>已脱敏的 AI 输入 (脱敏网关唯一产物; 仅 P0 + 脱敏 P1; 永不含文件内容, PR-1)。</summary>
 public record AiInput(

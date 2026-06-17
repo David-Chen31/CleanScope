@@ -19,6 +19,9 @@ public sealed class ScanSession
     public ScanReport Report { get; }
     public IReadOnlyList<FileRowViewModel> Rows { get; }
 
+    /// <summary>整盘 AI 参谋文本 (S-H); 透传自报告。无 AI / 未生成则为 null。</summary>
+    public string? AiCleanupAdvice => Report.AiCleanupAdvice;
+
     /// <summary>可清理类别聚合 (S3): 每类去重可回收大小 + 官方清理方式。</summary>
     public IReadOnlyList<CleanupCategory> CleanupCategories { get; }
 

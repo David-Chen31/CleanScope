@@ -27,3 +27,14 @@ public interface IAiOutputValidator
 {
     AiExplanation Validate(AiExplanation raw, RuleMatch? ruleMatch, RiskAssessment risk);
 }
+
+/// <summary>
+/// 整盘清理参谋 (S-H): 对脱敏聚合 (<see cref="CleanupSummary"/>, 不含路径/文件内容) 做一次跨项推理,
+/// 给冗余工具链/重复缓存/优先级建议。纯建议文本, **绝不产出可执行删除指令**; 输出仅展示, 不被解析/执行 (IR-6)。
+/// 降级: AI 不可用/失败 → 返回 null, 核心功能不依赖 (决议5)。
+/// </summary>
+public interface ICleanupAdvisor
+{
+    bool Enabled { get; }
+    Task<string?> AdviseAsync(CleanupSummary summary, CancellationToken ct = default);
+}

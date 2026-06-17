@@ -9,7 +9,7 @@ namespace CleanScope.Reporting;
 /// TopN 占用大头 / 高风险提醒 / 分级明细。
 ///
 /// 安全:
-///  - 报告显著声明"不会自动删除任何文件"(MVP 零删除)。
+///  - 报告显著声明"删除决策由你做出; 应用内删除仅移入回收站 (可还原)"。
 ///  - <paramref name="sanitizePaths"/>=true 时对路径中的用户名做脱敏 (P1), 便于外发/分享;
 ///    默认 false (本地报告保留真实路径)。
 /// </summary>
@@ -45,9 +45,10 @@ public sealed class MarkdownReportExporter : IReportExporter
         sb.AppendLine($"- 文件/目录数: {t.FileCount?.ToString(CultureInfo.InvariantCulture) ?? "-"}");
         sb.AppendLine($"- 总占用: {Size(t.TotalSize ?? 0)}");
         sb.AppendLine();
-        sb.AppendLine("> ⚠️ 本报告仅供参考。CleanScope **不会自动删除任何文件**, 删除决策始终由你做出。");
+        sb.AppendLine("> ⚠️ 本报告仅供参考。删除决策始终由你做出; 应用内删除仅移入回收站 (可还原)。");
         sb.AppendLine();
 
+        AppendAiAdvice(sb, report.AiCleanupAdvice);
         AppendRiskSummary(sb, items);
         AppendSoftwareUsage(sb, items);
         AppendCleanupCategories(sb, items);
@@ -73,7 +74,18 @@ public sealed class MarkdownReportExporter : IReportExporter
         sb.AppendLine("|---|---|---|---|");
         foreach (var c in cats)
             sb.AppendLine($"| {Cell(c.Name)} | {c.ItemCount} | {Size(c.ReclaimableSize)} | {Cell(c.RecommendedAction)} |");
-        sb.AppendLine().AppendLine("> 仍不会自动删除: 以上仅给出每类的可回收空间与官方清理方式, 由你决定。").AppendLine();
+        sb.AppendLine().AppendLine("> 以上仅给出每类可回收空间与官方清理方式; 删除由你决定, 应用内删除仅移入回收站 (可还原)。").AppendLine();
+    }
+
+    // S-H: 整盘 AI 参谋 (跨项建议)。AI 不进裁决, 仅给建议; 文本原样透传 (不解析/不执行, IR-6)。
+    private static void AppendAiAdvice(StringBuilder sb, string? advice)
+    {
+        if (string.IsNullOrWhiteSpace(advice)) return;
+        sb.AppendLine("## 🧭 AI 清理参谋 (跨项建议)").AppendLine();
+        sb.AppendLine("> 以下为 **AI 建议, 仅供参考**, 不改变风险等级; 删除请用官方方式或应用内回收站, 并自行确认。");
+        sb.AppendLine();
+        sb.AppendLine(advice.Trim());
+        sb.AppendLine();
     }
 
     // S-F: 按软件占用 —— 回答"空间被哪些软件占了, 各能清多少", 比按风险更贴近用户语言。

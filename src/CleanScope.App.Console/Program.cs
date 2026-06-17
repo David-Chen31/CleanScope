@@ -1,4 +1,5 @@
 using System.Globalization;
+using CleanScope.Ai.Advice;
 using CleanScope.Ai.Chat;
 using CleanScope.Ai.Explanation;
 using CleanScope.Ai.Sanitization;
@@ -48,14 +49,17 @@ try
     ISanitizationGateway? sanitizer = null;
     IExplanationService? explanation = null;
     IAiOutputValidator? validator = null;
+    ICleanupAdvisor? advisor = null;
     if (opts.Has("--ai") || opts.Has("--ai-all"))
     {
         var aiOptions = AiOptions.Load(ResolveAiConfig());
         if (aiOptions.IsUsable)
         {
+            var chat = new OpenAiChatClient(Http.Shared, aiOptions);
             sanitizer = new SanitizationGateway();
-            explanation = new ExplanationService(new OpenAiChatClient(Http.Shared, aiOptions));
+            explanation = new ExplanationService(chat);
             validator = new AiOutputValidator();
+            advisor = new CleanupAdvisor(chat);   // S-H: 整盘参谋复用同一 chat
             Console.WriteLine($"AI 解释: 已启用 (模型 {aiOptions.Model}, 脱敏后出云)");
         }
         else
@@ -92,6 +96,19 @@ try
 
     PrintSummary(result, sw.Elapsed);
 
+    // S-H: 整盘 AI 参谋 (脱敏聚合 → 跨项建议)。失败/未启用 → 跳过。
+    var report = result.Report;
+    if (advisor is { Enabled: true })
+    {
+        var advice = await advisor.AdviseAsync(CleanupSummaryBuilder.From(result.Decisions));
+        if (!string.IsNullOrWhiteSpace(advice))
+        {
+            report = report with { AiCleanupAdvice = advice };
+            Console.WriteLine("\n🧭 AI 清理参谋 (跨项建议, 仅供参考):");
+            Console.WriteLine(advice.Trim());
+        }
+    }
+
     var reportPath = opts.Get("--report");
     if (!string.IsNullOrWhiteSpace(reportPath))
     {
@@ -100,7 +117,7 @@ try
         IReportExporter exporter = reportPath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
             ? new CsvReportExporter(sanitize)
             : new MarkdownReportExporter(sanitize);
-        await exporter.ExportAsync(result.Report, reportPath);
+        await exporter.ExportAsync(report, reportPath);
         Console.WriteLine($"\n报告已写入 ({exporter.Format}): {Path.GetFullPath(reportPath)}");
     }
     return 0;

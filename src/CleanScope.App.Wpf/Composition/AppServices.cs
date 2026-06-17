@@ -26,5 +26,8 @@ public sealed class AppServices
     /// <summary>按需 AI 注解器 (S6): 详情页打开时按需解释单项 (缓存复用), 扫描不再批量串行。</summary>
     public required AiAnnotator Annotator { get; init; }
 
+    /// <summary>整盘清理参谋 (S-H): 对脱敏聚合做一次跨项建议; AI 未配置则 Enabled=false。</summary>
+    public ICleanupAdvisor? CleanupAdvisor { get; init; }
+
     public required string AppVersion { get; init; }
 }

@@ -71,7 +71,7 @@ public sealed class ScanAndAnalyzeUseCaseTests : IDisposable
         var md = new MarkdownReportExporter().BuildMarkdown(result.Report);
 
         Assert.Contains("# CleanScope 扫描报告", md);
-        Assert.Contains("不会自动删除任何文件", md);
+        Assert.Contains("删除决策始终由你做出", md);
         Assert.Contains("风险统计", md);
     }
 

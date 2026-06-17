@@ -2,8 +2,10 @@ using System.IO;
 using CleanScope.App.Wpf.Common;
 using CleanScope.App.Wpf.Composition;
 using CleanScope.App.Wpf.Mvvm;
+using CleanScope.Application;
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
+using CleanScope.Reporting;
 
 namespace CleanScope.App.Wpf.ViewModels;
 
@@ -83,6 +85,11 @@ public sealed class HomeViewModel : ViewModelBase
     private int _highRiskCount;
     public int HighRiskCount { get => _highRiskCount; private set => SetField(ref _highRiskCount, value); }
 
+    // S-H: 整盘 AI 参谋 (跨项建议); 无 AI / 未生成则为空, 卡片隐藏。
+    private string? _aiAdvice;
+    public string? AiAdvice { get => _aiAdvice; private set { if (SetField(ref _aiAdvice, value)) OnPropertyChanged(nameof(HasAiAdvice)); } }
+    public bool HasAiAdvice => !string.IsNullOrWhiteSpace(_aiAdvice);
+
     public IReadOnlyList<FileRowViewModel> TopDirectories { get; private set; } = Array.Empty<FileRowViewModel>();
 
     private async Task ScanAsync()
@@ -104,7 +111,9 @@ public sealed class HomeViewModel : ViewModelBase
                 Status = $"扫描中… 已观察 {p.FilesScanned} 项　{p.CurrentPath}";
             });
 
-            var result = await _services.UseCase.ExecuteAsync(options, progress);
+            // AI 配置后, 扫描末尾对无主未知项做调查/归因兜底 (S-C/S-G, 上限受控); 否则秒级返回。
+            var aiMode = _services.AiEnabled ? AiMode.InvestigateUnknowns : AiMode.OnDemand;
+            var result = await _services.UseCase.ExecuteAsync(options, progress, default, aiMode);
 
             // 决议项与完整分析按路径关联, 构造行 VM。
             var byPath = result.Analyses.ToDictionary(a => a.Node.Path, a => a);
@@ -112,7 +121,16 @@ public sealed class HomeViewModel : ViewModelBase
                 .Select(d => new FileRowViewModel(d, byPath[d.Path]))
                 .ToList();
 
-            var session = new ScanSession(TargetPath, result.Report, rows);
+            // S-H: 整盘 AI 参谋 (脱敏聚合 → 跨项建议)。失败/未启用 → 跳过, 不阻断结果。
+            var report = result.Report;
+            if (_services.CleanupAdvisor is { Enabled: true })
+            {
+                Status = "正在生成 AI 清理参谋…";
+                var advice = await _services.CleanupAdvisor.AdviseAsync(CleanupSummaryBuilder.From(result.Decisions));
+                if (!string.IsNullOrWhiteSpace(advice)) report = report with { AiCleanupAdvice = advice };
+            }
+
+            var session = new ScanSession(TargetPath, report, rows);
             _host.LoadSession(session);   // 触发各页加载 (含本页 OnSessionLoaded)
             Status = $"扫描完成：{rows.Count} 项，用时已计入报告。点击「查看清单」浏览明细。";
         }
@@ -137,6 +155,7 @@ public sealed class HomeViewModel : ViewModelBase
         OverviewTotal = $"{Format.HumanSize(session.TotalSize)}（{session.FileCount} 项）";
         OverviewReclaimable = Format.HumanSize(session.ReclaimableEstimate);
         HighRiskCount = session.HighRiskCount;
+        AiAdvice = session.AiCleanupAdvice;
         TopDirectories = session.Rows.OrderByDescending(r => r.Size).Take(10).ToList();
         OnPropertyChanged(nameof(TopDirectories));
         ViewListCommand.RaiseCanExecuteChanged();

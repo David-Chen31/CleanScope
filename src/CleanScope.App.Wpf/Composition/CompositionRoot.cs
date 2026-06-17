@@ -1,5 +1,6 @@
 using System.IO;
 using System.Net.Http;
+using CleanScope.Ai.Advice;
 using CleanScope.Ai.Chat;
 using CleanScope.Ai.Explanation;
 using CleanScope.Ai.Sanitization;
@@ -54,13 +55,16 @@ public static class CompositionRoot
         ISanitizationGateway? sanitizer = null;
         IExplanationService? explanation = null;
         IAiOutputValidator? validator = null;
+        ICleanupAdvisor? advisor = null;
         var aiEnabled = false;
         var aiOptions = AiOptions.Load(ResolveAiConfig());
         if (aiOptions.IsUsable)
         {
+            var chat = new OpenAiChatClient(SharedHttp, aiOptions);
             sanitizer = new SanitizationGateway();
-            explanation = new ExplanationService(new OpenAiChatClient(SharedHttp, aiOptions));
+            explanation = new ExplanationService(chat);
             validator = new AiOutputValidator();
+            advisor = new CleanupAdvisor(chat);   // S-H: 整盘参谋复用同一 chat
             aiEnabled = true;
         }
 
@@ -80,6 +84,7 @@ public static class CompositionRoot
             SafetyGuard = safety,
             AiEnabled = aiEnabled,
             Annotator = new AiAnnotator(sanitizer, explanation, validator),  // 详情页按需解释 (S6)
+            CleanupAdvisor = advisor,                                        // 整盘参谋 (S-H)
             AppVersion = AppVersion,
         };
     }

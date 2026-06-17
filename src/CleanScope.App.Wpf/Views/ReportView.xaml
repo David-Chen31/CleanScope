@@ -50,7 +50,7 @@
         <Border Style="{StaticResource Cards}">
             <StackPanel>
                 <TextBlock Text="导出 Markdown 报告" Style="{StaticResource H2}"/>
-                <TextBlock Text="报告含扫描元信息、风险统计、可清理类别、占用大头与分级明细，声明本工具不会自动删除任何文件。文件名以 .csv 结尾则导出 CSV（便于 Excel 透视），否则导出 Markdown。"
+                <TextBlock Text="报告含扫描元信息、风险统计、按软件占用、可清理类别、占用大头与分级明细；删除决策由你做出，应用内删除仅移入回收站（可还原）。文件名以 .csv 结尾则导出 CSV（便于 Excel 透视），否则导出 Markdown。"
                            Style="{StaticResource Sub}" Margin="0,0,0,10" TextWrapping="Wrap"/>
                 <Grid>
                     <Grid.ColumnDefinitions>

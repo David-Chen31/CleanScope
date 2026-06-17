@@ -73,6 +73,15 @@
                     </StackPanel>
                 </UniformGrid>
 
+                <!-- S-H: 整盘 AI 清理参谋 (跨项建议); 仅 AI 配置且生成成功时显示 -->
+                <Border Background="#F1F7FF" CornerRadius="6" Padding="12,10" Margin="0,0,0,12"
+                        Visibility="{Binding HasAiAdvice, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="🧭 AI 清理参谋（跨项建议，仅供参考）" FontWeight="SemiBold" Foreground="#1F4E8C"/>
+                        <TextBlock Text="{Binding AiAdvice}" TextWrapping="Wrap" Margin="0,6,0,0" Foreground="#243B53"/>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Text="占用大头 Top 10" Style="{StaticResource H2}"/>
                 <ItemsControl ItemsSource="{Binding TopDirectories}">
                     <ItemsControl.ItemTemplate>
