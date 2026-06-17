@@ -16,6 +16,7 @@
             <!-- VM → View 映射 (Shell 的 ContentControl 依此渲染) -->
             <DataTemplate DataType="{x:Type vm:HomeViewModel}"><views:HomeView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:FileListViewModel}"><views:FileListView/></DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SpaceMapViewModel}"><views:SpaceMapView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:FileDetailViewModel}"><views:FileDetailView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:ReportViewModel}"><views:ReportView/></DataTemplate>
 
