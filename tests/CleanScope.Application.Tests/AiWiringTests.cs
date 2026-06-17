@@ -50,7 +50,7 @@ public sealed class AiWiringTests : IDisposable
              "userFriendlyExplanation":"这是测试缓存, 可安全清理。"}
             """;
         var result = await BuildWithAi(new StubChat(enabled: true, reply: json))
-            .ExecuteAsync(new ScanOptions(_root, 50, ScanMode.Normal));
+            .ExecuteAsync(new ScanOptions(_root, 50, ScanMode.Normal), aiMode: AiMode.Batch);
 
         var cache = result.Decisions.Single(d => d.Path == Path.Combine(_root, "Cache"));
         Assert.Equal("这是测试缓存, 可安全清理。", cache.Explanation);   // 已校验 AI 解释进入结果
@@ -63,7 +63,7 @@ public sealed class AiWiringTests : IDisposable
         // AI 返回缺 reasoning → 校验器判非法(Validated=false) → 决策层不展示, 回落事实因素。
         var json = """{"whatIsIt":"x","riskLevel":"B","confidence":0.9,"reasoning":[]}""";
         var result = await BuildWithAi(new StubChat(enabled: true, reply: json))
-            .ExecuteAsync(new ScanOptions(_root, 50, ScanMode.Normal));
+            .ExecuteAsync(new ScanOptions(_root, 50, ScanMode.Normal), aiMode: AiMode.Batch);
 
         var cache = result.Decisions.Single(d => d.Path == Path.Combine(_root, "Cache"));
         Assert.NotEqual("x", cache.Explanation);   // 未校验 AI 文案不出现

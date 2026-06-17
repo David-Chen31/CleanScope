@@ -134,25 +134,29 @@
                 </StackPanel>
             </Border>
 
-            <!-- AI 解释 (仅 Validated 才展示) -->
-            <Border Style="{StaticResource Cards}"
-                    Visibility="{Binding HasAi, Converter={StaticResource BoolToVis}}">
-                <StackPanel DataContext="{Binding Ai}">
-                    <TextBlock Text="AI 解释" Style="{StaticResource H2}"/>
-                    <TextBlock Text="{Binding SourceLabel}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,0,0,6"/>
-                    <TextBlock Text="{Binding WhatIsIt}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
-                    <TextBlock Text="{Binding UserFriendlyExplanation}" Style="{StaticResource Sub}" Margin="0,4,0,6"/>
-                    <ItemsControl ItemsSource="{Binding Reasoning}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding}" Style="{StaticResource Sub}" Margin="0,1"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Border>
-
         </StackPanel>
+
+        <!-- AI 解释 (S6: 详情页按需生成; 仅 Validated 才展示, 绑定详情 VM) -->
+        <Border Style="{StaticResource Cards}"
+                Visibility="{Binding HasAi, Converter={StaticResource BoolToVis}}">
+            <StackPanel DataContext="{Binding Ai}">
+                <TextBlock Text="AI 解释" Style="{StaticResource H2}"/>
+                <TextBlock Text="{Binding SourceLabel}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,0,0,6"/>
+                <TextBlock Text="{Binding WhatIsIt}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+                <TextBlock Text="{Binding UserFriendlyExplanation}" Style="{StaticResource Sub}" Margin="0,4,0,6"/>
+                <ItemsControl ItemsSource="{Binding Reasoning}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Style="{StaticResource Sub}" Margin="0,1"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- AI 状态 (生成中 / 不可用; 无解释卡时显示) -->
+        <TextBlock Text="{Binding AiStatus}" Style="{StaticResource Sub}" Margin="2,-4,0,8"
+                   Visibility="{Binding AiStatus, Converter={StaticResource NotEmptyToVis}}"/>
 
         <!-- 安全闸门判定 + 辅助操作 (无删除入口) -->
         <Border Style="{StaticResource Cards}">

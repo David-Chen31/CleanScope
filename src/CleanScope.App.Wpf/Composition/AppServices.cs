@@ -1,5 +1,7 @@
 using CleanScope.Application;
 using CleanScope.Domain.Abstractions;
+using CleanScope.Domain.Entities;
+using CleanScope.Domain.Models;
 
 namespace CleanScope.App.Wpf.Composition;
 
@@ -18,6 +20,9 @@ public sealed class AppServices
 
     /// <summary>AI 解释是否启用 (脱敏后出云); 未配置密钥则为 false, 全程本地。</summary>
     public required bool AiEnabled { get; init; }
+
+    /// <summary>按需 AI 注解器 (S6): 详情页打开时按需解释单项 (缓存复用), 扫描不再批量串行。</summary>
+    public required AiAnnotator Annotator { get; init; }
 
     public required string AppVersion { get; init; }
 }

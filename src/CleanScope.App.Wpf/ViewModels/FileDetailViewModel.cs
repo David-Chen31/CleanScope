@@ -40,6 +40,18 @@ public sealed class FileDetailViewModel : ViewModelBase
     private string _actionStatus = "";
     public string ActionStatus { get => _actionStatus; private set => SetField(ref _actionStatus, value); }
 
+    // —— AI 解释 (S6: 详情页按需生成, 扫描不再批量串行) ——
+    private AiExplanationViewModel? _ai;
+    public AiExplanationViewModel? Ai
+    {
+        get => _ai;
+        private set { if (SetField(ref _ai, value)) OnPropertyChanged(nameof(HasAi)); }
+    }
+    public bool HasAi => _ai is not null;
+
+    private string _aiStatus = "";
+    public string AiStatus { get => _aiStatus; private set => SetField(ref _aiStatus, value); }
+
     // —— 安全闸门判定 (只读演示, 不执行) ——
     private string _guardVerdict = "";
     public string GuardVerdict { get => _guardVerdict; private set => SetField(ref _guardVerdict, value); }
@@ -49,6 +61,38 @@ public sealed class FileDetailViewModel : ViewModelBase
         Row = row;
         ActionStatus = "";
         EvaluateGate(row);
+
+        // AI 解释: 批量已得则直接用; 否则按需生成 (脱敏后请求, 仅供参考)。
+        Ai = row.Ai;
+        AiStatus = "";
+        if (Ai is null && _services.AiEnabled && row.Analysis.RuleMatch?.IsSystemCritical != true)
+        {
+            AiStatus = "正在生成 AI 解释（脱敏后请求，仅供参考）…";
+            _ = LoadAiAsync(row);
+        }
+    }
+
+    private async Task LoadAiAsync(FileRowViewModel row)
+    {
+        try
+        {
+            var ex = await _services.Annotator.AnnotateAsync(row.Analysis);
+            if (!ReferenceEquals(_row, row)) return;          // 用户已切换到别的项
+            if (ex is { Validated: true })
+            {
+                Ai = new AiExplanationViewModel(ex);
+                AiStatus = "";
+            }
+            else
+            {
+                AiStatus = "AI 解释不可用或未通过校验（以引擎结论为准）。";
+            }
+        }
+        catch
+        {
+            if (ReferenceEquals(_row, row))
+                AiStatus = "AI 解释获取失败（以引擎结论为准）。";
+        }
     }
 
     // 以"移入回收站"意图询问闸门 —— MVP 必被拒 (SR-1)。纯判定, 绝不执行。

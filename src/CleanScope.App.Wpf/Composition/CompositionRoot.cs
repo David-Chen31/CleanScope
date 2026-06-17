@@ -75,6 +75,7 @@ public static class CompositionRoot
             ActionExecutor = executor,
             SafetyGuard = safety,
             AiEnabled = aiEnabled,
+            Annotator = new AiAnnotator(sanitizer, explanation, validator),  // 详情页按需解释 (S6)
             AppVersion = AppVersion,
         };
     }

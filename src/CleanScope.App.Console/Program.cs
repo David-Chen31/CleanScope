@@ -81,7 +81,9 @@ try
     Console.WriteLine($"开始扫描: {target} (TopN={top}, 模式={mode})");
     var progress = new ConsoleProgress();
     var sw = System.Diagnostics.Stopwatch.StartNew();
-    var result = await useCase.ExecuteAsync(scanOptions, progress);
+    // --ai 时批量并发解释 (S6: 并发+缓存, 不再逐项串行); 否则纯本地, 扫描秒级。
+    var aiMode = opts.Has("--ai") ? AiMode.Batch : AiMode.OnDemand;
+    var result = await useCase.ExecuteAsync(scanOptions, progress, default, aiMode);
     sw.Stop();
     progress.Done();
 

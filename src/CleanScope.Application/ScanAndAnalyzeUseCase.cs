@@ -27,10 +27,8 @@ public sealed class ScanAndAnalyzeUseCase
     private readonly IDecisionService _decision;
     private readonly string _appVersion;
 
-    // AI 旁路 (可选): 三者齐备才启用; 任一缺失 → 无 AI 解释 (MVP/离线)。AI 永不进入裁决。
-    private readonly ISanitizationGateway? _sanitizer;
-    private readonly IExplanationService? _explanation;
-    private readonly IAiOutputValidator? _validator;
+    // AI 旁路 (可选, S6): 经注解器 (脱敏→解释→校验 + 缓存 + 并发)。AI 永不进入裁决。
+    private readonly AiAnnotator _annotator;
 
     public ScanAndAnalyzeUseCase(
         IScanEngine scan, IEvidenceCollector evidence, IRuleEngine rules, IAttributionEngine attribution,
@@ -45,15 +43,14 @@ public sealed class ScanAndAnalyzeUseCase
         _risk = risk;
         _decision = decision;
         _appVersion = appVersion;
-        _sanitizer = sanitizer;
-        _explanation = explanation;
-        _validator = validator;
+        _annotator = new AiAnnotator(sanitizer, explanation, validator);
     }
 
-    private bool AiEnabled => _sanitizer is not null && _explanation is not null && _validator is not null;
+    private bool AiEnabled => _annotator.Enabled;
 
     public async Task<ScanAndAnalyzeResult> ExecuteAsync(
-        ScanOptions options, IProgress<ScanProgress>? progress = null, CancellationToken ct = default)
+        ScanOptions options, IProgress<ScanProgress>? progress = null, CancellationToken ct = default,
+        AiMode aiMode = AiMode.OnDemand)
     {
         ArgumentNullException.ThrowIfNull(options);
         var startedAt = DateTime.UtcNow;
@@ -63,29 +60,25 @@ public sealed class ScanAndAnalyzeUseCase
         var counter = new SyncProgress<FileNode>(_ => observed++);
         var nodes = await _scan.ScanAsync(options, counter, progress, ct);
 
+        // 裁决链 (纯本地, 快): 证据→规则→归因→风险。AI 不在此串行 (S6: 否则百项十几分钟)。
         var analyses = new List<FileAnalysis>(nodes.Count);
         foreach (var node in nodes)
         {
             ct.ThrowIfCancellationRequested();
-
-            // 证据采集 (只产事实, 含基础观测 → SR-5 链非空) → 规则 → 归因 → 风险。
             var bundle = await _evidence.CollectAsync(node, ct);
             var ruleMatch = _rules.Match(node, bundle);
             var attributions = _attribution.Attribute(node, bundle, ruleMatch);
             var risk = _risk.Assess(node, bundle, ruleMatch, attributions);
+            analyses.Add(new FileAnalysis(node, bundle, ruleMatch, attributions, risk, Explanation: null));
+        }
 
-            var analysis = new FileAnalysis(node, bundle, ruleMatch, attributions, risk, Explanation: null);
-
-            // AI 旁路: 脱敏(唯一出云通道) → 解释(可降级) → 校验(规则优先)。系统关键项跳过(规则文案已足且省调用)。
-            if (AiEnabled && ruleMatch?.IsSystemCritical != true)
-            {
-                var aiInput = _sanitizer!.Sanitize(analysis);
-                var rawExplanation = await _explanation!.ExplainAsync(aiInput, ct);
-                var validated = _validator!.Validate(rawExplanation, ruleMatch, risk);
-                analysis = analysis with { Explanation = validated };   // 未通过校验者 Validated=false, 决策层不展示
-            }
-
-            analyses.Add(analysis);
+        // AI 旁路 (S6): 仅 Batch 模式下扫描后并发+缓存批量解释; OnDemand 模式下扫描秒级返回, 详情页按需解释。
+        if (aiMode == AiMode.Batch && AiEnabled)
+        {
+            var explanations = await _annotator.AnnotateAllAsync(analyses, maxParallel: 8, ct);
+            for (var i = 0; i < analyses.Count; i++)
+                if (explanations[i] is { } ex)
+                    analyses[i] = analyses[i] with { Explanation = ex };
         }
 
         var decisions = _decision.Summarize(analyses);
