@@ -15,7 +15,8 @@ public record RuleDefinition(
     string RecommendedAction,
     string EvidenceType,
     double Confidence,
-    int Priority);
+    int Priority,
+    string? Command = null);    // S-D: 命令型清理的官方命令 (如 conda clean --all); 可空
 
 /// <summary>证据集合 (架构§5 EvidenceBundle): 元数据 + 证据链原子项。</summary>
 public record EvidenceBundle(
@@ -61,7 +62,9 @@ public record DecisionItem(
     IReadOnlyList<long> EvidenceChain,
     long ExclusiveSize = 0,
     string? Category = null,      // 清理类别 (来自规则 Category 或缓存启发), 供"按类别聚合"
-    bool IsContainer = false);    // 顶层容器目录 (仅浏览, 不进风险/可清理统计)
+    bool IsContainer = false,     // 顶层容器目录 (仅浏览, 不进风险/可清理统计)
+    CleanupActionKind ActionKind = CleanupActionKind.None,  // S-D: 推荐动作类型
+    string? Command = null);      // S-D: 命令型动作的官方命令
 
 /// <summary>
 /// 可清理类别聚合 (S3, 对标 CCleaner/BleachBit 的"按类别给可回收空间")。
@@ -93,11 +96,12 @@ public record AiInput(
     IReadOnlyList<AttributionCandidate> RelatedApps,
     double? Confidence);
 
-/// <summary>操作请求 (辅助操作或删除意图)。</summary>
+/// <summary>操作请求 (辅助操作或删除意图)。<paramref name="Payload"/> 携带命令/URI 等 (如清理命令)。</summary>
 public record ActionRequest(
     long? FileId,
     string TargetPath,
-    ActionType Action);
+    ActionType Action,
+    string? Payload = null);
 
 /// <summary>安全闸门判定结果 (架构§安全闸门)。</summary>
 public enum GuardOutcome { Allowed, Rejected }

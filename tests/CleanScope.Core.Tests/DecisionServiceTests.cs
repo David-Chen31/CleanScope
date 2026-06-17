@@ -105,6 +105,35 @@ public sealed class DecisionServiceTests
         Assert.Equal("Visual Studio", item.OwnerApp);
     }
 
+    // S-D: 推荐动作类型 —— 规则带命令→RunCommand; 安装目录(C)→Uninstall; A/B 文件夹→OpenFolder; D/E→None。
+    [Fact]
+    public void Action_kind_run_command_when_rule_has_command()
+    {
+        var rule = new RuleMatch(0, 0, "conda", "conda 包缓存", RiskLevel.B, false, false,
+            "用 conda clean --all", 0.9, 60, true, Command: "conda clean --all");
+        var item = Svc.Summarize(new[] { Analysis(@"C:\x\pkgs", 1, RiskLevel.B, new[] { 1L }, rule: rule) }).Single();
+        Assert.Equal(CleanupActionKind.RunCommand, item.ActionKind);
+        Assert.Equal("conda clean --all", item.Command);
+    }
+
+    [Fact]
+    public void Action_kind_uninstall_for_install_dir_C()
+    {
+        var attr = new[] { new AttributionCandidate(0, 0, "Docker", 0.85, 1, Array.Empty<long>()) };
+        var item = Svc.Summarize(new[]
+        {
+            Analysis(@"C:\Program Files\Docker", 1, RiskLevel.C, new[] { 1L }, attr: attr)
+        }).Single();
+        Assert.Equal(CleanupActionKind.Uninstall, item.ActionKind);
+    }
+
+    [Fact]
+    public void Action_kind_none_for_high_risk()
+    {
+        var item = Svc.Summarize(new[] { Analysis(@"C:\Windows\System32", 1, RiskLevel.D, new[] { 1L }) }).Single();
+        Assert.Equal(CleanupActionKind.None, item.ActionKind);
+    }
+
     // S1: 独占大小修复父子目录重复计数 —— 嵌套祖先各自扣除其最近子孙, 全集之和=真实占用。
     [Fact]
     public void Exclusive_size_avoids_parent_child_double_counting()

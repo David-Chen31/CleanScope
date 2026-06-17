@@ -78,6 +78,12 @@ public sealed class FileRowViewModel
     /// <summary>顶层容器目录 (仅浏览, 非删除对象)。</summary>
     public bool IsContainer => Item.IsContainer;
 
+    // —— S-D 推荐动作 ——
+    public CleanupActionKind ActionKind => Item.ActionKind;
+    public string? Command => Item.Command;
+    public bool HasRunCommand => ActionKind == CleanupActionKind.RunCommand && !string.IsNullOrWhiteSpace(Command);
+    public bool HasUninstall => ActionKind == CleanupActionKind.Uninstall;
+
     // —— 详情属性 ——
     public bool IsDirectory { get; }
     public bool IsReparsePoint { get; }

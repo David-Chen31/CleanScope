@@ -87,4 +87,13 @@ public sealed class RulePackAssetsTests
         var rules = await LoadRealRulesAsync();
         Assert.Equal(@"*\Steam\steamapps", rules.Single(r => r.Id == "steam-apps").Pattern);
     }
+
+    [Fact] // S-D: 命令型规则携带官方清理命令 (command 字段被加载)。
+    public async Task Command_field_is_loaded_for_command_type_rules()
+    {
+        var rules = await LoadRealRulesAsync();
+        Assert.Equal("dotnet nuget locals all --clear", rules.Single(r => r.Id == "nuget-packages").Command);
+        Assert.Equal("conda clean --all", rules.Single(r => r.Id == "conda-pkgs").Command);
+        Assert.Null(rules.Single(r => r.Id == "maven-repo").Command);   // 无命令型保持 null
+    }
 }

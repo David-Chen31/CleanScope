@@ -108,7 +108,8 @@ public sealed class RulePackLoader : IRuleSource
             RecommendedAction: d.RecommendedAction ?? string.Empty,
             EvidenceType: d.EvidenceType ?? string.Empty,
             Confidence: d.Confidence,
-            Priority: d.Priority);
+            Priority: d.Priority,
+            Command: string.IsNullOrWhiteSpace(d.Command) ? null : d.Command);
     }
 
     private static RuleMatchKind ParseMatchKind(string? raw, string file, string id) => raw switch
@@ -140,5 +141,6 @@ public sealed class RulePackLoader : IRuleSource
         public string? EvidenceType { get; set; }
         public double Confidence { get; set; }
         public int Priority { get; set; }
+        public string? Command { get; set; }          // S-D: 官方清理命令 (可选)
     }
 }

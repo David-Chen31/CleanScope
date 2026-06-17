@@ -38,7 +38,13 @@ public enum MatchType { Exact, Prefix, Glob }
 public enum RuleMatchKind { PathPrefix, PathGlob, DirName, Extension }
 
 /// <summary>操作类型 (action_log.action)。MVP 仅辅助操作; MoveToRecycleBin 自 Beta 起。</summary>
-public enum ActionType { OpenDir, CopyPath, OpenSettings, ShowCommand, AddIgnore, ExportReport, MoveToRecycleBin }
+public enum ActionType { OpenDir, CopyPath, OpenSettings, ShowCommand, AddIgnore, ExportReport, MoveToRecycleBin, RunCleanupCommand }
+
+/// <summary>
+/// 推荐清理动作类型 (S-D): 把"怎么清"结构化, 供 UI 渲染对应按钮。
+/// None=无动作; RunCommand=运行官方清理命令; OpenFolder=资源管理器定位; Uninstall=打开卸载程序。
+/// </summary>
+public enum CleanupActionKind { None, RunCommand, OpenFolder, Uninstall }
 
 /// <summary>操作结果 (action_log.result)。MVP 删除恒为 Rejected。</summary>
 public enum ActionResult { Success, Rejected, Failed }

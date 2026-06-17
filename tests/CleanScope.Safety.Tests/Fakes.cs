@@ -8,8 +8,10 @@ internal sealed class FakeShellLauncher : IShellLauncher
 {
     public List<string> OpenedFolders { get; } = new();
     public List<string> OpenedUris { get; } = new();
+    public List<string> RanCommands { get; } = new();
     public void OpenFolder(string path) => OpenedFolders.Add(path);
     public void OpenUri(string uri) => OpenedUris.Add(uri);
+    public void RunInTerminal(string command) => RanCommands.Add(command);
 }
 
 internal sealed class FakeAudit : IAuditLogRepository

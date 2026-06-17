@@ -56,7 +56,8 @@ public sealed class RuleEngine : IRuleEngine
         RecommendedAction: r.RecommendedAction,
         Confidence: r.Confidence,
         Priority: r.Priority,
-        Authoritative: true);            // 规则结论恒权威
+        Authoritative: true,             // 规则结论恒权威
+        Command: r.Command);
 
     // 统一分隔符 + 去尾分隔符; 比较一律 OrdinalIgnoreCase (Windows 路径)。
     private static string Normalize(string p) =>

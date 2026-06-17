@@ -29,6 +29,20 @@ public sealed class ActionExecutorTests
         Assert.Single(audit.Added);                       // 先写审计
     }
 
+    // S-D: 运行官方清理命令 → 启动终端 (Payload) + 先写审计; 我们不删文件。
+    [Fact]
+    public async Task RunCleanupCommand_runs_in_terminal_and_audits_first()
+    {
+        var (exec, shell, audit, _) = New();
+        var req = new ActionRequest(1, @"C:\Users\me\.nuget\packages", ActionType.RunCleanupCommand,
+            Payload: "dotnet nuget locals all --clear");
+        var log = await exec.ExecuteAsync(req, Allowed);
+
+        Assert.Equal(ActionResult.Success, log.Result);
+        Assert.Contains("dotnet nuget locals all --clear", shell.RanCommands);
+        Assert.Single(audit.Added);                       // 先写审计 (SR-9)
+    }
+
     [Fact]
     public async Task AddIgnore_persists_entry()
     {

@@ -27,12 +27,19 @@ public sealed class FileDetailViewModel : ViewModelBase
         OpenFolderCommand = new AsyncRelayCommand(_ => DoActionAsync(ActionType.OpenDir));
         CopyPathCommand = new AsyncRelayCommand(_ => CopyPathAsync());
         AddIgnoreCommand = new AsyncRelayCommand(_ => DoActionAsync(ActionType.AddIgnore));
+        RunCommandCommand = new AsyncRelayCommand(_ => RunCommandAsync());
+        CopyCommandCommand = new AsyncRelayCommand(_ => CopyCommandAsync());
+        UninstallCommand = new AsyncRelayCommand(_ =>
+            DoActionAsync(ActionType.OpenSettings, target: "ms-settings:appsfeatures"));
     }
 
     public RelayCommand BackCommand { get; }
     public AsyncRelayCommand OpenFolderCommand { get; }
     public AsyncRelayCommand CopyPathCommand { get; }
     public AsyncRelayCommand AddIgnoreCommand { get; }
+    public AsyncRelayCommand RunCommandCommand { get; }     // S-D: 运行官方清理命令
+    public AsyncRelayCommand CopyCommandCommand { get; }    // S-D: 复制官方清理命令
+    public AsyncRelayCommand UninstallCommand { get; }      // S-D: 打开卸载程序
 
     private FileRowViewModel? _row;
     public FileRowViewModel? Row { get => _row; private set => SetField(ref _row, value); }
@@ -114,11 +121,27 @@ public sealed class FileDetailViewModel : ViewModelBase
         ActionStatus = "已复制路径到剪贴板。";
     }
 
+    // S-D: 运行官方清理命令 (在可见终端; 删除由厂商工具完成, 我们不碰文件)。
+    private async Task RunCommandAsync()
+    {
+        if (Row?.Command is null) return;
+        await DoActionAsync(ActionType.RunCleanupCommand, payload: Row.Command);
+        ActionStatus = $"已在终端运行官方清理命令：{Row.Command}";
+    }
+
+    private async Task CopyCommandAsync()
+    {
+        if (Row?.Command is null) return;
+        try { Clipboard.SetText(Row.Command); } catch { /* 剪贴板偶发占用 */ }
+        await DoActionAsync(ActionType.ShowCommand, silent: true);
+        ActionStatus = $"已复制清理命令：{Row.Command}";
+    }
+
     // 辅助操作: 经闸门放行 → 执行器 (先写审计后执行)。这些操作均无破坏性。
-    private async Task DoActionAsync(ActionType action, bool silent = false)
+    private async Task DoActionAsync(ActionType action, string? target = null, string? payload = null, bool silent = false)
     {
         if (Row is null) return;
-        var request = new ActionRequest(null, ActionTarget(action), action);
+        var request = new ActionRequest(null, target ?? Row.Path, action, payload);
         var approval = _services.SafetyGuard.Evaluate(request, Row.Analysis.RuleMatch, Row.Analysis.Risk);
         var log = await _services.ActionExecutor.ExecuteAsync(request, approval);
         if (silent) return;
@@ -130,13 +153,13 @@ public sealed class FileDetailViewModel : ViewModelBase
         };
     }
 
-    private string ActionTarget(ActionType action) => Row!.Path;
-
     private static string Describe(ActionType action) => action switch
     {
         ActionType.OpenDir => "已在资源管理器中打开所在位置。",
         ActionType.AddIgnore => "已加入忽略名单（后续扫描不再提示）。",
         ActionType.CopyPath => "已复制路径。",
+        ActionType.OpenSettings => "已打开「应用和功能」，可在此卸载对应程序。",
+        ActionType.RunCleanupCommand => "已在终端运行官方清理命令。",
         _ => "操作已完成。",
     };
 }

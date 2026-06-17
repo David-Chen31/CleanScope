@@ -72,6 +72,11 @@ public sealed class ActionExecutor : IActionExecutor
             case ActionType.OpenSettings:
                 _shell.OpenUri(request.TargetPath);   // TargetPath 携带 ms-settings: URI
                 break;
+            case ActionType.RunCleanupCommand:
+                // S-D: 运行官方清理命令 (Payload)。我们不删文件, 仅启动厂商工具; 已先写审计 (SR-9)。
+                if (!string.IsNullOrWhiteSpace(request.Payload))
+                    _shell.RunInTerminal(request.Payload);
+                break;
             case ActionType.AddIgnore:
                 if (_ignore is not null)
                     await _ignore.AddAsync(

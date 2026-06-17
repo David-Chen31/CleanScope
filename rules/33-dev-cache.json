@@ -12,11 +12,13 @@
   { "id":"go-mod-cache", "pattern":"%UserProfile%\\go\\pkg\\mod", "match_type":"path_prefix",
     "category":"Go 模块缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
     "description":"Go 模块下载缓存，可重新拉取", "recommended_action":"用 go clean -modcache",
+    "command":"go clean -modcache",
     "evidence_type":"path_rule", "confidence":0.9, "priority":60 },
 
   { "id":"conda-pkgs-anaconda", "pattern":"*conda*\\pkgs", "match_type":"path_glob",
     "category":"conda 包缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
     "description":"Miniconda/Anaconda 下载的包缓存", "recommended_action":"用 conda clean --all",
+    "command":"conda clean --all",
     "evidence_type":"path_rule", "confidence":0.82, "priority":60 },
 
   { "id":"vscode-cpptools-cache", "pattern":"%LocalAppData%\\Microsoft\\vscode-cpptools", "match_type":"path_prefix",
@@ -27,6 +29,7 @@
   { "id":"nuget-http-cache", "pattern":"%LocalAppData%\\NuGet\\v3-cache", "match_type":"path_prefix",
     "category":"NuGet HTTP 缓存", "risk_level":"B", "direct_delete":false, "is_system_critical":false,
     "description":"NuGet HTTP 响应缓存", "recommended_action":"用 dotnet nuget locals http-cache --clear",
+    "command":"dotnet nuget locals http-cache --clear",
     "evidence_type":"path_rule", "confidence":0.85, "priority":60 },
 
   { "id":"vs-componentcache", "pattern":"%LocalAppData%\\Microsoft\\VisualStudio\\Packages", "match_type":"path_prefix",

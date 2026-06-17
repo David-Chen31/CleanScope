@@ -73,8 +73,31 @@ public sealed class DecisionService : IDecisionService
             Explanation: ExplanationOf(a, validatedAi),
             EvidenceChain: a.Risk.EvidenceChain,
             Category: CategoryOf(a),
-            IsContainer: a.Risk.IsContainer);
+            IsContainer: a.Risk.IsContainer,
+            ActionKind: ActionKindOf(a),
+            Command: a.RuleMatch?.Command);
     }
+
+    // S-D 推荐动作: 命令型(规则带 command) → RunCommand; 容器/D/E/系统关键 → None;
+    // 安装/共享目录(C, 在 Program Files/ProgramData) → Uninstall; 其余可清理/谨慎 → OpenFolder(定位)。
+    private static CleanupActionKind ActionKindOf(FileAnalysis a)
+    {
+        if (a.Risk.IsContainer) return CleanupActionKind.None;
+        if (!string.IsNullOrWhiteSpace(a.RuleMatch?.Command)) return CleanupActionKind.RunCommand;
+        if (a.Risk.Level is RiskLevel.D or RiskLevel.E) return CleanupActionKind.None;
+
+        var path = a.Node.RealPath ?? a.Node.Path;
+        if (a.Risk.Level == RiskLevel.C && InstalledDirRx.IsMatch(path))
+            return CleanupActionKind.Uninstall;
+
+        return CleanupActionKind.OpenFolder;   // A/B 文件夹缓存 + 其它 C → 资源管理器定位
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex InstalledDirRx = new(
+        @"\\(Program Files( \(x86\))?|ProgramData)\\",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase |
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant |
+        System.Text.RegularExpressions.RegexOptions.Compiled);
 
     // 清理类别: 规则类别优先; 无规则但被缓存启发命中 → 推断类别 (供 S3 按类别聚合)。
     private static string? CategoryOf(FileAnalysis a)

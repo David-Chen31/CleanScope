@@ -166,11 +166,18 @@
                 <Border Padding="10" CornerRadius="6" Background="#F1F5FB" Margin="0,0,0,10">
                     <TextBlock Text="{Binding GuardVerdict}" Foreground="#1F2933" TextWrapping="Wrap"/>
                 </Border>
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="打开所在文件夹" Command="{Binding OpenFolderCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
-                    <Button Content="复制路径" Command="{Binding CopyPathCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
-                    <Button Content="加入忽略名单" Command="{Binding AddIgnoreCommand}" Style="{StaticResource Ghost}"/>
-                </StackPanel>
+                <!-- S-D 推荐动作: 命令型→运行/复制官方命令; 安装目录→卸载程序; 通用→定位/复制路径/忽略 -->
+                <WrapPanel>
+                    <Button Content="▶ 运行官方清理命令" Command="{Binding RunCommandCommand}" Style="{StaticResource Primary}"
+                            Margin="0,0,8,8" Visibility="{Binding Row.HasRunCommand, Converter={StaticResource BoolToVis}}"/>
+                    <Button Content="复制清理命令" Command="{Binding CopyCommandCommand}" Style="{StaticResource Ghost}"
+                            Margin="0,0,8,8" Visibility="{Binding Row.HasRunCommand, Converter={StaticResource BoolToVis}}"/>
+                    <Button Content="打开卸载程序" Command="{Binding UninstallCommand}" Style="{StaticResource Ghost}"
+                            Margin="0,0,8,8" Visibility="{Binding Row.HasUninstall, Converter={StaticResource BoolToVis}}"/>
+                    <Button Content="在资源管理器中定位" Command="{Binding OpenFolderCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,8"/>
+                    <Button Content="复制路径" Command="{Binding CopyPathCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,8"/>
+                    <Button Content="加入忽略名单" Command="{Binding AddIgnoreCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,8"/>
+                </WrapPanel>
                 <TextBlock Text="{Binding ActionStatus}" Style="{StaticResource Sub}" Margin="0,8,0,0"/>
             </StackPanel>
         </Border>

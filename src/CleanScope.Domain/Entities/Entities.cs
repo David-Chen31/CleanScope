@@ -73,7 +73,8 @@ public record RuleMatch(
     string? RecommendedAction,
     double? Confidence,
     int? Priority,            // 冲突时就高
-    bool Authoritative);      // 规则权威标记
+    bool Authoritative,       // 规则权威标记
+    string? Command = null);  // S-D: 命令型清理的官方命令 (可空)
 
 /// <summary>归因候选 (表 attribution_candidate)。候选列表 + 置信度, 非单一答案。</summary>
 public record AttributionCandidate(
