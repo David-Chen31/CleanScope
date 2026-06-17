@@ -107,6 +107,32 @@ public sealed class RiskEngineTests
         Assert.NotEmpty(r.EvidenceChain);          // 即便 E 也有观测证据 (SR-5)
     }
 
+    // S-B: 顶层容器目录 → IsContainer (仅浏览), 不再"无法判断"。
+    [Theory]
+    [InlineData(@"C:\")]
+    [InlineData(@"C:\Users")]
+    [InlineData(@"C:\Users\28170")]
+    [InlineData(@"C:\Users\28170\AppData")]
+    [InlineData(@"C:\Users\28170\AppData\Local")]
+    [InlineData(@"C:\Users\28170\AppData\Roaming")]
+    [InlineData(@"C:\Program Files")]
+    [InlineData(@"C:\Program Files (x86)")]
+    [InlineData(@"C:\ProgramData")]
+    public void Top_level_containers_are_flagged_container(string path)
+    {
+        var r = Assess(Node(path, isDir: true), null);
+        Assert.True(r.IsContainer);
+        Assert.NotEqual(RiskLevel.E, r.Level);     // 不再"无法判断"
+    }
+
+    [Fact]
+    public void Non_container_subdir_is_not_flagged_container()
+    {
+        // AppData\Local\<具体应用> 不是容器, 而是应用数据 (C)。
+        var r = Assess(Node(@"C:\Users\28170\AppData\Local\Google", isDir: true), null);
+        Assert.False(r.IsContainer);
+    }
+
     // S-A: 有归因 (含路径推断) → C 并写明归属, 不再"无法判断"。
     [Fact]
     public void Attributed_path_yields_C_with_owner_not_E()

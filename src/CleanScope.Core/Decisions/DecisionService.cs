@@ -72,7 +72,8 @@ public sealed class DecisionService : IDecisionService
             RecommendedAction: RecommendedActionOf(a, validatedAi),
             Explanation: ExplanationOf(a, validatedAi),
             EvidenceChain: a.Risk.EvidenceChain,
-            Category: CategoryOf(a));
+            Category: CategoryOf(a),
+            IsContainer: a.Risk.IsContainer);
     }
 
     // 清理类别: 规则类别优先; 无规则但被缓存启发命中 → 推断类别 (供 S3 按类别聚合)。

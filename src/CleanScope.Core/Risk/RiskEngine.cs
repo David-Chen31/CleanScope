@@ -36,6 +36,18 @@ public sealed class RiskEngine : IRiskEngine
         @"\\(Program Files( \(x86\))?|ProgramData)\\[^\\]+",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    // S-B: 顶层容器目录 (盘符根/Users/用户主目录/AppData[\Local|LocalLow|Roaming]/Program Files[(x86)]/ProgramData)。
+    // 这些只是"装东西的柜子", 不是删除对象 —— 标 IsContainer, UI 单列"容器"桶, 不进风险/可清理统计。
+    private static readonly Regex ContainerRx = new(
+        @"^[A-Za-z]:\\?$" +
+        @"|^[A-Za-z]:\\Users\\?$" +
+        @"|^[A-Za-z]:\\Users\\[^\\]+\\?$" +
+        @"|^[A-Za-z]:\\Users\\[^\\]+\\AppData\\?$" +
+        @"|^[A-Za-z]:\\Users\\[^\\]+\\AppData\\(Local|LocalLow|Roaming)\\?$" +
+        @"|^[A-Za-z]:\\Program Files( \(x86\))?\\?$" +
+        @"|^[A-Za-z]:\\ProgramData\\?$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
     // S5: 目录名明确表明为"可重建缓存/临时/日志/崩溃转储"的信号 (仅用于目录, 降低 E 泛滥)。
     // 命中 → B (走官方方式清理), 而非 E。永不置 canDelete (MVP 零删除, 安全闸门仍拦一切删除)。
     private static readonly HashSet<string> CacheLeafNames = new(StringComparer.OrdinalIgnoreCase)
@@ -98,6 +110,12 @@ public sealed class RiskEngine : IRiskEngine
             }
         }
 
+        // S-B 顶层容器目录: 仅供浏览, 不作删除对象 (标 IsContainer)。放在其它启发之前。
+        if (node.IsDirectory && ContainerRx.IsMatch(path))
+            return Build(node, evidence, RiskLevel.C, 40,
+                new[] { "顶层容器目录: 内含多个程序的数据, 请展开按子目录判断, 不要整体处理" }, 0.5,
+                canDelete: false, isContainer: true);
+
         // 无规则命中: 路径启发。
         if (PersonalDataRx.IsMatch(path))
             return Build(node, evidence, RiskLevel.C, 50, new[] { "用户个人数据 (误删=数据丢失)" }, 0.75, false);
@@ -137,7 +155,7 @@ public sealed class RiskEngine : IRiskEngine
 
     private static RiskAssessment Build(
         FileNode node, EvidenceBundle evidence, RiskLevel level, int score,
-        IReadOnlyList<string> factors, double confidence, bool canDelete)
+        IReadOnlyList<string> factors, double confidence, bool canDelete, bool isContainer = false)
     {
         // SR-5: 证据链非空。优先事实证据; 退化时取全部证据 id。契约: 调用方至少提供 1 条。
         // 对 null 证据防御 (仅 fail-safe 异常路径可能出现): fail-safe 本身绝不能再崩。
@@ -155,6 +173,7 @@ public sealed class RiskEngine : IRiskEngine
             EvidenceChain: chain,
             CanDeleteDirectly: canDelete,
             Confidence: confidence,
-            CreatedAt: DateTime.UtcNow);
+            CreatedAt: DateTime.UtcNow,
+            IsContainer: isContainer);
     }
 }

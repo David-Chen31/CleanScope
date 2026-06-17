@@ -79,13 +79,17 @@ public sealed class MarkdownReportExporter : IReportExporter
         sb.AppendLine("## 风险统计").AppendLine();
         sb.AppendLine("| 等级 | 数量 | 占用(去重) |");
         sb.AppendLine("|---|---|---|");
+        // S-B: 容器目录单列一行, 不计入 A-E (它们只是浏览入口, 非删除对象)。
+        var containers = items.Where(i => i.IsContainer).ToList();
+        if (containers.Count > 0)
+            sb.AppendLine($"| 🗂 容器(仅浏览) | {containers.Count} | {Size(containers.Sum(i => i.ExclusiveSize))} |");
         foreach (var level in new[] { RiskLevel.A, RiskLevel.B, RiskLevel.C, RiskLevel.D, RiskLevel.E })
         {
-            var g = items.Where(i => i.RiskLevel == level).ToList();
+            var g = items.Where(i => !i.IsContainer && i.RiskLevel == level).ToList();
             // 用独占大小求和: 同一批字节不因父子目录同时入选而被重复计入。
             sb.AppendLine($"| {RiskLabel(level)} | {g.Count} | {Size(g.Sum(i => i.ExclusiveSize))} |");
         }
-        var reclaimable = items.Where(i => i.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(i => i.ExclusiveSize);
+        var reclaimable = items.Where(i => !i.IsContainer && i.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(i => i.ExclusiveSize);
         sb.AppendLine().AppendLine($"可清理估算 (A+B, 去重, 仍建议确认): **{Size(reclaimable)}**");
         sb.AppendLine().AppendLine("> 占用为**去重独占大小**(每个字节只归属最深的被分析目录), 故各级之和不超过磁盘实际占用; TopN 仍按目录聚合大小展示。").AppendLine();
     }
@@ -102,7 +106,7 @@ public sealed class MarkdownReportExporter : IReportExporter
             .ThenByDescending(i => i.Size)
             .Take(n).ToList();
         for (var i = 0; i < top.Count; i++)
-            sb.AppendLine($"| {i + 1} | `{P(top[i].Path)}` | {Size(top[i].ExclusiveSize)} | {Size(top[i].Size)} | {RiskLabel(top[i].RiskLevel)} | {Cell(top[i].RecommendedAction)} |");
+            sb.AppendLine($"| {i + 1} | `{P(top[i].Path)}` | {Size(top[i].ExclusiveSize)} | {Size(top[i].Size)} | {BucketLabel(top[i])} | {Cell(top[i].RecommendedAction)} |");
         sb.AppendLine().AppendLine("> “真实占用”= 去重独占大小 (不含已单列的子目录); “聚合大小”= 含全部子孙。").AppendLine();
     }
 
@@ -133,6 +137,9 @@ public sealed class MarkdownReportExporter : IReportExporter
     private string P(string path) => _sanitizePaths ? UserNameRx.Replace(path, "$1%USER%") : path;
 
     private static string Time(DateTime dt) => dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+
+    // 容器单独标识, 否则按风险等级。
+    private static string BucketLabel(DecisionItem i) => i.IsContainer ? "🗂 容器" : RiskLabel(i.RiskLevel);
 
     private static string RiskLabel(RiskLevel l) => l switch
     {

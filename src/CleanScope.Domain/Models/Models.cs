@@ -60,7 +60,8 @@ public record DecisionItem(
     string? Explanation,
     IReadOnlyList<long> EvidenceChain,
     long ExclusiveSize = 0,
-    string? Category = null);     // 清理类别 (来自规则 Category 或缓存启发), 供"按类别聚合"
+    string? Category = null,      // 清理类别 (来自规则 Category 或缓存启发), 供"按类别聚合"
+    bool IsContainer = false);    // 顶层容器目录 (仅浏览, 不进风险/可清理统计)
 
 /// <summary>
 /// 可清理类别聚合 (S3, 对标 CCleaner/BleachBit 的"按类别给可回收空间")。

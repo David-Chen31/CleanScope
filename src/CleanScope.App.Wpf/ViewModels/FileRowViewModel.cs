@@ -75,6 +75,9 @@ public sealed class FileRowViewModel
     /// <summary>D/E 高风险: 仅提示"不建议删除", 永不渲染删除入口 (安全注意)。</summary>
     public bool IsHighRisk => RiskLevel is RiskLevel.D or RiskLevel.E;
 
+    /// <summary>顶层容器目录 (仅浏览, 非删除对象)。</summary>
+    public bool IsContainer => Item.IsContainer;
+
     // —— 详情属性 ——
     public bool IsDirectory { get; }
     public bool IsReparsePoint { get; }

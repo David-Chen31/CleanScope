@@ -94,7 +94,8 @@ public record RiskAssessment(
     IReadOnlyList<long> EvidenceChain, // 非空; 无证据不出结论
     bool CanDeleteDirectly,
     double? Confidence,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool IsContainer = false); // 顶层容器目录 (仅供浏览, 不作删除对象; UI 单列"容器"桶)
 
 /// <summary>AI 解释 (表 ai_explanation)。Validated=false 禁止展示 (架构§5)。</summary>
 public record AiExplanation(
