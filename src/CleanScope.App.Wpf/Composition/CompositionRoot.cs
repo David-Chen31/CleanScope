@@ -70,7 +70,9 @@ public static class CompositionRoot
         return new AppServices
         {
             UseCase = useCase,
-            ReportExporter = new MarkdownReportExporter(sanitizePaths: false),
+            ReportExporterFor = path => path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
+                ? new CsvReportExporter(sanitizePaths: false)
+                : new MarkdownReportExporter(sanitizePaths: false),
             IgnoreRepository = ignore,
             ActionExecutor = executor,
             SafetyGuard = safety,

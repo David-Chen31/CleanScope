@@ -34,7 +34,7 @@ public sealed class MarkdownReportExporterTests
         Assert.Contains("# CleanScope 扫描报告", md);
         Assert.Contains("不会自动删除任何文件", md);     // 零删除声明
         Assert.Contains("## 风险统计", md);
-        Assert.Contains("## TopN 占用大头", md);
+        Assert.Contains("## 占用大头", md);
         Assert.Contains("## ⚠️ 高风险提醒", md);
         Assert.Contains("## 分级明细", md);
         Assert.Contains(@"C:\", md);                      // 扫描目标
@@ -90,6 +90,28 @@ public sealed class MarkdownReportExporterTests
         Assert.Equal(1_500, cats.Single(c => c.Name == "NuGet 全局包").ReclaimableSize);  // 合并去重求和
         Assert.Equal(2, cats.Single(c => c.Name == "NuGet 全局包").ItemCount);
         Assert.DoesNotContain(cats, c => c.TopRisk == RiskLevel.D);   // 高风险不进可清理
+    }
+
+    [Fact]
+    public void Csv_export_has_header_exclusive_size_and_escapes_fields()
+    {
+        var csv = new CsvReportExporter().Build(Report());
+
+        Assert.StartsWith("路径,聚合大小(字节),真实占用去重(字节),风险,归属,类别,建议", csv);
+        Assert.Contains("2000000000,2000000000,A", csv);        // 含独占大小列
+        Assert.Contains(@"C:\Windows\System32", csv);
+        // 行按独占大小降序: 2GB 的 Temp 在 System32(1GB) 之前。
+        var iTemp = csv.IndexOf("Temp", StringComparison.Ordinal);
+        var iSys = csv.IndexOf("System32", StringComparison.Ordinal);
+        Assert.True(iTemp >= 0 && iTemp < iSys);
+    }
+
+    [Fact]
+    public void Topn_section_ranks_by_exclusive_size()
+    {
+        var md = new MarkdownReportExporter().BuildMarkdown(Report());
+        Assert.Contains("叶子贡献", md);                         // S7: 标题点明按真实占用排序
+        Assert.Contains("真实占用(去重)", md);
     }
 
     [Fact]

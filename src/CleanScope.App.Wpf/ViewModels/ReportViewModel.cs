@@ -79,8 +79,9 @@ public sealed class ReportViewModel : ViewModelBase
         {
             var dir = Path.GetDirectoryName(Path.GetFullPath(ExportPath));
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-            await _services.ReportExporter.ExportAsync(_session.Report, ExportPath);
-            ExportStatus = $"已导出报告：{Path.GetFullPath(ExportPath)}";
+            var exporter = _services.ReportExporterFor(ExportPath);
+            await exporter.ExportAsync(_session.Report, ExportPath);
+            ExportStatus = $"已导出报告（{exporter.Format}）：{Path.GetFullPath(ExportPath)}";
         }
         catch (Exception ex)
         {

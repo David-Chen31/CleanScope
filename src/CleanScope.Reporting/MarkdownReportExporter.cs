@@ -90,15 +90,20 @@ public sealed class MarkdownReportExporter : IReportExporter
         sb.AppendLine().AppendLine("> 占用为**去重独占大小**(每个字节只归属最深的被分析目录), 故各级之和不超过磁盘实际占用; TopN 仍按目录聚合大小展示。").AppendLine();
     }
 
+    // S7: 按"叶子贡献"(独占大小) 排序, 而非聚合大小 —— 避免 C:\→Users→AppData 这类祖先链占满榜单,
+    // 让真正占地方的叶子目录浮现。同时给出聚合大小作参考。
     private void AppendTopN(StringBuilder sb, IReadOnlyList<DecisionItem> items, int n)
     {
-        sb.AppendLine($"## TopN 占用大头 (前 {n})").AppendLine();
-        sb.AppendLine("| # | 路径 | 大小 | 风险 | 建议 |");
-        sb.AppendLine("|---|---|---|---|---|");
-        var top = items.OrderByDescending(i => i.Size).Take(n).ToList();
+        sb.AppendLine($"## 占用大头 (前 {n}, 按真实占用/叶子贡献排序)").AppendLine();
+        sb.AppendLine("| # | 路径 | 真实占用(去重) | 聚合大小 | 风险 | 建议 |");
+        sb.AppendLine("|---|---|---|---|---|---|");
+        var top = items
+            .OrderByDescending(i => i.ExclusiveSize)
+            .ThenByDescending(i => i.Size)
+            .Take(n).ToList();
         for (var i = 0; i < top.Count; i++)
-            sb.AppendLine($"| {i + 1} | `{P(top[i].Path)}` | {Size(top[i].Size)} | {RiskLabel(top[i].RiskLevel)} | {Cell(top[i].RecommendedAction)} |");
-        sb.AppendLine();
+            sb.AppendLine($"| {i + 1} | `{P(top[i].Path)}` | {Size(top[i].ExclusiveSize)} | {Size(top[i].Size)} | {RiskLabel(top[i].RiskLevel)} | {Cell(top[i].RecommendedAction)} |");
+        sb.AppendLine().AppendLine("> “真实占用”= 去重独占大小 (不含已单列的子目录); “聚合大小”= 含全部子孙。").AppendLine();
     }
 
     private void AppendHighRisk(StringBuilder sb, IReadOnlyList<DecisionItem> items)

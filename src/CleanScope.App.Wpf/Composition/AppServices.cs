@@ -13,7 +13,9 @@ namespace CleanScope.App.Wpf.Composition;
 public sealed class AppServices
 {
     public required ScanAndAnalyzeUseCase UseCase { get; init; }
-    public required IReportExporter ReportExporter { get; init; }
+
+    /// <summary>按导出路径扩展名选报告导出器 (.csv → CSV, 否则 Markdown)。</summary>
+    public required Func<string, IReportExporter> ReportExporterFor { get; init; }
     public required IIgnoreRepository IgnoreRepository { get; init; }
     public required IActionExecutor ActionExecutor { get; init; }
     public required ISafetyGuard SafetyGuard { get; init; }

@@ -92,9 +92,13 @@ try
     var reportPath = opts.Get("--report");
     if (!string.IsNullOrWhiteSpace(reportPath))
     {
-        var exporter = new MarkdownReportExporter(sanitizePaths: opts.Has("--sanitize"));
+        var sanitize = opts.Has("--sanitize");
+        // 按扩展名选格式: .csv → CSV (便于 Excel 透视), 否则 Markdown。
+        IReportExporter exporter = reportPath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
+            ? new CsvReportExporter(sanitize)
+            : new MarkdownReportExporter(sanitize);
         await exporter.ExportAsync(result.Report, reportPath);
-        Console.WriteLine($"\n报告已写入: {Path.GetFullPath(reportPath)}");
+        Console.WriteLine($"\n报告已写入 ({exporter.Format}): {Path.GetFullPath(reportPath)}");
     }
     return 0;
 }
