@@ -130,7 +130,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" Margin="0,2">
-                                    <TextBlock Text="{Binding AppName}" Width="220" Foreground="{StaticResource Ink}"/>
+                                    <TextBlock Text="{Binding DisplayText}" Width="220" Foreground="{StaticResource Ink}"/>
                                     <TextBlock Text="{Binding ConfidenceText}" Foreground="{StaticResource Muted}"/>
                                 </StackPanel>
                             </DataTemplate>

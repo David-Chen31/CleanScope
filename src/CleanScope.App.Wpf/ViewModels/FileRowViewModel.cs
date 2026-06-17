@@ -46,7 +46,7 @@ public sealed class FileRowViewModel
         Evidences = analysis.Evidence.Evidences.Select(e => new EvidenceItemViewModel(e)).ToList();
         Attributions = analysis.Attributions
             .OrderByDescending(a => a.Confidence)
-            .Select(a => new AttributionViewModel(a.AppName, a.Confidence))
+            .Select(a => new AttributionViewModel(a.AppName, a.Confidence, a.Source))
             .ToList();
 
         var risk = analysis.Risk;
@@ -129,18 +129,25 @@ public sealed class FileRowViewModel
     public bool HasAiInvestigation => !string.IsNullOrWhiteSpace(AiInvestigation);
 }
 
-/// <summary>归因候选展示 (应用名 + 置信度)。非单一答案, 按置信度排序。</summary>
+/// <summary>归因候选展示 (应用名 + 置信度 + 来源)。非单一答案, 按置信度排序。</summary>
 public sealed class AttributionViewModel
 {
-    public AttributionViewModel(string appName, double confidence)
+    public AttributionViewModel(string appName, double confidence, string? source = null)
     {
         AppName = appName;
         Confidence = confidence;
+        Source = source;
     }
 
     public string AppName { get; }
     public double Confidence { get; }
     public string ConfidenceText => $"{Confidence:P0}";
+
+    /// <summary>来源: null=事实证据(权威); "路径推断"/"AI 推测"=低置信猜测 (S-G, 诚实标注)。</summary>
+    public string? Source { get; }
+    public bool IsInferred => !string.IsNullOrWhiteSpace(Source);
+    /// <summary>展示标签: 事实归属不加缀; 推断/AI 加"(来源)"后缀, 让用户知道这是猜测。</summary>
+    public string DisplayText => IsInferred ? $"{AppName}（{Source}）" : AppName;
 }
 
 /// <summary>已校验 AI 解释展示。来源标注 (云端/本地规则) 供隐私审计可见。</summary>

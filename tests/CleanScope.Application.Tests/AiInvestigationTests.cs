@@ -61,6 +61,22 @@ public sealed class AiInvestigationTests
         Assert.Null(cache.AiInvestigation);                                   // 非 E 不调查
     }
 
+    [Fact] // S-G: 无主未知项被补"AI 推测"低置信归属 → OwnerApp 填充 + 来源标注 + 置信封顶, 不改判风险。
+    public async Task InvestigateUnknowns_fills_low_confidence_ai_attribution()
+    {
+        var result = await Build(new CountingChat(ValidJson)).ExecuteAsync(
+            new ScanOptions(@"D:\", 50, ScanMode.Normal), aiMode: AiMode.InvestigateUnknowns);
+
+        var unknown = result.Decisions.Single(d => d.Path == UnknownNode.Path);
+        Assert.Equal("SomeApp", unknown.OwnerApp);                            // AI 归属流入"按软件"
+
+        var analysis = result.Analyses.Single(a => a.Node.Path == UnknownNode.Path);
+        var cand = Assert.Single(analysis.Attributions);
+        Assert.Equal("AI 推测", cand.Source);                                // 诚实标注来源
+        Assert.True(cand.Confidence <= 0.45);                                // 置信封顶, 够不到风险阈值
+        Assert.Equal(RiskLevel.E, unknown.RiskLevel);                        // 风险不被归属改判
+    }
+
     [Fact]
     public async Task OnDemand_does_not_call_ai_during_scan()
     {

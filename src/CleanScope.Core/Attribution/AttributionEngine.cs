@@ -42,7 +42,7 @@ public sealed class AttributionEngine : IAttributionEngine
             var inferred = PathPatternCandidate(node.RealPath ?? node.Path);
             return inferred is null
                 ? Array.Empty<AttributionCandidate>()     // AS-8: 仍未知, 不臆造
-                : new[] { new AttributionCandidate(0, node.Id, inferred, 0.5, 1, Array.Empty<long>()) };
+                : new[] { new AttributionCandidate(0, node.Id, inferred, 0.5, 1, Array.Empty<long>(), Source: "路径推断") };
         }
 
         // 规则类别可佐证 (非新增候选): 若类别提及某候选名, 略增其置信度。

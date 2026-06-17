@@ -66,6 +66,7 @@ public sealed class AttributionEngineTests
         Assert.Equal(expected, cands[0].AppName);
         Assert.True(cands[0].Confidence < 0.8);                // 低置信: 不驱动风险, 仅展示
         Assert.Empty(cands[0].SupportingEvidenceIds);          // 路径推断, 无证据 id
+        Assert.Equal("路径推断", cands[0].Source);             // S-G: 来源诚实标注 (非事实证据)
     }
 
     [Fact] // 有事实证据时不启用路径推断 (事实优先, 不被稀释)

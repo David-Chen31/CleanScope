@@ -83,7 +83,8 @@ public record AttributionCandidate(
     string AppName,
     double Confidence,
     int? Rank,
-    IReadOnlyList<long> SupportingEvidenceIds); // 支撑证据 id (JSON 列映射)
+    IReadOnlyList<long> SupportingEvidenceIds, // 支撑证据 id (JSON 列映射)
+    string? Source = null);  // 来源: null=事实证据(权威); "路径推断"/"AI 推测"=低置信猜测 (S-G, 供 UI 诚实标注)
 
 /// <summary>风险评估 (表 risk_assessment)。权威, EvidenceChain 必须非空 (SR-5)。</summary>
 public record RiskAssessment(
