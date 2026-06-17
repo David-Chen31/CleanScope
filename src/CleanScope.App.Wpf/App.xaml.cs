@@ -46,12 +46,27 @@ public partial class App : System.Windows.Application
         }
     }
 
+    private bool _dialogOpen;
+    private DateTime _lastDialog = DateTime.MinValue;
+
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         AppLog.Error("DispatcherUnhandledException", e.Exception);
-        MessageBox.Show(
-            $"发生了一个错误，但应用会尽量继续运行。\n\n{e.Exception.GetType().Name}: {e.Exception.Message}\n\n详情见日志：{AppLog.LogPath}",
-            "CleanScope", MessageBoxButton.OK, MessageBoxImage.Warning);
         e.Handled = true;   // 防止 UI 线程异常导致静默闪退
+
+        // 异常风暴 (如逐项绑定失败) 时只记日志, 不刷屏: 一次只弹一个, 且 5s 冷却。
+        if (_dialogOpen || (DateTime.Now - _lastDialog).TotalSeconds < 5) return;
+        _dialogOpen = true;
+        try
+        {
+            MessageBox.Show(
+                $"发生了一个错误，但应用会尽量继续运行。\n\n{e.Exception.GetType().Name}: {e.Exception.Message}\n\n详情见日志：{AppLog.LogPath}",
+                "CleanScope", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _lastDialog = DateTime.Now;
+            _dialogOpen = false;
+        }
     }
 }

@@ -15,7 +15,7 @@
             <StackPanel>
                 <TextBlock Text="可清理类别（按类别聚合，A/B）" Style="{StaticResource H2}"/>
                 <TextBlock Style="{StaticResource Sub}" Margin="0,0,0,8">
-                    <Run Text="预计可回收（去重，仍建议确认）："/><Run Text="{Binding ReclaimableTotal}" FontWeight="Bold" Foreground="#1E7E34"/>
+                    <Run Text="预计可回收（去重，仍建议确认）："/><Run Text="{Binding ReclaimableTotal, Mode=OneWay}" FontWeight="Bold" Foreground="#1E7E34"/>
                     <Run Text="　— 仅给出可回收空间与官方清理方式，绝不自动删除。"/>
                 </TextBlock>
                 <ItemsControl ItemsSource="{Binding CleanupCategories}">
@@ -31,7 +31,7 @@
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
                                         <TextBlock Foreground="{StaticResource Muted}" FontSize="11">
-                                            <Run Text="{Binding ItemCount}"/><Run Text=" 项 · "/><Run Text="{Binding RiskText}"/>
+                                            <Run Text="{Binding ItemCount, Mode=OneWay}"/><Run Text=" 项 · "/><Run Text="{Binding RiskText, Mode=OneWay}"/>
                                         </TextBlock>
                                     </StackPanel>
                                     <TextBlock Grid.Column="1" Text="{Binding ReclaimableText}" FontWeight="Bold"
@@ -98,7 +98,7 @@
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="{Binding PathOrPattern}" Foreground="{StaticResource Ink}" FontWeight="SemiBold"/>
                                         <TextBlock Foreground="{StaticResource Muted}" FontSize="11">
-                                            <Run Text="{Binding MatchType}"/><Run Text=" · "/><Run Text="{Binding CreatedAt}"/><Run Text=" · "/><Run Text="{Binding Reason}"/>
+                                            <Run Text="{Binding MatchType, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding CreatedAt, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Reason, Mode=OneWay}"/>
                                         </TextBlock>
                                     </StackPanel>
                                     <Button Grid.Column="1" Content="移除" MinWidth="64"
