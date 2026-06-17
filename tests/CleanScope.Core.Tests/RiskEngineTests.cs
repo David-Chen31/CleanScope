@@ -78,10 +78,31 @@ public sealed class RiskEngineTests
         Assert.Equal(RiskLevel.C, r.Level);
     }
 
+    // S4: AppData\Local 下的应用数据目录 → C (应用数据/配置), 不再落 E。
     [Fact]
-    public void Unknown_local_appdata_without_match_yields_E()
+    public void Local_appdata_app_dir_yields_C()
     {
         var r = Assess(Node(@"C:\Users\me\AppData\Local\a8f3kd9", isDir: true), null);
+        Assert.Equal(RiskLevel.C, r.Level);
+        Assert.NotEmpty(r.EvidenceChain);          // SR-5
+    }
+
+    // S4: 程序安装/共享数据目录 → C (通过卸载程序处理), 不再落 E。
+    [Theory]
+    [InlineData(@"C:\Program Files\Docker")]
+    [InlineData(@"C:\Program Files (x86)\Lenovo\LegionZone")]
+    [InlineData(@"C:\ProgramData\Lenovo")]
+    public void Install_location_yields_C_not_E(string path)
+    {
+        var r = Assess(Node(path, isDir: true), null);
+        Assert.Equal(RiskLevel.C, r.Level);
+    }
+
+    // 真正来源不明 (非应用/安装/缓存) 才落 E。
+    [Fact]
+    public void Truly_unknown_path_yields_E()
+    {
+        var r = Assess(Node(@"D:\randomstuff\a8f3kd9", isDir: true), null);
         Assert.Equal(RiskLevel.E, r.Level);
         Assert.NotEmpty(r.EvidenceChain);          // 即便 E 也有观测证据 (SR-5)
     }

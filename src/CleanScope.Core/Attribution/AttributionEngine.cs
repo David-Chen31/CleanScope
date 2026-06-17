@@ -35,8 +35,15 @@ public sealed class AttributionEngine : IAttributionEngine
             Fuse(acc, name, conf, e.Id);
         }
 
+        // S4: 无任何事实候选时, 从路径模式推断一个低置信候选 (填补"小文件夹无归属"的空白)。
+        // 置信度刻意低于 0.8, 不驱动风险判定 (仅供展示); 不与事实候选混淆 (仅在事实为空时启用)。
         if (acc.Count == 0)
-            return Array.Empty<AttributionCandidate>();   // AS-8: 未知, 不臆造
+        {
+            var inferred = PathPatternCandidate(node.RealPath ?? node.Path);
+            return inferred is null
+                ? Array.Empty<AttributionCandidate>()     // AS-8: 仍未知, 不臆造
+                : new[] { new AttributionCandidate(0, node.Id, inferred, 0.5, 1, Array.Empty<long>()) };
+        }
 
         // 规则类别可佐证 (非新增候选): 若类别提及某候选名, 略增其置信度。
         if (ruleMatch?.Category is { Length: > 0 } category)
@@ -98,6 +105,65 @@ public sealed class AttributionEngine : IAttributionEngine
         var end = value.IndexOf(';', start);
         var p = (end < 0 ? value[start..] : value[start..end]).Trim();
         return p.Length == 0 ? null : p;
+    }
+
+    // 路径模式归因 (S4): 从安装/应用数据/工具链路径段推断归属。返回 null 表示无法推断。
+    // 已知厂商目录映射到友好名; 否则取目录段原名。仅作低置信展示, 不作权威。
+    private static readonly Dictionary<string, string> VendorNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Tencent"] = "腾讯系列 (QQ/微信等)",
+        ["LarkShell"] = "飞书 (Lark)",
+        ["Notion"] = "Notion",
+        ["JetBrains"] = "JetBrains 系列",
+        ["Code"] = "Visual Studio Code",
+        [".cargo"] = "Rust / Cargo",
+        [".rustup"] = "Rust / rustup",
+        [".nuget"] = "NuGet (.NET)",
+        [".gradle"] = "Gradle",
+        [".m2"] = "Maven",
+        [".npm"] = "npm (Node.js)",
+        ["Miniconda3"] = "Miniconda (Python)",
+        ["anaconda3"] = "Anaconda (Python)",
+    };
+
+    private static readonly HashSet<string> NoiseSegments = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "AppData", "Local", "LocalLow", "Roaming", "Packages", "Programs", "Temp", "Common Files",
+    };
+
+    private static string? PathPatternCandidate(string path)
+    {
+        var segs = path.Replace('/', '\\').Split('\\', StringSplitOptions.RemoveEmptyEntries);
+
+        // 工具链目录 (.cargo/.nuget/...): 命中即映射。
+        foreach (var s in segs)
+            if (VendorNames.TryGetValue(s, out var tool) && s.StartsWith('.'))
+                return tool;
+
+        // AppData\{Local,Roaming}\<X> (或 Local\Packages\<家族>_xxx)。
+        var ai = Array.FindIndex(segs, s => s.Equals("AppData", StringComparison.OrdinalIgnoreCase));
+        if (ai >= 0 && ai + 2 < segs.Length)
+        {
+            var after = segs[ai + 2];
+            if (after.Equals("Packages", StringComparison.OrdinalIgnoreCase) && ai + 3 < segs.Length)
+                return Friendly(segs[ai + 3].Split('_')[0]);    // 包家族名 (去掉发布者哈希后缀)
+            return Friendly(after);
+        }
+
+        // Program Files / Program Files (x86) / ProgramData 下第一段 = 厂商/应用。
+        var pi = Array.FindIndex(segs, s =>
+            s.StartsWith("Program Files", StringComparison.OrdinalIgnoreCase) ||
+            s.Equals("ProgramData", StringComparison.OrdinalIgnoreCase));
+        if (pi >= 0 && pi + 1 < segs.Length)
+            return Friendly(segs[pi + 1]);
+
+        return null;
+    }
+
+    private static string? Friendly(string segment)
+    {
+        if (string.IsNullOrWhiteSpace(segment) || NoiseSegments.Contains(segment)) return null;
+        return VendorNames.TryGetValue(segment, out var v) ? v : segment;
     }
 
     private sealed record Candidate(string Name, double Confidence, IReadOnlyList<long> EvidenceIds);

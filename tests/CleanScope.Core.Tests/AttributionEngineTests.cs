@@ -34,13 +34,44 @@ public sealed class AttributionEngineTests
         Assert.Contains(2L, cands[0].SupportingEvidenceIds);
     }
 
-    [Fact] // AS-8: 无可归属证据 → 空 (未知), 不臆造
+    [Fact] // AS-8: 无可归属证据且路径无模式 → 空 (未知), 不臆造
     public void No_attributable_evidence_returns_empty()
     {
         var b = Bundle(
             Ev(1, EvidenceKind.Metadata, @"C:\some\random"),   // 仅观测路径, 无 product=
             Ev(2, EvidenceKind.Extension, ".dat"));
-        Assert.Empty(Engine.Attribute(Node(), b, null));
+        Assert.Empty(Engine.Attribute(Node(), b, null));       // 默认路径 C:\x\y.exe 无模式
+    }
+
+    // S4: 无事实证据时, 从路径模式推断低置信归属 (填补"小文件夹无归属")。
+    [Theory]
+    [InlineData(@"C:\Users\me\AppData\Roaming\Tencent\QQ", "腾讯系列 (QQ/微信等)")]
+    [InlineData(@"C:\Users\me\AppData\Roaming\LarkShell\aha", "飞书 (Lark)")]
+    [InlineData(@"C:\Users\me\AppData\Local\Notion\Cache", "Notion")]
+    [InlineData(@"C:\Program Files (x86)\Lenovo\LegionZone", "Lenovo")]
+    [InlineData(@"C:\Users\me\.cargo\registry", "Rust / Cargo")]
+    [InlineData(@"C:\Users\me\AppData\Local\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\x", "Microsoft.WindowsTerminal")]
+    public void Path_pattern_infers_owner_when_no_facts(string path, string expected)
+    {
+        var node = new FileNode(0, 0, null, path, null, "leaf", true, false, 1,
+            null, null, null, AccessState.Accessible, null, default);
+        var cands = Engine.Attribute(node, new EvidenceBundle(0, null, Array.Empty<Evidence>()), null);
+
+        Assert.Single(cands);
+        Assert.Equal(expected, cands[0].AppName);
+        Assert.True(cands[0].Confidence < 0.8);                // 低置信: 不驱动风险, 仅展示
+        Assert.Empty(cands[0].SupportingEvidenceIds);          // 路径推断, 无证据 id
+    }
+
+    [Fact] // 有事实证据时不启用路径推断 (事实优先, 不被稀释)
+    public void Path_pattern_not_used_when_facts_exist()
+    {
+        var node = new FileNode(0, 0, null, @"C:\Program Files (x86)\Lenovo\X", null, "X", true, false, 1,
+            null, null, null, AccessState.Accessible, null, default);
+        var b = Bundle(Ev(1, EvidenceKind.InstalledApp, "under installed app: Legion Zone"));
+        var cands = Engine.Attribute(node, b, null);
+        Assert.Single(cands);
+        Assert.Equal("Legion Zone", cands[0].AppName);         // 事实候选, 非路径段 "Lenovo"
     }
 
     [Fact] // 同名候选融合: 多证据增强置信度 + 合并支撑 id

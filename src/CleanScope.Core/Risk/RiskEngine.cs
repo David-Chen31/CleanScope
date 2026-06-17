@@ -26,6 +26,16 @@ public sealed class RiskEngine : IRiskEngine
         @"\\AppData\\Roaming\\[^\\]+",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    // S4: Local 应用数据 (非缓存) —— 与 Roaming 同级处理为 C。
+    private static readonly Regex LocalAppDataRx = new(
+        @"\\AppData\\Local(Low)?\\[^\\]+",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    // S4: 程序安装 / 共享数据目录 → C (通过卸载程序处理, 勿直删), 不再落 E。
+    private static readonly Regex InstalledLocationRx = new(
+        @"\\(Program Files( \(x86\))?|ProgramData)\\[^\\]+",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
     // S5: 目录名明确表明为"可重建缓存/临时/日志/崩溃转储"的信号 (仅用于目录, 降低 E 泛滥)。
     // 命中 → B (走官方方式清理), 而非 E。永不置 canDelete (MVP 零删除, 安全闸门仍拦一切删除)。
     private static readonly HashSet<string> CacheLeafNames = new(StringComparer.OrdinalIgnoreCase)
@@ -97,8 +107,13 @@ public sealed class RiskEngine : IRiskEngine
             return Build(node, evidence, RiskLevel.B, 35,
                 new[] { "目录名表明为可重建缓存/临时, 建议用官方方式清理" }, 0.55, canDelete: false);
 
-        if (RoamingAppDataRx.IsMatch(path))
+        if (RoamingAppDataRx.IsMatch(path) || LocalAppDataRx.IsMatch(path))
             return Build(node, evidence, RiskLevel.C, 50, new[] { "应用数据/配置 (删后软件重置或丢登录态)" }, 0.6, false);
+
+        // S4: 程序安装/共享数据目录 → C (通过卸载程序处理), 比 E 更可行更准确。
+        if (InstalledLocationRx.IsMatch(path))
+            return Build(node, evidence, RiskLevel.C, 50,
+                new[] { "位于程序安装/共享数据目录, 建议通过卸载程序移除, 勿直删" }, 0.6, false);
 
         // 高置信归因可作为充分证据 (Phase 2 起生效); 否则证据不足 → E。
         if (attributions.Any(a => a.Confidence >= 0.8))

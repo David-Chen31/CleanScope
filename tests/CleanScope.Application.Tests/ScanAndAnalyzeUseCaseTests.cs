@@ -55,9 +55,10 @@ public sealed class ScanAndAnalyzeUseCaseTests : IDisposable
         Assert.Equal(RiskLevel.B, cache.RiskLevel);
         Assert.Equal("用官方命令清理", cache.RecommendedAction);
 
-        // 无规则命中的随机目录 → E (无法判断)
+        // 无规则命中的随机目录: 因临时根位于 %LocalAppData%\Temp 下, S4 归为 C (应用数据/安装区, 谨慎),
+        // 不再是 E。纯"来源不明→E"在 RiskEngineTests.Truly_unknown_path_yields_E 覆盖。
         var mystery = result.Decisions.Single(d => d.Path == Path.Combine(_root, "mystery"));
-        Assert.Equal(RiskLevel.E, mystery.RiskLevel);
+        Assert.Equal(RiskLevel.C, mystery.RiskLevel);
 
         // 每项证据链非空 (SR-5)
         Assert.All(result.Decisions, d => Assert.NotEmpty(d.EvidenceChain));
