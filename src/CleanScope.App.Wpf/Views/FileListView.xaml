@@ -13,6 +13,7 @@
                 <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                     <TextBlock Text="排序：" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
+                    <Button Content="按分类" Command="{Binding SortByBucketCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
                     <Button Content="按大小" Command="{Binding SortBySizeCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
                     <Button Content="按风险" Command="{Binding SortByRiskCommand}" Style="{StaticResource Ghost}"/>
                     <TextBlock Text="（点击任意行查看详情与证据链；本版本不提供删除按钮）"
@@ -28,16 +29,18 @@
                       VirtualizingPanel.ScrollUnit="Pixel">
                 <ListView.View>
                     <GridView>
-                        <GridViewColumn Header="风险" Width="70">
+                        <GridViewColumn Header="分类" Width="96">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Border Background="{Binding RiskLevel, Converter={StaticResource RiskToBrush}}"
+                                    <Border Background="{Binding Bucket, Converter={StaticResource BucketToBrush}}"
                                             CornerRadius="4" Padding="8,2">
-                                        <TextBlock Text="{Binding RiskText}" FontWeight="Bold" Foreground="#222"/>
+                                        <TextBlock Text="{Binding BucketLabel}" FontWeight="SemiBold" Foreground="#222"/>
                                     </Border>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
+                        <GridViewColumn Header="风险" Width="44"
+                                        DisplayMemberBinding="{Binding RiskText}"/>
                         <GridViewColumn Header="大小" Width="100"
                                         DisplayMemberBinding="{Binding SizeText}"/>
                         <GridViewColumn Header="归属应用" Width="150"

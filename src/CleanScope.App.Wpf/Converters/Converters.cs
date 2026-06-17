@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
+using CleanScope.App.Wpf.Common;
 using CleanScope.Domain.Enums;
 
 namespace CleanScope.App.Wpf.Converters;
@@ -56,6 +57,16 @@ public sealed class NotEmptyToVisibilityConverter : IValueConverter
         };
         return has ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    public object ConvertBack(object value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>四桶 → 背景色 (容器/可清理/谨慎/勿动)。</summary>
+public sealed class BucketToBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is CleanupBucket b ? Buckets.Brush(b) : Buckets.Brush(CleanupBucket.Keep);
 
     public object ConvertBack(object value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();

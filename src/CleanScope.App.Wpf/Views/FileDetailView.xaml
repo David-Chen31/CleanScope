@@ -17,9 +17,13 @@
             <Border Style="{StaticResource Cards}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <Border Background="{Binding RiskLevel, Converter={StaticResource RiskToBrush}}"
+                        <Border Background="{Binding Bucket, Converter={StaticResource BucketToBrush}}"
                                 CornerRadius="4" Padding="10,3" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding RiskMeaning}" FontWeight="Bold" Foreground="#222"/>
+                            <TextBlock Text="{Binding BucketLabel}" FontWeight="Bold" Foreground="#222"/>
+                        </Border>
+                        <Border Background="{Binding RiskLevel, Converter={StaticResource RiskToBrush}}"
+                                CornerRadius="4" Padding="8,3" VerticalAlignment="Center" Margin="8,0,0,0">
+                            <TextBlock Text="{Binding RiskMeaning}" FontWeight="SemiBold" Foreground="#222"/>
                         </Border>
                         <TextBlock Text="{Binding SizeText}" FontSize="16" FontWeight="Bold" Margin="14,0,0,0"
                                    VerticalAlignment="Center" Foreground="{StaticResource Ink}"/>

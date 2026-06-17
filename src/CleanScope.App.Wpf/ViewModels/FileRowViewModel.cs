@@ -78,6 +78,10 @@ public sealed class FileRowViewModel
     /// <summary>顶层容器目录 (仅浏览, 非删除对象)。</summary>
     public bool IsContainer => Item.IsContainer;
 
+    // —— 四桶 (D6: 比 A–E 更直观) ——
+    public CleanupBucket Bucket => Buckets.Of(Item);
+    public string BucketLabel => Buckets.Label(Bucket);
+
     // —— S-D 推荐动作 ——
     public CleanupActionKind ActionKind => Item.ActionKind;
     public string? Command => Item.Command;

@@ -31,6 +31,12 @@ public sealed class ScanSession
 
     public int HighRiskCount => Rows.Count(r => r.IsHighRisk);
 
+    // 四桶计数 (D6)。
+    public int CleanableCount => Rows.Count(r => r.Bucket == Common.CleanupBucket.Cleanable);
+    public int CautionCount => Rows.Count(r => r.Bucket == Common.CleanupBucket.Caution);
+    public int KeepCount => Rows.Count(r => r.Bucket == Common.CleanupBucket.Keep);
+    public int ContainerCount => Rows.Count(r => r.Bucket == Common.CleanupBucket.Container);
+
     /// <summary>可清理估算 (A+B, 去重; 仍建议用户确认/官方方式)。</summary>
     public long ReclaimableEstimate => Rows.Where(r => r.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(r => r.ExclusiveSize);
 }

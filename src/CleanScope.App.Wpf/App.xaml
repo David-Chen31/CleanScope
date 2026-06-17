@@ -12,6 +12,7 @@
             <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>
             <conv:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis"/>
             <conv:FactToBrushConverter x:Key="FactToBrush"/>
+            <conv:BucketToBrushConverter x:Key="BucketToBrush"/>
 
             <!-- VM → View 映射 (Shell 的 ContentControl 依此渲染) -->
             <DataTemplate DataType="{x:Type vm:HomeViewModel}"><views:HomeView/></DataTemplate>

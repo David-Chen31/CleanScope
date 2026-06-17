@@ -21,13 +21,15 @@ public sealed class FileListViewModel : ViewModelBase
         OpenDetailCommand = new RelayCommand(p => { if (p is FileRowViewModel r) _host.ShowDetail(r); });
         SortBySizeCommand = new RelayCommand(() => ApplySort(SortKind.Size));
         SortByRiskCommand = new RelayCommand(() => ApplySort(SortKind.Risk));
-        ApplySort(SortKind.Size);
+        SortByBucketCommand = new RelayCommand(() => ApplySort(SortKind.Bucket));
+        ApplySort(SortKind.Bucket);
     }
 
     public ICollectionView View { get; }
     public RelayCommand OpenDetailCommand { get; }
     public RelayCommand SortBySizeCommand { get; }
     public RelayCommand SortByRiskCommand { get; }
+    public RelayCommand SortByBucketCommand { get; }
 
     private string _summary = "";
     public string Summary { get => _summary; private set => SetField(ref _summary, value); }
@@ -46,26 +48,33 @@ public sealed class FileListViewModel : ViewModelBase
     {
         _rows.Clear();
         foreach (var r in session.Rows) _rows.Add(r);
-        Summary = $"{session.TargetPath} — 共 {session.Rows.Count} 项（高风险 D/E：{session.HighRiskCount}）";
-        ApplySort(SortKind.Size);
+        Summary = $"{session.TargetPath} — 共 {session.Rows.Count} 项（✅可清理 {session.CleanableCount} · ⚠谨慎 {session.CautionCount} · 🛑勿动 {session.KeepCount} · 🗂容器 {session.ContainerCount}）";
+        ApplySort(SortKind.Bucket);
     }
 
-    private enum SortKind { Size, Risk }
+    private enum SortKind { Size, Risk, Bucket }
 
     private void ApplySort(SortKind kind)
     {
         View.SortDescriptions.Clear();
-        if (kind == SortKind.Size)
+        switch (kind)
         {
-            View.SortDescriptions.Add(new SortDescription(nameof(FileRowViewModel.Size), ListSortDirection.Descending));
-            SortLabel = "按大小";
-        }
-        else
-        {
-            // 风险高→低 (E..A): RiskLevel 枚举值越大越危险, 故降序。
-            View.SortDescriptions.Add(new SortDescription(nameof(FileRowViewModel.RiskLevel), ListSortDirection.Descending));
-            View.SortDescriptions.Add(new SortDescription(nameof(FileRowViewModel.Size), ListSortDirection.Descending));
-            SortLabel = "按风险";
+            case SortKind.Size:
+                View.SortDescriptions.Add(new SortDescription(nameof(FileRowViewModel.Size), ListSortDirection.Descending));
+                SortLabel = "按大小";
+                break;
+            case SortKind.Risk:
+                // 风险高→低 (E..A): RiskLevel 枚举值越大越危险, 故降序。
+                View.SortDescriptions.Add(new SortDescription(nameof(FileRowViewModel.RiskLevel), ListSortDirection.Descending));
+                View.SortDescriptions.Add(new SortDescription(nameof(FileRowViewModel.Size), ListSortDirection.Descending));
+                SortLabel = "按风险";
+                break;
+            default:
+                // 按桶 (可清理→谨慎→勿动→容器), 组内按大小; 把可操作项排在最前。
+                View.SortDescriptions.Add(new SortDescription(nameof(FileRowViewModel.Bucket), ListSortDirection.Ascending));
+                View.SortDescriptions.Add(new SortDescription(nameof(FileRowViewModel.Size), ListSortDirection.Descending));
+                SortLabel = "按分类";
+                break;
         }
         View.Refresh();
     }
