@@ -112,18 +112,46 @@ public sealed class AttributionEngine : IAttributionEngine
     private static readonly Dictionary<string, string> VendorNames = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Tencent"] = "腾讯系列 (QQ/微信等)",
+        ["WeChat"] = "微信 (WeChat)",
+        ["xwechat"] = "微信 (WeChat)",
         ["LarkShell"] = "飞书 (Lark)",
         ["Notion"] = "Notion",
         ["JetBrains"] = "JetBrains 系列",
         ["Code"] = "Visual Studio Code",
+        ["vscode-remote-wsl"] = "VS Code Remote (WSL)",
+        [".lingma"] = "通义灵码 (Lingma)",
+        [".vscode"] = "Visual Studio Code",
         [".cargo"] = "Rust / Cargo",
         [".rustup"] = "Rust / rustup",
         [".nuget"] = "NuGet (.NET)",
         [".gradle"] = "Gradle",
         [".m2"] = "Maven",
         [".npm"] = "npm (Node.js)",
+        [".conda"] = "conda (Python)",
         ["Miniconda3"] = "Miniconda (Python)",
+        ["miniconda3"] = "Miniconda (Python)",
         ["anaconda3"] = "Anaconda (Python)",
+        ["NVIDIA Corporation"] = "NVIDIA",
+        ["NVIDIA"] = "NVIDIA",
+        ["Lenovo"] = "联想 (Lenovo)",
+        ["Docker"] = "Docker",
+        ["WSL"] = "适用于 Linux 的 Windows 子系统 (WSL)",
+        ["Adobe"] = "Adobe",
+        ["Google"] = "Google",
+        ["Mozilla"] = "Mozilla",
+        ["Oracle"] = "Oracle",
+        ["MySQL"] = "MySQL",
+        ["Thunder Network"] = "迅雷 (Thunder)",
+        ["Steam"] = "Steam",
+        ["Microsoft Office"] = "Microsoft Office",
+        ["Microsoft Visual Studio"] = "Visual Studio",
+    };
+
+    // 明确的工具链/应用专属目录名: 出现在路径任意层即可归属 (不依赖 AppData/Program Files 上下文)。
+    private static readonly HashSet<string> KnownAppDirs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".cargo", ".rustup", ".nuget", ".gradle", ".m2", ".npm", ".conda", ".lingma", ".vscode",
+        "Miniconda3", "miniconda3", "anaconda3", "vscode-remote-wsl",
     };
 
     private static readonly HashSet<string> NoiseSegments = new(StringComparer.OrdinalIgnoreCase)
@@ -135,12 +163,12 @@ public sealed class AttributionEngine : IAttributionEngine
     {
         var segs = path.Replace('/', '\\').Split('\\', StringSplitOptions.RemoveEmptyEntries);
 
-        // 工具链目录 (.cargo/.nuget/...): 命中即映射。
+        // 1) 明确的工具链/应用专属目录 (任意层命中即归属)。
         foreach (var s in segs)
-            if (VendorNames.TryGetValue(s, out var tool) && s.StartsWith('.'))
-                return tool;
+            if (KnownAppDirs.Contains(s))
+                return Friendly(s);
 
-        // AppData\{Local,Roaming}\<X> (或 Local\Packages\<家族>_xxx)。
+        // 2) AppData\{Local,Roaming}\<X> (或 Local\Packages\<家族>_xxx)。
         var ai = Array.FindIndex(segs, s => s.Equals("AppData", StringComparison.OrdinalIgnoreCase));
         if (ai >= 0 && ai + 2 < segs.Length)
         {
@@ -150,7 +178,7 @@ public sealed class AttributionEngine : IAttributionEngine
             return Friendly(after);
         }
 
-        // Program Files / Program Files (x86) / ProgramData 下第一段 = 厂商/应用。
+        // 3) Program Files / Program Files (x86) / ProgramData 下第一段 = 厂商/应用。
         var pi = Array.FindIndex(segs, s =>
             s.StartsWith("Program Files", StringComparison.OrdinalIgnoreCase) ||
             s.Equals("ProgramData", StringComparison.OrdinalIgnoreCase));

@@ -98,13 +98,23 @@ public sealed class RiskEngineTests
         Assert.Equal(RiskLevel.C, r.Level);
     }
 
-    // 真正来源不明 (非应用/安装/缓存) 才落 E。
+    // 真正来源不明 (非应用/安装/缓存/无归因) 才落 E。
     [Fact]
     public void Truly_unknown_path_yields_E()
     {
         var r = Assess(Node(@"D:\randomstuff\a8f3kd9", isDir: true), null);
         Assert.Equal(RiskLevel.E, r.Level);
         Assert.NotEmpty(r.EvidenceChain);          // 即便 E 也有观测证据 (SR-5)
+    }
+
+    // S-A: 有归因 (含路径推断) → C 并写明归属, 不再"无法判断"。
+    [Fact]
+    public void Attributed_path_yields_C_with_owner_not_E()
+    {
+        var attr = new[] { new AttributionCandidate(0, 0, "Rust / Cargo", 0.5, 1, Array.Empty<long>()) };
+        var r = Engine.Assess(Node(@"D:\dev\.cargo", isDir: true), Bundle(), null, attr);
+        Assert.Equal(RiskLevel.C, r.Level);                 // 非 E
+        Assert.Contains(r.Factors, f => f.Contains("Rust / Cargo"));   // 写明归属
     }
 
     // S5: 无规则命中但目录名表明可重建缓存 → B (从 E 救出), 但绝不可直删。

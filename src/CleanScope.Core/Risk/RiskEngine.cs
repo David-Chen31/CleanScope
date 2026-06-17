@@ -115,12 +115,15 @@ public sealed class RiskEngine : IRiskEngine
             return Build(node, evidence, RiskLevel.C, 50,
                 new[] { "位于程序安装/共享数据目录, 建议通过卸载程序移除, 勿直删" }, 0.6, false);
 
-        // 高置信归因可作为充分证据 (Phase 2 起生效); 否则证据不足 → E。
-        if (attributions.Any(a => a.Confidence >= 0.8))
-            return Build(node, evidence, RiskLevel.C, 50, new[] { "归因明确但无清理方式, 默认谨慎" }, 0.6, false);
+        // S-A 有主即非 E: 只要归因出任意候选 (含路径推断), 就不是"无法判断", 而是"归属 X, 谨慎"。
+        // "有主"却"无法判断"自相矛盾; 用户最关心"这归哪个软件", 此处把它从 E 救到 C 并写明归属。
+        var owner = attributions.OrderByDescending(a => a.Confidence).FirstOrDefault();
+        if (owner is not null)
+            return Build(node, evidence, RiskLevel.C, 50,
+                new[] { $"归属 {owner.AppName}, 暂无清理方式, 谨慎处理" }, Math.Max(0.4, owner.Confidence), false);
 
-        // Q4: 证据不足/来源不明 → E (无法判断, 不建议删除)。
-        return Build(node, evidence, RiskLevel.E, 85, new[] { "证据不足/来源不明, 无法判断" }, 0.2, false);
+        // Q4: 真正三无 (无规则/无归因/无缓存特征) → E (无法判断, 不建议删除)。
+        return Build(node, evidence, RiskLevel.E, 85, new[] { "无规则/无归因/无缓存特征, 无法判断" }, 0.2, false);
     }
 
     // 目录名 (叶子) 是否表明可重建缓存: 含 "cache" 或属已知缓存/临时/日志/崩溃名。

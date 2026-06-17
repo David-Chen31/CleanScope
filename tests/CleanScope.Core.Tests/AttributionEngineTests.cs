@@ -48,8 +48,13 @@ public sealed class AttributionEngineTests
     [InlineData(@"C:\Users\me\AppData\Roaming\Tencent\QQ", "腾讯系列 (QQ/微信等)")]
     [InlineData(@"C:\Users\me\AppData\Roaming\LarkShell\aha", "飞书 (Lark)")]
     [InlineData(@"C:\Users\me\AppData\Local\Notion\Cache", "Notion")]
-    [InlineData(@"C:\Program Files (x86)\Lenovo\LegionZone", "Lenovo")]
+    [InlineData(@"C:\Program Files (x86)\Lenovo\LegionZone", "联想 (Lenovo)")]
     [InlineData(@"C:\Users\me\.cargo\registry", "Rust / Cargo")]
+    [InlineData(@"C:\Users\me\.cargo", "Rust / Cargo")]
+    [InlineData(@"C:\Users\me\Miniconda3", "Miniconda (Python)")]
+    [InlineData(@"C:\Users\me\vscode-remote-wsl\stable", "VS Code Remote (WSL)")]
+    [InlineData(@"C:\Users\me\.lingma\vscode\sharedClientCache", "通义灵码 (Lingma)")]
+    [InlineData(@"C:\Program Files\NVIDIA Corporation\Nsight", "NVIDIA")]
     [InlineData(@"C:\Users\me\AppData\Local\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\x", "Microsoft.WindowsTerminal")]
     public void Path_pattern_infers_owner_when_no_facts(string path, string expected)
     {
