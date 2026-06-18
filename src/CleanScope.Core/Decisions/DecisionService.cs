@@ -77,7 +77,8 @@ public sealed class DecisionService : IDecisionService
             ActionKind: ActionKindOf(a),
             Command: a.RuleMatch?.Command,
             AiInvestigation: AiInvestigationOf(validatedAi),
-            Origin: OriginOf(a, validatedAi));
+            Origin: OriginOf(a, validatedAi),
+            IsDirectory: a.Node.IsDirectory);
     }
 
     // 统一"来源/归属"短标签 (保证非空, 落实"每个文件夹都知道是什么"):
@@ -86,9 +87,11 @@ public sealed class DecisionService : IDecisionService
     {
         var owner = OwnerOf(a, ai);
         if (!string.IsNullOrWhiteSpace(owner)) return owner!;
+        var path = a.Node.RealPath ?? a.Node.Path;
         if (a.Risk.IsContainer)
-            return Attribution.ContainerPurpose.Describe(a.Node.RealPath ?? a.Node.Path)?.Short ?? "容器目录";
-        return "未知来源";
+            return Attribution.ContainerPurpose.Describe(path)?.Short ?? "容器目录";
+        // 兜底: 凭目录名能确定的 (图片/.claude 等), 给确定性来源标签, 不再笼统"未知来源"。
+        return Attribution.NameHeuristics.Resolve(path)?.Origin ?? "未知来源";
     }
 
     // S-C: AI 对未知项的调查推测 (已校验), 作为独立、明确标注的"推测", 与规则/风险事实区分开。
@@ -157,8 +160,11 @@ public sealed class DecisionService : IDecisionService
         if (!string.IsNullOrWhiteSpace(ai?.UserFriendlyExplanation))
             return ai!.UserFriendlyExplanation;
 
+        var path = a.Node.RealPath ?? a.Node.Path;
         var factors = a.Risk.Factors.Count > 0 ? string.Join("; ", a.Risk.Factors) : null;
-        var purpose = Attribution.SystemOrigin.Resolve(a.Node.RealPath ?? a.Node.Path)?.Purpose;
+        // 用途优先级: 系统/共享路径用途 → 凭目录名可定的用途 (图片/.claude 等) → 无。
+        var purpose = Attribution.SystemOrigin.Resolve(path)?.Purpose
+                      ?? Attribution.NameHeuristics.Resolve(path)?.Purpose;
         if (purpose is null) return factors;
         return factors is null ? $"用途: {purpose}" : $"用途: {purpose}; {factors}";
     }

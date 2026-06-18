@@ -41,7 +41,8 @@ public static class ScanTreeBuilder
         isCleanable: !d.IsContainer && d.RiskLevel is RiskLevel.A or RiskLevel.B,
         origin: d.Origin ?? d.OwnerApp ?? "未知来源",
         purpose: d.Explanation,
-        recommendedAction: d.RecommendedAction);
+        recommendedAction: d.RecommendedAction,
+        isDirectory: d.IsDirectory);
 
     private static ScanTreeNode Synthesize(string targetPath, long totalSize, List<ScanTreeNode> roots)
     {

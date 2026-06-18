@@ -13,6 +13,12 @@
                 <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}"/>
             </StackPanel>
 
+            <!-- 操作结果反馈 (复制/打开/移入回收站) -->
+            <Border DockPanel.Dock="Bottom" Margin="0,8,0,0" Padding="10,6" CornerRadius="4" Background="#F2F5FA"
+                    Visibility="{Binding ActionStatus, Converter={StaticResource NotEmptyToVis}}">
+                <TextBlock Text="{Binding ActionStatus}" TextWrapping="Wrap"/>
+            </Border>
+
             <!-- 列标题: 让用户分清各列含义 (来源/归属、用途) -->
             <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
                 <Grid.ColumnDefinitions>
@@ -31,6 +37,13 @@
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <TreeView.Resources>
+                    <!-- E4: 选中行用浅蓝高亮 + 深色文字, 避免系统深蓝把灰色"用途"文字吞掉看不清。 -->
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#D6E6FB"/>
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#1A1A1A"/>
+                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#E7EEF8"/>
+                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#1A1A1A"/>
+                </TreeView.Resources>
                 <TreeView.ItemContainerStyle>
                     <Style TargetType="TreeViewItem">
                         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
@@ -40,6 +53,16 @@
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                         <Grid Margin="0,1">
+                            <Grid.ContextMenu>
+                                <!-- ContextMenu 不在同一可视树, 需经 PlacementTarget 取回行的 DataContext -->
+                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                    <MenuItem Header="复制路径" Command="{Binding CopyPathCommand}"/>
+                                    <MenuItem Header="复制用途 / 说明" Command="{Binding CopyPurposeCommand}"/>
+                                    <MenuItem Header="在资源管理器中打开位置" Command="{Binding OpenLocationCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="移入回收站（可还原）" Command="{Binding RecycleCommand}"/>
+                                </ContextMenu>
+                            </Grid.ContextMenu>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="320"/>
                                 <ColumnDefinition Width="120"/>
@@ -47,14 +70,29 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- 名称 + 四桶色点 -->
+                            <!-- 名称 + 四桶色点 + 文件/文件夹图标 -->
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                 <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,8,0"
                                         Background="{Binding BucketBrush}" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
-                                           ToolTip="{Binding Path}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Glyph}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Style.Triggers>
+                                                <!-- 已移入回收站: 删除线 + 置灰 -->
+                                                <DataTrigger Binding="{Binding IsDeleted}" Value="True">
+                                                    <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                    <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <TextBlock Text="  ✓可清理" Foreground="#1E7E34" FontSize="11" VerticalAlignment="Center"
                                            Visibility="{Binding IsCleanable, Converter={StaticResource BoolToVis}}"/>
+                                <TextBlock Text="  ♻已移入回收站" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center"
+                                           Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}"/>
                             </StackPanel>
 
                             <!-- 大小 + 占父目录比例条 -->

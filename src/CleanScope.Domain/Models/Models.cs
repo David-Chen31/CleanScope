@@ -66,7 +66,8 @@ public record DecisionItem(
     CleanupActionKind ActionKind = CleanupActionKind.None,  // S-D: 推荐动作类型
     string? Command = null,       // S-D: 命令型动作的官方命令
     string? AiInvestigation = null,  // S-C: AI 对"未知项"的调查推测 (已校验, 仅供参考, 不改判风险)
-    string? Origin = null);       // 统一"来源/归属"短标签: 应用 ▸ 系统来源 ▸ 容器角色 ▸ 未知 (保证非空)
+    string? Origin = null,        // 统一"来源/归属"短标签: 应用 ▸ 系统来源 ▸ 容器角色 ▸ 未知 (保证非空)
+    bool IsDirectory = true);     // 文件 vs 目录 (资源管理器树按此区分图标; 默认目录)
 
 /// <summary>
 /// 可清理类别聚合 (S3, 对标 CCleaner/BleachBit 的"按类别给可回收空间")。
@@ -109,7 +110,7 @@ public record CleanupSummary(
 public sealed class ScanTreeNode
 {
     public ScanTreeNode(string path, string name, long size, RiskLevel riskLevel, bool isContainer,
-        bool isCleanable, string origin, string? purpose, string recommendedAction)
+        bool isCleanable, string origin, string? purpose, string recommendedAction, bool isDirectory = true)
     {
         Path = path;
         Name = name;
@@ -120,6 +121,7 @@ public sealed class ScanTreeNode
         Origin = origin;
         Purpose = purpose;
         RecommendedAction = recommendedAction;
+        IsDirectory = isDirectory;
     }
 
     public string Path { get; }
@@ -127,6 +129,7 @@ public sealed class ScanTreeNode
     public long Size { get; }
     public RiskLevel RiskLevel { get; }
     public bool IsContainer { get; }
+    public bool IsDirectory { get; }      // 目录 vs 文件 (图标区分)
     public bool IsCleanable { get; }      // A/B 且非容器: 可移入回收站 (仍走闸门)
     public string Origin { get; }         // 来源/归属 (统一标签, 保证非空)
     public string? Purpose { get; }       // 用途/存在解释
