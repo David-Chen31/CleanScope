@@ -27,6 +27,7 @@ public sealed class ExplorerViewModel : ViewModelBase
         var root = new ExplorerNodeViewModel(session.Tree, session.Tree.Size) { IsExpanded = true };
         Roots.Add(root);
         Summary = $"{session.TargetPath} — 共 {Format.HumanSize(session.Tree.Size)}；" +
-                  "点击 ▸ 展开目录，旁边是大小与占比，按大小排序。";
+                  $"其中 ✓可清理约 {Format.HumanSize(session.TreeReclaimable)}（{session.TreeCleanableCount} 处，含各软件内部缓存）。" +
+                  "点击 ▸ 展开目录，旁是大小与占比，按大小排序。";
     }
 }

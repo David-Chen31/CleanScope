@@ -1,3 +1,4 @@
+using CleanScope.Application;
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
 using CleanScope.Reporting;
@@ -45,8 +46,14 @@ public sealed class ScanSession
     public int KeepCount => Rows.Count(r => r.Bucket == Common.CleanupBucket.Keep);
     public int ContainerCount => Rows.Count(r => r.Bucket == Common.CleanupBucket.Container);
 
-    /// <summary>可清理估算 (A+B, 去重; 仍建议用户确认/官方方式)。</summary>
+    /// <summary>可清理估算 (A+B, 去重; 仅 Top-N 行)。</summary>
     public long ReclaimableEstimate => Rows.Where(r => r.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(r => r.ExclusiveSize);
+
+    /// <summary>整盘可清理估算 (P2): 从**整棵目录树**去重累加, 含深埋各 app 的缓存; 无树则回退 Top-N。</summary>
+    public long TreeReclaimable => Tree is not null ? ScanTreeStats.CleanableTotal(Tree) : ReclaimableEstimate;
+
+    /// <summary>整盘可清理的"处数" (顶层可清理目录数)。</summary>
+    public int TreeCleanableCount => Tree is not null ? ScanTreeStats.CleanableCount(Tree) : CleanableCount;
 }
 
 /// <summary>导航宿主契约 (Shell 实现)。子页通过它跳转, 不互相直接耦合。</summary>

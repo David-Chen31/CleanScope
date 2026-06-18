@@ -90,7 +90,8 @@ try
     var aiMode = opts.Has("--ai-all") ? AiMode.Batch
         : opts.Has("--ai") ? AiMode.InvestigateUnknowns
         : AiMode.OnDemand;
-    var result = await useCase.ExecuteAsync(scanOptions, progress, default, aiMode);
+    // P1/P2: 顺带构建全盘目录树, 据此给"整盘可清理估算"(含深埋各 app 的缓存, 非仅 Top-N)。
+    var result = await useCase.ExecuteAsync(scanOptions, progress, default, aiMode, buildTree: true);
     sw.Stop();
     progress.Done();
 
@@ -188,7 +189,10 @@ static void PrintSummary(ScanAndAnalyzeResult result, TimeSpan elapsed)
             Console.WriteLine($"  {level}: {g.Count} 项, {HumanSize(g.Sum(i => i.ExclusiveSize))}");
     }
     var reclaimable = items.Where(i => i.RiskLevel is RiskLevel.A or RiskLevel.B).Sum(i => i.ExclusiveSize);
-    Console.WriteLine($"  可清理估算(A+B, 去重, 仍建议确认): {HumanSize(reclaimable)}");
+    Console.WriteLine($"  可清理估算(Top-N, 去重): {HumanSize(reclaimable)}");
+    if (result.Tree is not null)
+        Console.WriteLine($"  整盘可清理估算(目录树, 去重, 含各 app 内部缓存): " +
+            $"{HumanSize(ScanTreeStats.CleanableTotal(result.Tree))} （{ScanTreeStats.CleanableCount(result.Tree)} 处）");
 
     Console.WriteLine("\nTop 10 占用大头 (按真实占用/叶子贡献):");
     foreach (var (i, n) in items.OrderByDescending(i => i.ExclusiveSize).ThenByDescending(i => i.Size)

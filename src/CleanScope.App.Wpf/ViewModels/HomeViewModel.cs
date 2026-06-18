@@ -154,7 +154,8 @@ public sealed class HomeViewModel : ViewModelBase
         Session = session;
         HasResult = true;
         OverviewTotal = $"{Format.HumanSize(session.TotalSize)}（{session.FileCount} 项）";
-        OverviewReclaimable = Format.HumanSize(session.ReclaimableEstimate);
+        // 用整盘目录树估算 (含各 app 内部缓存), 比 Top-N 真实得多。
+        OverviewReclaimable = $"{Format.HumanSize(session.TreeReclaimable)}（约 {session.TreeCleanableCount} 处）";
         HighRiskCount = session.HighRiskCount;
         AiAdvice = session.AiCleanupAdvice;
         TopDirectories = session.Rows.OrderByDescending(r => r.Size).Take(10).ToList();

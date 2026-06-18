@@ -42,6 +42,23 @@ public sealed class ScanTreeBuilderTests
         Assert.Equal("磁盘根目录", root.Origin);
     }
 
+    [Fact] // P2: 整盘可清理 = 顶层可清理节点之和 (父子不重复计数)。
+    public void Cleanable_total_dedups_parent_child()
+    {
+        var items = new[]
+        {
+            Dir(@"C:\", 1000, container: true),
+            Dir(@"C:\AppCache", 600, RiskLevel.B),       // 可清理 (含其下子缓存)
+            Dir(@"C:\AppCache\Inner", 400, RiskLevel.B), // 其子也可清理 → 不再单独累加
+            Dir(@"C:\Data", 200, RiskLevel.C),           // 不可清理
+            Dir(@"C:\Data\Logs", 150, RiskLevel.B),      // 谨慎目录下的缓存 → 单独计入
+        };
+        var root = ScanTreeBuilder.Build(@"C:\", items, 1000);
+
+        Assert.Equal(600 + 150, ScanTreeStats.CleanableTotal(root));   // AppCache(600) + Data\Logs(150)
+        Assert.Equal(2, ScanTreeStats.CleanableCount(root));          // 两处顶层可清理
+    }
+
     [Fact] // 扫描目标不是节点本身时, 合成一个根把顶层挂上。
     public void Synthesizes_root_when_target_absent()
     {
