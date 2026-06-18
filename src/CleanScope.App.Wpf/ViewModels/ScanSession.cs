@@ -7,17 +7,22 @@ namespace CleanScope.App.Wpf.ViewModels;
 /// <summary>一次扫描的会话结果 (跨页共享: 概览 / 列表 / 详情 / 报告)。只读快照。</summary>
 public sealed class ScanSession
 {
-    public ScanSession(string targetPath, ScanReport report, IReadOnlyList<FileRowViewModel> rows)
+    public ScanSession(string targetPath, ScanReport report, IReadOnlyList<FileRowViewModel> rows,
+        ScanTreeNode? tree = null)
     {
         TargetPath = targetPath;
         Report = report;
         Rows = rows;
+        Tree = tree;
         CleanupCategories = CleanupAggregator.Aggregate(report.Items);
     }
 
     public string TargetPath { get; }
     public ScanReport Report { get; }
     public IReadOnlyList<FileRowViewModel> Rows { get; }
+
+    /// <summary>全盘目录树 (P1): 资源管理器式浏览; 无树时 null。</summary>
+    public ScanTreeNode? Tree { get; }
 
     /// <summary>整盘 AI 参谋文本 (S-H); 透传自报告。无 AI / 未生成则为 null。</summary>
     public string? AiCleanupAdvice => Report.AiCleanupAdvice;
@@ -54,4 +59,5 @@ public interface INavigationHost
     void ShowDetail(FileRowViewModel row);
     void ShowReport();
     void ShowBySoftware();
+    void ShowExplorer();
 }

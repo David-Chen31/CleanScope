@@ -8,7 +8,8 @@ namespace CleanScope.Application;
 public sealed record ScanAndAnalyzeResult(
     ScanReport Report,
     IReadOnlyList<DecisionItem> Decisions,
-    IReadOnlyList<FileAnalysis> Analyses);
+    IReadOnlyList<FileAnalysis> Analyses,
+    ScanTreeNode? Tree = null);   // P1: 全盘目录树 (仅 buildTree 时构建; 供资源管理器浏览)
 
 /// <summary>
 /// 闭环编排 (架构§3 主干): 扫描 → 证据 → 规则 → 归因 → 风险 → 决策 → 报告数据。
@@ -50,14 +51,21 @@ public sealed class ScanAndAnalyzeUseCase
 
     public async Task<ScanAndAnalyzeResult> ExecuteAsync(
         ScanOptions options, IProgress<ScanProgress>? progress = null, CancellationToken ct = default,
-        AiMode aiMode = AiMode.OnDemand, int maxInvestigations = 30)
+        AiMode aiMode = AiMode.OnDemand, int maxInvestigations = 30,
+        bool buildTree = false, long treeMinSize = 1_000_000)
     {
         ArgumentNullException.ThrowIfNull(options);
         var startedAt = DateTime.UtcNow;
 
         // 流式计数全量节点 (文件/目录数), 同时拿回 TopN 供分析。
+        // P1: buildTree 时顺带收集"够大的目录节点" (≥ treeMinSize) 以构建全盘目录树, 小目录滚入父级余量。
         long observed = 0;
-        var counter = new SyncProgress<FileNode>(_ => observed++);
+        var dirNodes = buildTree ? new List<FileNode>() : null;
+        var counter = new SyncProgress<FileNode>(n =>
+        {
+            observed++;
+            if (dirNodes is not null && n.IsDirectory && n.Size >= treeMinSize) dirNodes.Add(n);
+        });
         var nodes = await _scan.ScanAsync(options, counter, progress, ct);
 
         // 裁决链 (纯本地, 快): 证据→规则→归因→风险。AI 不在此串行 (S6: 否则百项十几分钟)。
@@ -90,7 +98,27 @@ public sealed class ScanAndAnalyzeUseCase
         var task = new ScanTask(0, options.TargetPath, options.Mode, ScanStatus.Completed,
             startedAt, DateTime.UtcNow, totalSize, observed, _appVersion);
 
-        return new ScanAndAnalyzeResult(new ScanReport(task, decisions), decisions, analyses);
+        // P1: 用轻量分类 (空证据, 无 I/O) 对收集到的目录节点跑裁决链 → 全盘目录树。
+        var tree = dirNodes is null ? null : BuildTree(dirNodes, options.TargetPath, totalSize, ct);
+
+        return new ScanAndAnalyzeResult(new ScanReport(task, decisions), decisions, analyses, tree);
+    }
+
+    // P1: 对目录节点做"路径级"分类 (复用规则/归因/风险, 但用空证据包 → 不做逐节点元数据/签名 I/O),
+    // 再交决策汇总, 最后按路径建树。逐文件证据留到点开详情时按需做。
+    private ScanTreeNode BuildTree(List<FileNode> dirNodes, string targetPath, long totalSize, CancellationToken ct)
+    {
+        var analyses = new List<FileAnalysis>(dirNodes.Count);
+        foreach (var node in dirNodes)
+        {
+            ct.ThrowIfCancellationRequested();
+            var bundle = new EvidenceBundle(node.Id, null, Array.Empty<Evidence>());
+            var ruleMatch = _rules.Match(node, bundle);
+            var attributions = _attribution.Attribute(node, bundle, ruleMatch);
+            var risk = _risk.Assess(node, bundle, ruleMatch, attributions);
+            analyses.Add(new FileAnalysis(node, bundle, ruleMatch, attributions, risk, Explanation: null));
+        }
+        return ScanTreeBuilder.Build(targetPath, _decision.Summarize(analyses), totalSize);
     }
 
     // AI 兜底归属的置信度上限 (S-G): 刻意 < 0.5 低置信门槛, 永不驱动风险/删除, 仅供展示与"按软件"分组。

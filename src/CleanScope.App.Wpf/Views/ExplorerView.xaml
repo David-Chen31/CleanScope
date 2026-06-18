@@ -1,0 +1,66 @@
+<UserControl x:Class="CleanScope.App.Wpf.Views.ExplorerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:CleanScope.App.Wpf.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DataContext="{d:DesignInstance vm:ExplorerViewModel}"
+             mc:Ignorable="d" d:DesignWidth="900">
+    <Border Style="{StaticResource Cards}">
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <TextBlock Text="资源管理器（整盘目录树）" Style="{StaticResource H2}"/>
+                <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}"/>
+            </StackPanel>
+
+            <TreeView ItemsSource="{Binding Roots}" BorderThickness="0" Background="Transparent"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                        <Setter Property="Padding" Value="0,2"/>
+                    </Style>
+                </TreeView.ItemContainerStyle>
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <Grid Margin="0,1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="320"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 名称 + 四桶色点 -->
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,8,0"
+                                        Background="{Binding BucketBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding Path}" FontWeight="SemiBold"/>
+                                <TextBlock Text="  ✓可清理" Foreground="#1E7E34" FontSize="11" VerticalAlignment="Center"
+                                           Visibility="{Binding IsCleanable, Converter={StaticResource BoolToVis}}"/>
+                            </StackPanel>
+
+                            <!-- 大小 + 占父目录比例条 -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0">
+                                <TextBlock Text="{Binding SizeText}" HorizontalAlignment="Right" FontFamily="Consolas"/>
+                                <Border Height="4" CornerRadius="2" Background="#E6EAF0" Margin="0,2,0,0">
+                                    <Border HorizontalAlignment="Left" CornerRadius="2" Background="{Binding BucketBrush}"
+                                            Width="{Binding FractionOfParent, Converter={StaticResource FractionToWidth}, ConverterParameter=108}"/>
+                                </Border>
+                            </StackPanel>
+
+                            <TextBlock Grid.Column="2" Text="{Binding Origin}" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Purpose}" Margin="6,0"/>
+                            <TextBlock Grid.Column="3" Text="{Binding Purpose}" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding RecommendedAction}"
+                                       Foreground="{StaticResource Muted}" Margin="6,0"/>
+                        </Grid>
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+        </DockPanel>
+    </Border>
+</UserControl>

@@ -113,7 +113,8 @@ public sealed class HomeViewModel : ViewModelBase
 
             // AI 配置后, 扫描末尾对无主未知项做调查/归因兜底 (S-C/S-G, 上限受控); 否则秒级返回。
             var aiMode = _services.AiEnabled ? AiMode.InvestigateUnknowns : AiMode.OnDemand;
-            var result = await _services.UseCase.ExecuteAsync(options, progress, default, aiMode);
+            // P1: buildTree 让扫描顺带产出全盘目录树, 供资源管理器浏览。
+            var result = await _services.UseCase.ExecuteAsync(options, progress, default, aiMode, buildTree: true);
 
             // 决议项与完整分析按路径关联, 构造行 VM。
             var byPath = result.Analyses.ToDictionary(a => a.Node.Path, a => a);
@@ -130,7 +131,7 @@ public sealed class HomeViewModel : ViewModelBase
                 if (!string.IsNullOrWhiteSpace(advice)) report = report with { AiCleanupAdvice = advice };
             }
 
-            var session = new ScanSession(TargetPath, report, rows);
+            var session = new ScanSession(TargetPath, report, rows, result.Tree);
             _host.LoadSession(session);   // 触发各页加载 (含本页 OnSessionLoaded)
             Status = $"扫描完成：{rows.Count} 项，用时已计入报告。点击「查看清单」浏览明细。";
         }

@@ -101,6 +101,43 @@ public record CleanupSummary(
     IReadOnlyList<SoftwareUsage> Software,
     IReadOnlyList<CleanupCategory> Categories);
 
+/// <summary>
+/// 全盘目录树节点 (P1: 资源管理器式浏览)。<paramref name="Size"/>=聚合大小; Children 已按大小降序。
+/// <see cref="Remainder"/>=直接文件与被剪枝小目录的余量。带**轻量路径级分类** (来源/用途/风险/可清理),
+/// 不含逐文件证据 (那是点开详情时按需做的)。
+/// </summary>
+public sealed class ScanTreeNode
+{
+    public ScanTreeNode(string path, string name, long size, RiskLevel riskLevel, bool isContainer,
+        bool isCleanable, string origin, string? purpose, string recommendedAction)
+    {
+        Path = path;
+        Name = name;
+        Size = size;
+        RiskLevel = riskLevel;
+        IsContainer = isContainer;
+        IsCleanable = isCleanable;
+        Origin = origin;
+        Purpose = purpose;
+        RecommendedAction = recommendedAction;
+    }
+
+    public string Path { get; }
+    public string Name { get; }
+    public long Size { get; }
+    public RiskLevel RiskLevel { get; }
+    public bool IsContainer { get; }
+    public bool IsCleanable { get; }      // A/B 且非容器: 可移入回收站 (仍走闸门)
+    public string Origin { get; }         // 来源/归属 (统一标签, 保证非空)
+    public string? Purpose { get; }       // 用途/存在解释
+    public string RecommendedAction { get; }
+
+    public List<ScanTreeNode> Children { get; } = new();
+    public bool HasChildren => Children.Count > 0;
+    public long ChildrenSize => Children.Sum(c => c.Size);
+    public long Remainder => Math.Max(0, Size - ChildrenSize);  // 直接文件 + 被剪枝的小子目录
+}
+
 /// <summary>扫描报告 (报告导出输入)。<paramref name="AiCleanupAdvice"/> 为可选的整盘 AI 参谋文本 (S-H)。</summary>
 public record ScanReport(
     ScanTask Task,

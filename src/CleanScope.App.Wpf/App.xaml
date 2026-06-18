@@ -13,11 +13,13 @@
             <conv:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis"/>
             <conv:FactToBrushConverter x:Key="FactToBrush"/>
             <conv:BucketToBrushConverter x:Key="BucketToBrush"/>
+            <conv:FractionToWidthConverter x:Key="FractionToWidth"/>
 
             <!-- VM → View 映射 (Shell 的 ContentControl 依此渲染) -->
             <DataTemplate DataType="{x:Type vm:HomeViewModel}"><views:HomeView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:FileListViewModel}"><views:FileListView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:SpaceMapViewModel}"><views:SpaceMapView/></DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ExplorerViewModel}"><views:ExplorerView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:SpaceBySoftwareViewModel}"><views:SpaceBySoftwareView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:FileDetailViewModel}"><views:FileDetailView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:ReportViewModel}"><views:ReportView/></DataTemplate>

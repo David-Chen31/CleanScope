@@ -62,6 +62,20 @@ public sealed class NotEmptyToVisibilityConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>占比 (0–1) × 参数(最大像素宽) → 大小条宽度 (P1 资源管理器)。</summary>
+public sealed class FractionToWidthConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var frac = value is double d ? d : 0;
+        var max = double.TryParse(parameter as string, NumberStyles.Float, CultureInfo.InvariantCulture, out var m) ? m : 100;
+        return Math.Max(0, Math.Min(1, frac)) * max;
+    }
+
+    public object ConvertBack(object value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>四桶 → 背景色 (容器/可清理/谨慎/勿动)。</summary>
 public sealed class BucketToBrushConverter : IValueConverter
 {

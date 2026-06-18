@@ -67,6 +67,32 @@ public sealed class ScanAndAnalyzeUseCaseTests : IDisposable
         Assert.All(result.Decisions, d => Assert.False(string.IsNullOrWhiteSpace(d.Explanation)));
     }
 
+    [Fact] // P1: buildTree 产出全盘目录树 (根 + 子目录, 带分类); 不开则为 null。
+    public async Task Build_tree_produces_classified_directory_tree()
+    {
+        var off = await BuildUseCase().ExecuteAsync(new ScanOptions(_root, 50, ScanMode.Normal));
+        Assert.Null(off.Tree);   // 默认不建树
+
+        var on = await BuildUseCase().ExecuteAsync(
+            new ScanOptions(_root, 50, ScanMode.Normal), buildTree: true, treeMinSize: 1);
+
+        Assert.NotNull(on.Tree);
+        Assert.Equal(_root, on.Tree!.Path);
+        Assert.NotEmpty(on.Tree.Children);
+        // Cache 子目录在树中, 且命中规则 → 标可清理。
+        var cache = Flatten(on.Tree).Single(n => n.Path == Path.Combine(_root, "Cache"));
+        Assert.True(cache.IsCleanable);
+        // 每个节点都有"来源"(非空)。
+        Assert.All(Flatten(on.Tree), n => Assert.False(string.IsNullOrWhiteSpace(n.Origin)));
+    }
+
+    private static IEnumerable<ScanTreeNode> Flatten(ScanTreeNode n)
+    {
+        yield return n;
+        foreach (var c in n.Children)
+            foreach (var d in Flatten(c)) yield return d;
+    }
+
     [Fact]
     public async Task Report_renders_to_markdown_end_to_end()
     {

@@ -12,6 +12,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     private readonly HomeViewModel _home;
     private readonly FileListViewModel _list;
     private readonly SpaceMapViewModel _map;
+    private readonly ExplorerViewModel _explorer;
     private readonly SpaceBySoftwareViewModel _software;
     private readonly ReportViewModel _report;
     private readonly FileDetailViewModel _detail;
@@ -22,6 +23,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         _home = new HomeViewModel(services, this);
         _list = new FileListViewModel(this);
         _map = new SpaceMapViewModel(this);
+        _explorer = new ExplorerViewModel();
         _software = new SpaceBySoftwareViewModel(this);
         _report = new ReportViewModel(services, this);
         _detail = new FileDetailViewModel(services, this);
@@ -29,6 +31,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         GoHomeCommand = new RelayCommand(ShowHome);
         GoListCommand = new RelayCommand(ShowList, () => Session is not null);
         GoMapCommand = new RelayCommand(ShowMap, () => Session is not null);
+        GoExplorerCommand = new RelayCommand(ShowExplorer, () => Session is not null);
         GoBySoftwareCommand = new RelayCommand(ShowBySoftware, () => Session is not null);
         GoReportCommand = new RelayCommand(ShowReport, () => Session is not null);
 
@@ -52,6 +55,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public RelayCommand GoHomeCommand { get; }
     public RelayCommand GoListCommand { get; }
     public RelayCommand GoMapCommand { get; }
+    public RelayCommand GoExplorerCommand { get; }
     public RelayCommand GoBySoftwareCommand { get; }
     public RelayCommand GoReportCommand { get; }
 
@@ -60,11 +64,13 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         Session = session;
         _list.Load(session);
         _map.Load(session);
+        _explorer.Load(session);
         _software.Load(session);
         _report.Load(session);
         _home.OnSessionLoaded(session);
         GoListCommand.RaiseCanExecuteChanged();
         GoMapCommand.RaiseCanExecuteChanged();
+        GoExplorerCommand.RaiseCanExecuteChanged();
         GoBySoftwareCommand.RaiseCanExecuteChanged();
         GoReportCommand.RaiseCanExecuteChanged();
     }
@@ -72,6 +78,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public void ShowHome() => CurrentView = _home;
     public void ShowList() => CurrentView = _list;
     public void ShowMap() => CurrentView = _map;
+    public void ShowExplorer() => CurrentView = _explorer;
     public void ShowBySoftware() => CurrentView = _software;
     public void ShowReport() => CurrentView = _report;
 
