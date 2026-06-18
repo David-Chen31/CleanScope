@@ -12,6 +12,11 @@ public sealed class ScanTreeBuilderTests
         new(path, size, null, risk, "建议", "说明", new long[] { 1 }, ExclusiveSize: size,
             IsContainer: container, Origin: origin);
 
+    private static DecisionItem File(string path, long size, RiskLevel risk = RiskLevel.C,
+        string? origin = null) =>
+        new(path, size, null, risk, "建议", "说明", new long[] { 1 }, ExclusiveSize: size,
+            IsContainer: false, Origin: origin);
+
     [Fact]
     public void Builds_hierarchy_sorted_by_size_with_cleanable_flag()
     {
@@ -57,6 +62,26 @@ public sealed class ScanTreeBuilderTests
 
         Assert.Equal(600 + 150, ScanTreeStats.CleanableTotal(root));   // AppCache(600) + Data\Logs(150)
         Assert.Equal(2, ScanTreeStats.CleanableCount(root));          // 两处顶层可清理
+    }
+
+    [Fact] // bug 修复: 大文件作为叶子挂到父目录下, 让"只装一个大文件的目录"在树里可见且有内容 (而非整条等大余量)。
+    public void Attaches_large_files_as_leaf_children()
+    {
+        var items = new[]
+        {
+            Dir(@"C:\", 700, container: true),
+            Dir(@"C:\cli-plugins", 690, origin: "Docker"),
+            File(@"C:\cli-plugins\docker-buildx.exe", 690, origin: "Docker"),
+        };
+        var root = ScanTreeBuilder.Build(@"C:\", items, totalSize: 700);
+
+        var pluginDir = root.Children.Single(c => c.Path == @"C:\cli-plugins");
+        var file = Assert.Single(pluginDir.Children);
+        Assert.Equal(@"C:\cli-plugins\docker-buildx.exe", file.Path);
+        Assert.Equal("docker-buildx.exe", file.Name);
+        Assert.False(file.IsContainer);
+        Assert.False(file.HasChildren);                 // 文件是叶子, 不可再展开
+        Assert.Equal(0, pluginDir.Remainder);           // 子项已覆盖全部大小 → 不再冒出"等大余量"
     }
 
     [Fact] // 扫描目标不是节点本身时, 合成一个根把顶层挂上。

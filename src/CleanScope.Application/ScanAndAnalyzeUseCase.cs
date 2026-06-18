@@ -58,13 +58,15 @@ public sealed class ScanAndAnalyzeUseCase
         var startedAt = DateTime.UtcNow;
 
         // 流式计数全量节点 (文件/目录数), 同时拿回 TopN 供分析。
-        // P1: buildTree 时顺带收集"够大的目录节点" (≥ treeMinSize) 以构建全盘目录树, 小目录滚入父级余量。
+        // P1: buildTree 时顺带收集"够大的节点" (≥ treeMinSize) 以构建全盘目录树。
+        // 目录与大文件都收 —— 否则一个只装一个大文件的目录 (如 cli-plugins\docker-buildx.exe) 在树里
+        // 看不到任何子项, 只剩一条与自身等大的"余量", 既无意义又无归属 (用户反馈的 bug 根因)。
         long observed = 0;
-        var dirNodes = buildTree ? new List<FileNode>() : null;
+        var treeNodes = buildTree ? new List<FileNode>() : null;
         var counter = new SyncProgress<FileNode>(n =>
         {
             observed++;
-            if (dirNodes is not null && n.IsDirectory && n.Size >= treeMinSize) dirNodes.Add(n);
+            if (treeNodes is not null && n.Size >= treeMinSize) treeNodes.Add(n);
         });
         var nodes = await _scan.ScanAsync(options, counter, progress, ct);
 
@@ -98,18 +100,18 @@ public sealed class ScanAndAnalyzeUseCase
         var task = new ScanTask(0, options.TargetPath, options.Mode, ScanStatus.Completed,
             startedAt, DateTime.UtcNow, totalSize, observed, _appVersion);
 
-        // P1: 用轻量分类 (空证据, 无 I/O) 对收集到的目录节点跑裁决链 → 全盘目录树。
-        var tree = dirNodes is null ? null : BuildTree(dirNodes, options.TargetPath, totalSize, ct);
+        // P1: 用轻量分类 (空证据, 无 I/O) 对收集到的目录/文件节点跑裁决链 → 全盘目录树。
+        var tree = treeNodes is null ? null : BuildTree(treeNodes, options.TargetPath, totalSize, ct);
 
         return new ScanAndAnalyzeResult(new ScanReport(task, decisions), decisions, analyses, tree);
     }
 
-    // P1: 对目录节点做"路径级"分类 (复用规则/归因/风险, 但用空证据包 → 不做逐节点元数据/签名 I/O),
+    // P1: 对目录/文件节点做"路径级"分类 (复用规则/归因/风险, 但用空证据包 → 不做逐节点元数据/签名 I/O),
     // 再交决策汇总, 最后按路径建树。逐文件证据留到点开详情时按需做。
-    private ScanTreeNode BuildTree(List<FileNode> dirNodes, string targetPath, long totalSize, CancellationToken ct)
+    private ScanTreeNode BuildTree(List<FileNode> treeNodes, string targetPath, long totalSize, CancellationToken ct)
     {
-        var analyses = new List<FileAnalysis>(dirNodes.Count);
-        foreach (var node in dirNodes)
+        var analyses = new List<FileAnalysis>(treeNodes.Count);
+        foreach (var node in treeNodes)
         {
             ct.ThrowIfCancellationRequested();
             var bundle = new EvidenceBundle(node.Id, null, Array.Empty<Evidence>());

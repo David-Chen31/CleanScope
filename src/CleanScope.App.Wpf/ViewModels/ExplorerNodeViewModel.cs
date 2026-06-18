@@ -60,21 +60,25 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
         foreach (var c in _node.Children)
             Children.Add(new ExplorerNodeViewModel(c, _node.Size));
 
-        // 余量 (直接文件 + 被剪枝的小目录): 显著才显示, 避免噪点。
+        // 余量 (直接文件 + 被剪枝的小目录): 仅当确有展开出的真实子项、且余量显著时才显示, 避免噪点。
+        // 没有真实子项时不显示余量 —— 否则会冒出一条与本目录等大、可被反复展开的"（其它文件/小目录）"。
         var r = _node.Remainder;
-        if (r > 1_000_000 && r > _node.Size * 0.02)
-            Children.Add(Remainder(_node.Path, r, _node.Size));
+        if (_node.HasChildren && r > 1_000_000 && r > _node.Size * 0.02)
+            Children.Add(Remainder(r, _node.Size, _node.Origin));
     }
 
     private static readonly ScanTreeNode PlaceholderNode =
         new("", "…", 0, Domain.Enums.RiskLevel.C, false, false, "", null, "");
     private static ExplorerNodeViewModel Placeholder => new(PlaceholderNode, 1);
 
-    private static ExplorerNodeViewModel Remainder(string path, long size, long parentSize)
+    // 余量节点恒为叶子 (无子项 → 不可展开), 来源继承父目录 (这些文件属于同一目录, 归属一致)。
+    private static ExplorerNodeViewModel Remainder(long size, long parentSize, string parentOrigin)
     {
-        var node = new ScanTreeNode(path, "（其它文件 / 小目录）", size, Domain.Enums.RiskLevel.C,
-            isContainer: false, isCleanable: false, origin: "—", purpose: "未单独细分的直接文件与较小子目录",
-            recommendedAction: "展开所在目录在资源管理器中查看");
+        var node = new ScanTreeNode("", "（本目录其它文件）", size, Domain.Enums.RiskLevel.C,
+            isContainer: false, isCleanable: false,
+            origin: string.IsNullOrWhiteSpace(parentOrigin) ? "未知来源" : parentOrigin,
+            purpose: "本目录下未单独列出的直接文件与小于阈值的子目录",
+            recommendedAction: "在系统资源管理器中打开本目录查看");
         return new ExplorerNodeViewModel(node, parentSize) { IsRemainder = true };
     }
 }
