@@ -70,6 +70,8 @@ public sealed class FileRowViewModel
     public string RiskText => RiskLevel.ToString();
     public string RiskMeaning => Format.RiskMeaning(RiskLevel);
     public string? OwnerApp { get; }
+    /// <summary>统一"来源/归属"短标签 (列表列): 应用 ▸ 系统来源 ▸ 容器角色 ▸ 未知。保证非空。</summary>
+    public string Origin => Item.Origin ?? OwnerApp ?? "未知来源";
     public string RecommendedAction { get; }
     public string? Explanation { get; }
 

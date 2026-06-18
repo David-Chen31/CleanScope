@@ -62,6 +62,9 @@ public sealed class ScanAndAnalyzeUseCaseTests : IDisposable
 
         // 每项证据链非空 (SR-5)
         Assert.All(result.Decisions, d => Assert.NotEmpty(d.EvidenceChain));
+        // 不变式: 每个文件/目录都有"存在解释"—— 来源与说明都非空 (没有"未知到底是什么"的项)。
+        Assert.All(result.Decisions, d => Assert.False(string.IsNullOrWhiteSpace(d.Origin)));
+        Assert.All(result.Decisions, d => Assert.False(string.IsNullOrWhiteSpace(d.Explanation)));
     }
 
     [Fact]

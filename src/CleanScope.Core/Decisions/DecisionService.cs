@@ -76,7 +76,19 @@ public sealed class DecisionService : IDecisionService
             IsContainer: a.Risk.IsContainer,
             ActionKind: ActionKindOf(a),
             Command: a.RuleMatch?.Command,
-            AiInvestigation: AiInvestigationOf(validatedAi));
+            AiInvestigation: AiInvestigationOf(validatedAi),
+            Origin: OriginOf(a, validatedAi));
+    }
+
+    // 统一"来源/归属"短标签 (保证非空, 落实"每个文件夹都知道是什么"):
+    // 归属应用 (含系统来源/AI 推测, 经 OwnerOf) ▸ 容器角色 ▸ 容器兜底 ▸ 未知来源。
+    private static string OriginOf(FileAnalysis a, AiExplanation? ai)
+    {
+        var owner = OwnerOf(a, ai);
+        if (!string.IsNullOrWhiteSpace(owner)) return owner!;
+        if (a.Risk.IsContainer)
+            return Attribution.ContainerPurpose.Describe(a.Node.RealPath ?? a.Node.Path)?.Short ?? "容器目录";
+        return "未知来源";
     }
 
     // S-C: AI 对未知项的调查推测 (已校验), 作为独立、明确标注的"推测", 与规则/风险事实区分开。
@@ -130,6 +142,8 @@ public sealed class DecisionService : IDecisionService
     // 规则权威优先 → 已校验 AI → 按风险默认。
     private static string RecommendedActionOf(FileAnalysis a, AiExplanation? ai)
     {
+        // 容器只浏览不处理: 给贴切动作, 而非"建议先备份"。
+        if (a.Risk.IsContainer) return "展开按子目录查看，勿整体处理";
         if (!string.IsNullOrWhiteSpace(a.RuleMatch?.RecommendedAction))
             return a.RuleMatch!.RecommendedAction!;
         if (!string.IsNullOrWhiteSpace(ai?.RecommendedAction))

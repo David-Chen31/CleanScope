@@ -178,7 +178,7 @@ public sealed class MarkdownReportExporter : IReportExporter
         sb.AppendLine("| 路径 | 大小 | 归属 | 风险 | 建议 | 说明 |");
         sb.AppendLine("|---|---|---|---|---|---|");
         foreach (var i in items)
-            sb.AppendLine($"| `{P(i.Path)}` | {Size(i.Size)} | {Cell(i.OwnerApp)} | {RiskLabel(i.RiskLevel)} | {Cell(i.RecommendedAction)} | {Cell(i.Explanation)} |");
+            sb.AppendLine($"| `{P(i.Path)}` | {Size(i.Size)} | {Cell(i.Origin ?? i.OwnerApp)} | {RiskLabel(i.RiskLevel)} | {Cell(i.RecommendedAction)} | {Cell(i.Explanation)} |");
         sb.AppendLine();
     }
 

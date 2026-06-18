@@ -111,10 +111,14 @@ public sealed class RiskEngine : IRiskEngine
         }
 
         // S-B 顶层容器目录: 仅供浏览, 不作删除对象 (标 IsContainer)。放在其它启发之前。
+        // 每个容器给具体"存在解释"(ContainerPurpose), 不再是笼统一句。
         if (node.IsDirectory && ContainerRx.IsMatch(path))
+        {
+            var desc = Attribution.ContainerPurpose.Describe(path)?.Full ?? "顶层容器目录, 内含多个程序的数据";
             return Build(node, evidence, RiskLevel.C, 40,
-                new[] { "顶层容器目录: 内含多个程序的数据, 请展开按子目录判断, 不要整体处理" }, 0.5,
+                new[] { desc, "请展开按子目录判断, 不要整体处理" }, 0.5,
                 canDelete: false, isContainer: true);
+        }
 
         // 无规则命中: 路径启发。
         if (PersonalDataRx.IsMatch(path))

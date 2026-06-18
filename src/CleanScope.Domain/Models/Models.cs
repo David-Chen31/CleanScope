@@ -65,7 +65,8 @@ public record DecisionItem(
     bool IsContainer = false,     // 顶层容器目录 (仅浏览, 不进风险/可清理统计)
     CleanupActionKind ActionKind = CleanupActionKind.None,  // S-D: 推荐动作类型
     string? Command = null,       // S-D: 命令型动作的官方命令
-    string? AiInvestigation = null);  // S-C: AI 对"未知项"的调查推测 (已校验, 仅供参考, 不改判风险)
+    string? AiInvestigation = null,  // S-C: AI 对"未知项"的调查推测 (已校验, 仅供参考, 不改判风险)
+    string? Origin = null);       // 统一"来源/归属"短标签: 应用 ▸ 系统来源 ▸ 容器角色 ▸ 未知 (保证非空)
 
 /// <summary>
 /// 可清理类别聚合 (S3, 对标 CCleaner/BleachBit 的"按类别给可回收空间")。

@@ -37,7 +37,7 @@ public sealed class CsvReportExporter : IReportExporter
               .Append(i.Size.ToString(CultureInfo.InvariantCulture)).Append(',')
               .Append(i.ExclusiveSize.ToString(CultureInfo.InvariantCulture)).Append(',')
               .Append(Q(i.RiskLevel.ToString())).Append(',')
-              .Append(Q(i.OwnerApp)).Append(',')
+              .Append(Q(i.Origin ?? i.OwnerApp)).Append(',')
               .Append(Q(i.Category)).Append(',')
               .Append(Q(i.RecommendedAction)).Append('\n');
         }

@@ -28,6 +28,41 @@ public sealed class DecisionServiceTests
             Risk(level, chain, factors),
             ai);
 
+    // 容器分析 (IsContainer=true) + 指定来源短标签所需因素。
+    private static FileAnalysis Container(string path, long size, params string[] factors) =>
+        new(Node(path, size), new EvidenceBundle(0, null, Array.Empty<Evidence>()), null,
+            Array.Empty<AttributionCandidate>(),
+            new RiskAssessment(0, 0, RiskLevel.C, 40, factors, new[] { 1L }, false, 0.5, default, IsContainer: true),
+            null);
+
+    [Fact] // 容器: 有"存在解释"——来源短标签 + 贴切建议 + 非空说明; 无空白。
+    public void Container_gets_origin_purpose_and_browse_action()
+    {
+        var item = Svc.Summarize(new[]
+        {
+            Container(@"C:\Users\28170\AppData\Roaming", 1000, "用户应用程序的配置与个性化数据 (随账户在域内漫游)"),
+        }).Single();
+
+        Assert.Equal("应用配置·漫游", item.Origin);                       // 来源/归属列不再空白
+        Assert.Equal("展开按子目录查看，勿整体处理", item.RecommendedAction); // 贴切动作
+        Assert.False(string.IsNullOrWhiteSpace(item.Explanation));         // 说明非空
+        Assert.Contains("漫游", item.Explanation!);
+    }
+
+    [Fact] // 不变式: 每个项的 Origin 与 Explanation 都非空 (没有"无解释"的文件)。
+    public void Every_item_has_nonempty_origin_and_explanation()
+    {
+        var items = Svc.Summarize(new[]
+        {
+            Container(@"C:\", 9, "磁盘根目录"),
+            Analysis(@"C:\Users\me\AppData\Local\App\Cache", 100, RiskLevel.B, new[] { 1L }, factors: "缓存"),
+            Analysis(@"C:\weird\unknown", 50, RiskLevel.E, new[] { 2L }, factors: "无规则/无归因"),
+        });
+
+        Assert.All(items, i => Assert.False(string.IsNullOrWhiteSpace(i.Origin)));
+        Assert.All(items, i => Assert.False(string.IsNullOrWhiteSpace(i.Explanation)));
+    }
+
     [Fact]
     public void Groups_by_risk_then_size_descending()
     {
