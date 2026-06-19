@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using CleanScope.App.Wpf.Common;
 using CleanScope.App.Wpf.Composition;
@@ -20,6 +21,7 @@ public interface IExplorerActions
     Task InvestigateAsync(ExplorerNodeViewModel node);
     Task MigrateAsync(ExplorerNodeViewModel node);
     Task OpenRecycleBinAsync();
+    Task AddIgnoreAsync(ExplorerNodeViewModel node);
 }
 
 /// <summary>
@@ -30,10 +32,26 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
 {
     private readonly AppServices _services;
     private ScanSession? _session;
+    private readonly List<ExplorerNodeViewModel> _flatNodes = new();   // 当前扁平视图中已订阅勾选变化的节点
 
-    public ExplorerViewModel(AppServices services) => _services = services;
+    public ExplorerViewModel(AppServices services)
+    {
+        _services = services;
+        SelectAllCommand = new RelayCommand(() => SetAllSelected(true), () => _showCleanableOnly && !_busy);
+        SelectNoneCommand = new RelayCommand(() => SetAllSelected(false), () => _showCleanableOnly && !_busy);
+        RecycleSelectedCommand = new AsyncRelayCommand(_ => RecycleSelectedAsync(), _ => _showCleanableOnly && !_busy);
+        SortBySizeCommand = new RelayCommand(() => SortFlat(bySize: true), () => _showCleanableOnly);
+        SortByNameCommand = new RelayCommand(() => SortFlat(bySize: false), () => _showCleanableOnly);
+    }
 
     public ObservableCollection<ExplorerNodeViewModel> Roots { get; } = new();
+
+    // C1: 批量操作 (仅"只看可清理"扁平视图)
+    public RelayCommand SelectAllCommand { get; }
+    public RelayCommand SelectNoneCommand { get; }
+    public AsyncRelayCommand RecycleSelectedCommand { get; }
+    public RelayCommand SortBySizeCommand { get; }
+    public RelayCommand SortByNameCommand { get; }
 
     private string _summary = "扫描后在此像目录树一样浏览整个磁盘。";
     public string Summary { get => _summary; private set => SetField(ref _summary, value); }
@@ -41,13 +59,41 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     private string _actionStatus = "";
     public string ActionStatus { get => _actionStatus; private set => SetField(ref _actionStatus, value); }
 
+    private string _selectionSummary = "";
+    public string SelectionSummary { get => _selectionSummary; private set => SetField(ref _selectionSummary, value); }
+
+    private bool _busy;
+    public bool IsBusy
+    {
+        get => _busy;
+        private set
+        {
+            if (!SetField(ref _busy, value)) return;
+            SelectAllCommand.RaiseCanExecuteChanged();
+            SelectNoneCommand.RaiseCanExecuteChanged();
+            RecycleSelectedCommand.RaiseCanExecuteChanged();
+        }
+    }
+
     // "只看可清理": 把深埋在谨慎容器(如 AppData\Local)里的可清理项一次性铺平, 不必逐层展开才找到 (如 %TEMP%)。
+    // C1: 此模式下整合"可清理清单"——可勾选 + 全选/全不选 + 批量移入回收站 (替代独立的文件清单页)。
     private bool _showCleanableOnly;
     public bool ShowCleanableOnly
     {
         get => _showCleanableOnly;
-        set { if (SetField(ref _showCleanableOnly, value)) Rebuild(); }
+        set
+        {
+            if (!SetField(ref _showCleanableOnly, value)) return;
+            Rebuild();
+            OnPropertyChanged(nameof(ShowBatchBar));
+            SelectAllCommand.RaiseCanExecuteChanged();
+            SelectNoneCommand.RaiseCanExecuteChanged();
+            RecycleSelectedCommand.RaiseCanExecuteChanged();
+        }
     }
+
+    /// <summary>批量操作条仅在"只看可清理"时显示。</summary>
+    public bool ShowBatchBar => _showCleanableOnly;
 
     public void Load(ScanSession session)
     {
@@ -67,10 +113,104 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         {
             var match = Roots.FirstOrDefault(r =>
                 !string.IsNullOrEmpty(r.Path) && string.Equals(r.Path.TrimEnd('\\'), p, StringComparison.OrdinalIgnoreCase));
-            if (match is not null) Roots.Remove(match);
+            if (match is not null)
+            {
+                match.PropertyChanged -= OnFlatNodePropertyChanged;
+                _flatNodes.Remove(match);
+                Roots.Remove(match);
+                UpdateSelectionSummary();
+            }
             return;
         }
         MarkMaterializedDeleted(Roots, p);
+    }
+
+    // —— C1 批量勾选 / 全选 / 批量回收 (只看可清理模式) ——
+    private void OnFlatNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ExplorerNodeViewModel.IsSelected)) UpdateSelectionSummary();
+    }
+
+    private void SetAllSelected(bool selected)
+    {
+        foreach (var n in _flatNodes) n.IsSelected = selected;
+        UpdateSelectionSummary();
+    }
+
+    // 扁平视图重排序 (按大小降序 / 按名称升序), 重排同一批节点实例 (勾选订阅不变)。
+    private void SortFlat(bool bySize)
+    {
+        if (!_showCleanableOnly) return;
+        var sorted = bySize
+            ? _flatNodes.OrderByDescending(n => n.RawSize).ToList()
+            : _flatNodes.OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        _flatNodes.Clear();
+        _flatNodes.AddRange(sorted);
+        Roots.Clear();
+        foreach (var n in sorted) Roots.Add(n);
+    }
+
+    private void UpdateSelectionSummary()
+    {
+        var chosen = _flatNodes.Where(n => n.IsSelected).ToList();
+        var size = chosen.Sum(n => n.RawSize);
+        SelectionSummary = chosen.Count == 0
+            ? "勾选可清理项后可批量移入回收站（可还原）。"
+            : $"已选 {chosen.Count} 项，约 {Format.HumanSize(size)}，可一键移入回收站（可还原）。";
+        RecycleSelectedCommand.RaiseCanExecuteChanged();
+    }
+
+    // 批量移入回收站: 先确认(瞬时) → 后台线程逐项过闸门+执行 → 进度回 UI 线程 + 标删 + 广播变更总线。
+    private async Task RecycleSelectedAsync()
+    {
+        var targets = _flatNodes.Where(n => n.IsSelected && n.CanRecycle).ToList();
+        if (targets.Count == 0) { ActionStatus = "请先勾选要清理的项。"; return; }
+
+        var total = targets.Sum(n => n.RawSize);
+        var confirm = MessageBox.Show(
+            $"确定把选中的 {targets.Count} 项（约 {Format.HumanSize(total)}）移入回收站吗？\n\n" +
+            "可从回收站还原，非永久删除。每一项仍会经安全闸门复核，命中系统关键/容器/占用的会被自动跳过。",
+            "批量移入回收站 — CleanScope",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+        if (confirm != MessageBoxResult.OK) { ActionStatus = "已取消，未做任何改动。"; return; }
+
+        IsBusy = true;
+        int ok = 0, skipped = 0;
+        var count = targets.Count;
+        var reporter = (IProgress<(int done, ExplorerNodeViewModel? deleted)>)new Progress<(int done, ExplorerNodeViewModel? deleted)>(p =>
+        {
+            ActionStatus = $"正在处理 {p.done}/{count}…";
+            if (p.deleted is not null)
+            {
+                p.deleted.MarkDeleted();
+                _session?.NotifyRemoved(p.deleted.Path, p.deleted.RawSize, p.deleted.IsCleanable);
+            }
+        });
+        try
+        {
+            await Task.Run(async () =>
+            {
+                var i = 0;
+                foreach (var n in targets)
+                {
+                    i++;
+                    var request = new ActionRequest(null, n.Path, ActionType.MoveToRecycleBin);
+                    var verdict = _services.SafetyGuard.Evaluate(request, null, n.ToRiskAssessment());
+                    if (verdict.Outcome != GuardOutcome.Allowed) { skipped++; reporter.Report((i, null)); continue; }
+                    var log = await _services.ActionExecutor.ExecuteAsync(request, verdict);
+                    if (log.Result == ActionResult.Success) { ok++; reporter.Report((i, n)); }
+                    else { skipped++; reporter.Report((i, null)); }
+                }
+            });
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        ActionStatus = $"已移入回收站 {ok} 项（可还原）"
+            + (skipped > 0 ? $"；{skipped} 项被安全闸门拦下或失败，已保留。" : "。");
+        UpdateSelectionSummary();
     }
 
     private static void MarkMaterializedDeleted(IEnumerable<ExplorerNodeViewModel> nodes, string path)
@@ -86,24 +226,34 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
 
     private void Rebuild()
     {
+        // 释放上一批扁平节点的勾选订阅, 避免泄漏。
+        foreach (var n in _flatNodes) n.PropertyChanged -= OnFlatNodePropertyChanged;
+        _flatNodes.Clear();
         Roots.Clear();
         var session = _session;
         if (session?.Tree is null)
         {
             Summary = "本次扫描未生成目录树。";
+            SelectionSummary = "";
             return;
         }
 
         if (_showCleanableOnly)
         {
             // 扁平列出整盘所有"最顶层可清理"节点 (与概览的处数/总量同口径), 按大小降序; 比例条相对最大者。
-            // A1: 排除已被(本页或别页)移除的项, 删后即从清单消失。
+            // A1: 排除已被(本页或别页)移除的项, 删后即从清单消失。C1: 这些项可勾选批量回收。
             var items = ScanTreeStats.EnumerateCleanable(session.Tree).Where(n => !session.IsRemoved(n.Path)).ToList();
             var max = items.Count > 0 ? items[0].Size : 1;
             foreach (var n in items)
-                Roots.Add(new ExplorerNodeViewModel(n, max, withinCleanable: false, actions: this));
-            Summary = $"只看可清理：{items.Count} 处，共约 {Format.HumanSize(session.TreeReclaimable)}" +
-                      "（含深埋各软件内部缓存）。右键即可移入回收站（可还原）；取消勾选可看完整目录树。";
+            {
+                var vm = new ExplorerNodeViewModel(n, max, withinCleanable: false, actions: this, selectable: true);
+                vm.PropertyChanged += OnFlatNodePropertyChanged;
+                _flatNodes.Add(vm);
+                Roots.Add(vm);
+            }
+            Summary = $"只看可清理：{items.Count} 处，共约 {Format.HumanSize(session.RemainingReclaimable)}" +
+                      "（含深埋各软件内部缓存）。可勾选后批量移入回收站（可还原），或右键单项操作；取消勾选「只看可清理」可看完整目录树。";
+            UpdateSelectionSummary();
             return;
         }
 
@@ -257,6 +407,22 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         else
         {
             ActionStatus = $"操作未完成：{log.RejectReason}";
+        }
+    }
+
+    // A5: 加入忽略名单 (持久化到本地库)。报告/忽略名单页在切回时刷新显示, 跨页一致。
+    public async Task AddIgnoreAsync(ExplorerNodeViewModel node)
+    {
+        if (node is null || string.IsNullOrEmpty(node.Path)) return;
+        try
+        {
+            await _services.IgnoreRepository.AddAsync(
+                new IgnoreEntry(0, node.Path, MatchType.Exact, "在资源管理器忽略", DateTime.UtcNow));
+            ActionStatus = $"已加入忽略名单：{node.Name}（可在「报告 / 忽略名单」页管理）。";
+        }
+        catch (Exception ex)
+        {
+            ActionStatus = $"加入忽略失败：{ex.Message}";
         }
     }
 

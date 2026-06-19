@@ -10,7 +10,6 @@ namespace CleanScope.App.Wpf.ViewModels;
 public sealed class ShellViewModel : ViewModelBase, INavigationHost
 {
     private readonly HomeViewModel _home;
-    private readonly FileListViewModel _list;
     private readonly SpaceMapViewModel _map;
     private readonly ExplorerViewModel _explorer;
     private readonly SpaceBySoftwareViewModel _software;
@@ -21,7 +20,6 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     {
         Services = services;
         _home = new HomeViewModel(services, this);
-        _list = new FileListViewModel(services, this);
         _map = new SpaceMapViewModel(this);
         _explorer = new ExplorerViewModel(services);
         _software = new SpaceBySoftwareViewModel(this);
@@ -29,7 +27,6 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         _detail = new FileDetailViewModel(services, this);
 
         GoHomeCommand = new RelayCommand(ShowHome);
-        GoListCommand = new RelayCommand(ShowList, () => Session is not null);
         GoMapCommand = new RelayCommand(ShowMap, () => Session is not null);
         GoExplorerCommand = new RelayCommand(ShowExplorer, () => Session is not null);
         GoBySoftwareCommand = new RelayCommand(ShowBySoftware, () => Session is not null);
@@ -53,7 +50,6 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public ScanSession? Session { get; private set; }
 
     public RelayCommand GoHomeCommand { get; }
-    public RelayCommand GoListCommand { get; }
     public RelayCommand GoMapCommand { get; }
     public RelayCommand GoExplorerCommand { get; }
     public RelayCommand GoBySoftwareCommand { get; }
@@ -65,14 +61,12 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public void LoadSession(ScanSession session)
     {
         Session = session;
-        _list.Load(session);
         _map.Load(session);
         _explorer.Load(session);
         _software.Load(session);
         _report.Load(session);
         _home.OnSessionLoaded(session);
         _shownRevision[_map] = _shownRevision[_software] = _shownRevision[_report] = session.Revision;
-        GoListCommand.RaiseCanExecuteChanged();
         GoMapCommand.RaiseCanExecuteChanged();
         GoExplorerCommand.RaiseCanExecuteChanged();
         GoBySoftwareCommand.RaiseCanExecuteChanged();
@@ -89,11 +83,12 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     }
 
     public void ShowHome() { _home.OnActivated(); CurrentView = _home; }
-    public void ShowList() => CurrentView = _list;
+    // C1: 文件清单已并入资源管理器 —— "可清理清单"即资源管理器的"只看可清理"模式。
+    public void ShowList() { _explorer.ShowCleanableOnly = true; CurrentView = _explorer; }
     public void ShowMap() { EnsureFresh(_map, () => _map.Load(Session!)); CurrentView = _map; }
     public void ShowExplorer() => CurrentView = _explorer;
     public void ShowBySoftware() { EnsureFresh(_software, () => _software.Load(Session!)); CurrentView = _software; }
-    public void ShowReport() { EnsureFresh(_report, () => _report.Load(Session!)); CurrentView = _report; }
+    public void ShowReport() { EnsureFresh(_report, () => _report.Load(Session!)); _report.RefreshOnShow(); CurrentView = _report; }
 
     public void ShowDetail(FileRowViewModel row)
     {

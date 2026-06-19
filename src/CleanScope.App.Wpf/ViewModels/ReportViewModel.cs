@@ -125,6 +125,9 @@ public sealed class ReportViewModel : ViewModelBase
         }
     }
 
+    /// <summary>A5: 切回本页时刷新忽略名单 (别处可能新增了忽略项, 如资源管理器右键)。</summary>
+    public void RefreshOnShow() => _ = RefreshIgnoresAsync();
+
     private async Task RefreshIgnoresAsync()
     {
         try

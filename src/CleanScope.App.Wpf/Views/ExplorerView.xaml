@@ -10,11 +10,24 @@
         <DockPanel>
             <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                 <Grid>
-                    <TextBlock Text="资源管理器（整盘目录树）" Style="{StaticResource H2}" VerticalAlignment="Center"/>
-                    <CheckBox Content="✓ 只看可清理（扁平，含深埋缓存）" IsChecked="{Binding ShowCleanableOnly}"
+                    <TextBlock Text="资源管理器（整盘目录树 · 可清理清单）" Style="{StaticResource H2}" VerticalAlignment="Center"/>
+                    <CheckBox Content="✓ 只看可清理（扁平，可勾选批量清理）" IsChecked="{Binding ShowCleanableOnly}"
                               HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#1E7E34" FontWeight="SemiBold"/>
                 </Grid>
                 <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}"/>
+
+                <!-- C1 批量操作条 (仅"只看可清理"显示): 全选/全不选/批量移入回收站 -->
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0"
+                            Visibility="{Binding ShowBatchBar, Converter={StaticResource BoolToVis}}">
+                    <Button Content="全选" Command="{Binding SelectAllCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+                    <Button Content="全不选" Command="{Binding SelectNoneCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+                    <Button Content="🗑 移入回收站（可还原）" Command="{Binding RecycleSelectedCommand}"
+                            Style="{StaticResource Primary}" Margin="0,0,12,0"/>
+                    <TextBlock Text="排序" VerticalAlignment="Center" Foreground="{StaticResource Muted}" Margin="0,0,4,0"/>
+                    <Button Content="大小" Command="{Binding SortBySizeCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,0"/>
+                    <Button Content="名称" Command="{Binding SortByNameCommand}" Style="{StaticResource Ghost}" Margin="0,0,16,0"/>
+                    <TextBlock Text="{Binding SelectionSummary}" VerticalAlignment="Center" Style="{StaticResource Sub}"/>
+                </StackPanel>
             </StackPanel>
 
             <!-- 操作结果反馈 (复制/打开/移入回收站) -->
@@ -66,6 +79,8 @@
                                               Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
                                     <MenuItem Header="在资源管理器中打开位置" Command="{Binding OpenLocationCommand}"
                                               Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
+                                    <MenuItem Header="加入忽略名单" Command="{Binding AddIgnoreCommand}"
+                                              Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
                                     <!-- 仅在已配置 AI 时出现; 点一次发一次脱敏请求, 识别这个目录是什么 (推测) -->
                                     <MenuItem Header="用 AI 识别用途 / 归属（推测）" Command="{Binding InvestigateCommand}"
                                               Visibility="{Binding ShowAiMenu, Converter={StaticResource BoolToVis}}"/>
@@ -86,8 +101,10 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- 名称 + 四桶色点 + 文件/文件夹图标 -->
+                            <!-- 名称 + (批量勾选) + 四桶色点 + 文件/文件夹图标 -->
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,6,0"
+                                          Visibility="{Binding CanSelect, Converter={StaticResource BoolToVis}}"/>
                                 <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,8,0"
                                         Background="{Binding BucketBrush}" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding Glyph}" Margin="0,0,5,0" VerticalAlignment="Center"/>

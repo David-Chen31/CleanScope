@@ -55,11 +55,10 @@
                 <TextBlock Text="删除仅移入回收站 · 可还原" Foreground="#5FC88F" FontSize="11" Margin="0,0,0,28"/>
 
                 <Button Content="① 概览 / 扫描" Command="{Binding GoHomeCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="② 资源管理器" Command="{Binding GoExplorerCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="② 资源管理器 / 可清理清单" Command="{Binding GoExplorerCommand}" Style="{StaticResource NavBtn}"/>
                 <Button Content="③ 空间地图" Command="{Binding GoMapCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="④ 文件清单" Command="{Binding GoListCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="⑤ 按软件" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="⑥ 报告 / 忽略名单" Command="{Binding GoReportCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="④ 按软件" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="⑤ 报告 / 忽略名单" Command="{Binding GoReportCommand}" Style="{StaticResource NavBtn}"/>
 
                 <Border Margin="0,28,0,0" Padding="10" CornerRadius="6" Background="#16202E">
                     <TextBlock Text="{Binding AiBadge}" Foreground="#8FA0B5" FontSize="11" TextWrapping="Wrap"/>

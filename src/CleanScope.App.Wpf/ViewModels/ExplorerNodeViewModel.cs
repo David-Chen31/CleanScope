@@ -21,12 +21,13 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     private bool _childrenBuilt;
 
     public ExplorerNodeViewModel(ScanTreeNode node, long parentSize, bool withinCleanable = false,
-        IExplorerActions? actions = null)
+        IExplorerActions? actions = null, bool selectable = false)
     {
         _node = node;
         _parentSize = parentSize > 0 ? parentSize : node.Size;
         _withinCleanable = withinCleanable;
         _actions = actions;
+        IsSelectable = selectable;
         Children = new ObservableCollection<ExplorerNodeViewModel>();
         if (node.HasChildren) Children.Add(Placeholder);   // 占位, 展开时替换为真实子节点
 
@@ -39,6 +40,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
         InvestigateCommand = new AsyncRelayCommand(_ => _actions?.InvestigateAsync(this) ?? Task.CompletedTask, _ => CanInvestigate);
         MigrateCommand = new AsyncRelayCommand(_ => _actions?.MigrateAsync(this) ?? Task.CompletedTask, _ => CanMigrate);
         OpenRecycleBinCommand = new AsyncRelayCommand(_ => _actions?.OpenRecycleBinAsync() ?? Task.CompletedTask, _ => _isDeleted);
+        AddIgnoreCommand = new AsyncRelayCommand(_ => _actions?.AddIgnoreAsync(this) ?? Task.CompletedTask, _ => HasPath && !_isDeleted);
     }
 
     // 有效可清理: 自身可清理, 或处在可清理祖先之下 (缓存目录里的子项也随父一起清, 颜色应一致)。
@@ -54,6 +56,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     public AsyncRelayCommand InvestigateCommand { get; }   // E5+: 按需用 AI 识别此项 (零默认开销)
     public AsyncRelayCommand MigrateCommand { get; }       // P0: 把此目录迁到其他盘 + 建目录联接
     public AsyncRelayCommand OpenRecycleBinCommand { get; }  // A2: 删除后唯一可用动作 —— 打开回收站查看/还原
+    public AsyncRelayCommand AddIgnoreCommand { get; }       // A5: 加入忽略名单 (报告页同步)
 
     private bool _isExpanded;
     public bool IsExpanded
@@ -110,6 +113,16 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     // 真实文件/目录 (有路径、非余量合成块) 才允许尝试移入回收站; 是否放行由安全闸门当场判定。
     public bool CanRecycle => HasPath && !IsRemainder && !_isDeleted;
 
+    // C1: "只看可清理"扁平视图里的批量勾选 (仅可回收项可勾)。
+    public bool IsSelectable { get; }
+    public bool CanSelect => IsSelectable && CanRecycle;
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetField(ref _isSelected, value && CanSelect);   // 不可勾的项强制为否
+    }
+
     // 迁移入口: 真实目录 (非余量/非容器/未删) 才显示; 是否真能迁由迁移器保守白名单当场判定。
     public bool CanMigrate => HasPath && IsDirectory && !_node.IsContainer && !_isDeleted;
 
@@ -121,7 +134,9 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
         private set
         {
             if (!SetField(ref _isDeleted, value)) return;
+            if (_isSelected) { _isSelected = false; OnPropertyChanged(nameof(IsSelected)); }
             OnPropertyChanged(nameof(CanRecycle));
+            OnPropertyChanged(nameof(CanSelect));
             OnPropertyChanged(nameof(CanMigrate));
             OnPropertyChanged(nameof(CanInvestigate));
             OnPropertyChanged(nameof(ShowLiveActions));
