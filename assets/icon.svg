@@ -1,0 +1,46 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    CleanScope app icon.
+    Concept: a magnifying glass (the "Scope" = inspect / explain first) with a clean ✨ inside
+    the lens. Brand blue tile + "cleanable" green sparkle = "we look at your disk, and clean it safely".
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3B74F0"/>
+      <stop offset="1" stop-color="#1742A8"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.32" cy="0.26" r="0.9">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.18"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.06"/>
+    </linearGradient>
+  </defs>
+
+  <!-- app tile -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#sheen)"/>
+
+  <!-- magnifier handle (drawn first so the lens ring sits on top of it) -->
+  <line x1="300" y1="300" x2="412" y2="412" stroke="#FFFFFF" stroke-width="50" stroke-linecap="round"/>
+
+  <!-- lens glass + ring -->
+  <circle cx="214" cy="214" r="104" fill="url(#glass)"/>
+  <circle cx="214" cy="214" r="116" fill="none" stroke="#FFFFFF" stroke-width="34"/>
+
+  <!-- big sparkle (clean) -->
+  <path fill="#3DDC84" d="M214 146
+    C222.2 190.2 237.8 205.8 282 214
+    C237.8 222.2 222.2 237.8 214 282
+    C205.8 237.8 190.2 222.2 146 214
+    C190.2 205.8 205.8 190.2 214 146 Z"/>
+
+  <!-- small sparkle (twinkle) -->
+  <path fill="#FFFFFF" opacity="0.92" d="M264 150
+    C266.6 165.6 272.4 171.4 288 174
+    C272.4 176.6 266.6 182.4 264 198
+    C261.4 182.4 255.6 176.6 240 174
+    C255.6 171.4 261.4 165.6 264 150 Z"/>
+</svg>

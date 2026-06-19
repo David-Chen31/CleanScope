@@ -16,7 +16,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- 可执行文件图标 (任务栏/资源管理器) -->
+    <ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 窗口标题栏图标 (内嵌为资源, 经 pack URI 引用) -->
+    <Resource Include="..\..\assets\icon.ico" Link="icon.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- 声明式规则包随宿主分发: 复制到输出/发布目录的 rules/ (RulePackLoader.DefaultRulesDirectory),

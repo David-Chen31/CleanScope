@@ -7,6 +7,7 @@
         d:DataContext="{d:DesignInstance vm:ShellViewModel}"
         mc:Ignorable="d"
         Title="CleanScope" Height="760" Width="1180" MinHeight="560" MinWidth="900"
+        Icon="pack://application:,,,/icon.ico"
         Background="{StaticResource Bg}"
         WindowStartupLocation="CenterScreen">
 
