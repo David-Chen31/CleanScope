@@ -183,6 +183,32 @@ public record InstalledApp(
     string? Source);           // Registry / WinGet / Appx
 
 /// <summary>
+/// 跨盘迁移请求 (P0): 把 <paramref name="SourceDir"/> 搬到 <paramref name="TargetRootDir"/> 下 (按原名建子目录),
+/// 并在原位创建目录联接 (junction), 对应用透明。用于"占大头但不能删的合法软件"——删除是错的工具, 搬家才对。
+/// </summary>
+public record MigrationRequest(string SourceDir, string TargetRootDir);
+
+/// <summary>迁移结果。Success=已迁移并建联接; Rejected=未通过安全校验; Failed=执行中出错 (尽力回滚)。</summary>
+public enum MigrationOutcome { Success, Rejected, Failed }
+
+/// <summary>
+/// 迁移器策略开关 (默认全开)。生产环境恒为默认 (保守白名单 + 强制跨盘);
+/// 仅单元测试在受控临时目录上验证复制/校验/改名/联接/回滚编排时才放宽。
+/// </summary>
+public record MigrationOptions(bool EnforceUserDataScope = true, bool EnforceCrossDrive = true);
+
+/// <summary>
+/// 迁移结果。<paramref name="NewLocation"/>=目标盘新位置; <paramref name="BackupPath"/>=原目录被改名留存的备份
+/// (确认软件正常后可移入回收站以释放原盘空间; 我们绝不自动永久删除); <paramref name="BytesMoved"/>=迁移字节数。
+/// </summary>
+public record MigrationResult(
+    MigrationOutcome Outcome,
+    string Message,
+    string? NewLocation,
+    string? BackupPath,
+    long BytesMoved);
+
+/// <summary>
 /// 系统级官方清理手段 (P0): 不依赖逐文件扫描的"整盘机会" —— 关闭休眠、清空回收站、组件清理 (DISM)、
 /// 磁盘清理 (cleanmgr)、存储感知等。这些不是某个文件的规则命中, 而是机器层面的动作; 由确定性目录
 /// (<see cref="CleanScope.Domain.Models"/> 之外的 Core 目录, 非 AI) 维护, 执行走**受控白名单**官方命令/设置跳转。

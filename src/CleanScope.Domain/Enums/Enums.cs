@@ -37,8 +37,8 @@ public enum MatchType { Exact, Prefix, Glob }
 /// </summary>
 public enum RuleMatchKind { PathPrefix, PathGlob, DirName, Extension }
 
-/// <summary>操作类型 (action_log.action)。MVP 仅辅助操作; MoveToRecycleBin 自 Beta 起。</summary>
-public enum ActionType { OpenDir, CopyPath, OpenSettings, ShowCommand, AddIgnore, ExportReport, MoveToRecycleBin, RunCleanupCommand }
+/// <summary>操作类型 (action_log.action)。MVP 仅辅助操作; MoveToRecycleBin 自 Beta 起; MigrateToOtherDrive 为跨盘迁移+目录联接。</summary>
+public enum ActionType { OpenDir, CopyPath, OpenSettings, ShowCommand, AddIgnore, ExportReport, MoveToRecycleBin, RunCleanupCommand, MigrateToOtherDrive }
 
 /// <summary>
 /// 推荐清理动作类型 (S-D): 把"怎么清"结构化, 供 UI 渲染对应按钮。

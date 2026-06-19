@@ -37,6 +37,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
         OpenLocationCommand = new AsyncRelayCommand(_ => _actions?.OpenLocationAsync(Path) ?? Task.CompletedTask, _ => HasPath);
         RecycleCommand = new AsyncRelayCommand(_ => _actions?.RecycleAsync(this) ?? Task.CompletedTask, _ => CanRecycle);
         InvestigateCommand = new AsyncRelayCommand(_ => _actions?.InvestigateAsync(this) ?? Task.CompletedTask, _ => CanInvestigate);
+        MigrateCommand = new AsyncRelayCommand(_ => _actions?.MigrateAsync(this) ?? Task.CompletedTask, _ => CanMigrate);
     }
 
     // 有效可清理: 自身可清理, 或处在可清理祖先之下 (缓存目录里的子项也随父一起清, 颜色应一致)。
@@ -50,6 +51,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     public AsyncRelayCommand OpenLocationCommand { get; }
     public AsyncRelayCommand RecycleCommand { get; }
     public AsyncRelayCommand InvestigateCommand { get; }   // E5+: 按需用 AI 识别此项 (零默认开销)
+    public AsyncRelayCommand MigrateCommand { get; }       // P0: 把此目录迁到其他盘 + 建目录联接
 
     private bool _isExpanded;
     public bool IsExpanded
@@ -95,6 +97,9 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     private bool HasPath => !string.IsNullOrEmpty(_node.Path);
     // 真实文件/目录 (有路径、非余量合成块) 才允许尝试移入回收站; 是否放行由安全闸门当场判定。
     public bool CanRecycle => HasPath && !IsRemainder && !_isDeleted;
+
+    // 迁移入口: 真实目录 (非余量/非容器/未删) 才显示; 是否真能迁由迁移器保守白名单当场判定。
+    public bool CanMigrate => HasPath && IsDirectory && !_node.IsContainer && !_isDeleted;
 
     // 已移入回收站: UI 置灰 + 删除线, 给即时反馈。
     private bool _isDeleted;

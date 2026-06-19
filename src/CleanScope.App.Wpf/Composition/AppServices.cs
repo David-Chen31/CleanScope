@@ -32,5 +32,8 @@ public sealed class AppServices
     /// <summary>系统级官方清理手段目录 (P0): 关闭休眠/清空回收站/DISM/磁盘清理等, 确定性检测, 经官方命令执行。</summary>
     public required IReadOnlyList<OfficialCleanupAction> OfficialActions { get; init; }
 
+    /// <summary>跨盘目录迁移器 (P0): 把占大头但不能删的合法软件目录搬到其他盘 + 建目录联接 (绝不永久删除)。</summary>
+    public required IDirectoryMigrator Migrator { get; init; }
+
     public required string AppVersion { get; init; }
 }

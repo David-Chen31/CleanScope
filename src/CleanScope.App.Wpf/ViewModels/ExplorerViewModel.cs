@@ -18,6 +18,7 @@ public interface IExplorerActions
     Task OpenLocationAsync(string path);
     Task RecycleAsync(ExplorerNodeViewModel node);
     Task InvestigateAsync(ExplorerNodeViewModel node);
+    Task MigrateAsync(ExplorerNodeViewModel node);
 }
 
 /// <summary>
@@ -127,6 +128,45 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         catch
         {
             ActionStatus = $"AI 识别失败「{node.Name}」（以现有结论为准）。";
+        }
+    }
+
+    // P0 跨盘迁移: 选目标盘 → 两步确认 → 迁移器 (复制/校验/审计/改名留备份/建联接, 绝不永久删除)。
+    // 原目录改名留作 .cleanscope-bak 备份; 确认软件正常后用户可自行移入回收站释放原盘空间。
+    public async Task MigrateAsync(ExplorerNodeViewModel node)
+    {
+        if (node is null || !node.CanMigrate) return;
+
+        var picker = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = $"选择把「{node.Name}」迁移到的目标位置（请选其他磁盘的一个文件夹）",
+        };
+        if (picker.ShowDialog() != true) { ActionStatus = "已取消迁移。"; return; }
+        var targetRoot = picker.FolderName;
+
+        var confirm = MessageBox.Show(
+            $"将把以下目录迁移到其他磁盘，并在原位创建目录联接（对软件透明，照常使用）：\n\n" +
+            $"源：{node.Path}\n目标：{targetRoot}\n\n" +
+            "过程：复制到目标盘 → 校验 → 原目录改名留作备份 → 建立联接。\n" +
+            "我们不会永久删除任何数据；释放原盘空间需你之后确认软件正常、再删除那个 .cleanscope-bak 备份。\n\n确定继续吗？",
+            "迁移到其他盘 — CleanScope",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+        if (confirm != MessageBoxResult.OK) { ActionStatus = "已取消，未做任何改动。"; return; }
+
+        ActionStatus = $"正在迁移「{node.Name}」…（大目录可能需要一些时间）";
+        try
+        {
+            var result = await Task.Run(() => _services.Migrator.MigrateAsync(new MigrationRequest(node.Path, targetRoot)));
+            ActionStatus = result.Outcome switch
+            {
+                MigrationOutcome.Success => $"✅ 已迁移「{node.Name}」。{result.Message}",
+                MigrationOutcome.Rejected => $"未迁移：{result.Message}",
+                _ => $"迁移未完成：{result.Message}",
+            };
+        }
+        catch (Exception ex)
+        {
+            ActionStatus = $"迁移失败「{node.Name}」：{ex.Message}";
         }
     }
 

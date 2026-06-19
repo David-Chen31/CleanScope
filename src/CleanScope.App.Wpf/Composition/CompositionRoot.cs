@@ -14,6 +14,7 @@ using CleanScope.Core.Risk;
 using CleanScope.Core.Rules;
 using CleanScope.Core.Scanning;
 using CleanScope.Domain.Abstractions;
+using CleanScope.Infrastructure.Migration;
 using CleanScope.Infrastructure.Repositories;
 using CleanScope.Infrastructure.Rules;
 using CleanScope.Infrastructure.Storage;
@@ -87,6 +88,7 @@ public static class CompositionRoot
             Annotator = new AiAnnotator(sanitizer, explanation, validator),  // 详情页按需解释 (S6)
             CleanupAdvisor = advisor,                                        // 整盘参谋 (S-H)
             OfficialActions = OfficialCleanupCatalog.BuildForThisMachine(),  // P0: 系统级官方清理手段 (确定性)
+            Migrator = new DirectoryMigrator(new WindowsJunctionCreator(), audit, AppVersion),  // P0: 跨盘迁移 + 目录联接
             AppVersion = AppVersion,
         };
     }

@@ -67,6 +67,7 @@
                                     <MenuItem Header="用 AI 识别用途 / 归属（推测）" Command="{Binding InvestigateCommand}"
                                               Visibility="{Binding ShowAiMenu, Converter={StaticResource BoolToVis}}"/>
                                     <Separator/>
+                                    <MenuItem Header="迁移到其他盘（建目录联接，省 C 盘且软件照常用）" Command="{Binding MigrateCommand}"/>
                                     <MenuItem Header="移入回收站（可还原）" Command="{Binding RecycleCommand}"/>
                                 </ContextMenu>
                             </Grid.ContextMenu>
