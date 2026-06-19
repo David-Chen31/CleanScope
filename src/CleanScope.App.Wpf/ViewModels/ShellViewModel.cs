@@ -15,6 +15,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     private readonly SpaceBySoftwareViewModel _software;
     private readonly ReportViewModel _report;
     private readonly FileDetailViewModel _detail;
+    private readonly AiSettingsViewModel _aiSettings;
 
     public ShellViewModel(AppServices services)
     {
@@ -25,19 +26,27 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         _software = new SpaceBySoftwareViewModel(this);
         _report = new ReportViewModel(services, this);
         _detail = new FileDetailViewModel(services, this);
+        _aiSettings = new AiSettingsViewModel(services);
 
         GoHomeCommand = new RelayCommand(ShowHome);
         GoMapCommand = new RelayCommand(ShowMap, () => Session is not null);
         GoExplorerCommand = new RelayCommand(ShowExplorer, () => Session is not null);
         GoBySoftwareCommand = new RelayCommand(ShowBySoftware, () => Session is not null);
         GoReportCommand = new RelayCommand(ShowReport, () => Session is not null);
+        GoAiSettingsCommand = new RelayCommand(ShowAiSettings);
 
         _current = _home;
-        AiBadge = services.AiEnabled ? "AI 解释: 已启用 (脱敏后出云)" : "AI 解释: 未配置 (纯本地)";
+        _aiBadge = ComputeAiBadge();
+        services.AiChanged += () => AiBadge = ComputeAiBadge();   // D: 保存配置后徽章实时刷新
     }
 
     public AppServices Services { get; }
-    public string AiBadge { get; }
+
+    private string _aiBadge;
+    public string AiBadge { get => _aiBadge; private set => SetField(ref _aiBadge, value); }
+    private string ComputeAiBadge() => Services.AiEnabled
+        ? "AI: 已启用（按需出云）· 可在「AI 设置」更换模型"
+        : "AI: 未配置（纯本地）· 可在「AI 设置」启用";
     public string Title => $"CleanScope {Services.AppVersion} — 分析为主；删除仅对可清理项、且只移入回收站（可还原）";
 
     private object _current;
@@ -54,6 +63,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public RelayCommand GoExplorerCommand { get; }
     public RelayCommand GoBySoftwareCommand { get; }
     public RelayCommand GoReportCommand { get; }
+    public RelayCommand GoAiSettingsCommand { get; }
 
     // A1: 聚合页(空间地图/按软件/报告)按修订号懒重载 —— 删除发生在别处时, 切回来才按最新状态重算一次, 避免每次删除都全量重建。
     private readonly Dictionary<object, int> _shownRevision = new();
@@ -89,6 +99,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public void ShowExplorer() => CurrentView = _explorer;
     public void ShowBySoftware() { EnsureFresh(_software, () => _software.Load(Session!)); CurrentView = _software; }
     public void ShowReport() { EnsureFresh(_report, () => _report.Load(Session!)); _report.RefreshOnShow(); CurrentView = _report; }
+    public void ShowAiSettings() => CurrentView = _aiSettings;
 
     public void ShowDetail(FileRowViewModel row)
     {

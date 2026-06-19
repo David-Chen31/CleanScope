@@ -59,6 +59,7 @@
                 <Button Content="③ 空间地图" Command="{Binding GoMapCommand}" Style="{StaticResource NavBtn}"/>
                 <Button Content="④ 按软件" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource NavBtn}"/>
                 <Button Content="⑤ 报告 / 忽略名单" Command="{Binding GoReportCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="⑥ AI 设置" Command="{Binding GoAiSettingsCommand}" Style="{StaticResource NavBtn}"/>
 
                 <Border Margin="0,28,0,0" Padding="10" CornerRadius="6" Background="#16202E">
                     <TextBlock Text="{Binding AiBadge}" Foreground="#8FA0B5" FontSize="11" TextWrapping="Wrap"/>

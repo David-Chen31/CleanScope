@@ -22,6 +22,7 @@
             <DataTemplate DataType="{x:Type vm:SpaceBySoftwareViewModel}"><views:SpaceBySoftwareView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:FileDetailViewModel}"><views:FileDetailView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:ReportViewModel}"><views:ReportView/></DataTemplate>
+            <DataTemplate DataType="{x:Type vm:AiSettingsViewModel}"><views:AiSettingsView/></DataTemplate>
 
             <!-- 基础配色 -->
             <SolidColorBrush x:Key="Bg" Color="#F4F6F8"/>

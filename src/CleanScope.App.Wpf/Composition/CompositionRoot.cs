@@ -53,29 +53,21 @@ public static class CompositionRoot
         var safety = new SafetyGuard(windows, deleteEnabled: true);
         var executor = new ActionExecutor(new ShellLauncher(), audit, ignore, AppVersion, new WindowsRecycleBin());
 
-        // —— AI 旁路 (可选): 脱敏 → 解释 → 校验。未配置可用密钥 ⇒ 纯本地规则/风险 ——
-        ISanitizationGateway? sanitizer = null;
-        IExplanationService? explanation = null;
-        IAiOutputValidator? validator = null;
-        ICleanupAdvisor? advisor = null;
-        var aiEnabled = false;
-        var aiOptions = AiOptions.Load(ResolveAiConfig());
-        if (aiOptions.IsUsable)
-        {
-            var chat = new OpenAiChatClient(SharedHttp, aiOptions);
-            sanitizer = new SanitizationGateway();
-            explanation = new ExplanationService(chat);
-            validator = new AiOutputValidator();
-            advisor = new CleanupAdvisor(chat);   // S-H: 整盘参谋复用同一 chat
-            aiEnabled = true;
-        }
+        // —— AI 旁路: 脱敏 → 解释 → 校验。始终装配, 但对话客户端可热替换 (D); 未配置/停用时走本地规则降级 ——
+        // 配置来源: 用户目录 (设置页写入, Key 经 DPAPI 加密) 优先, 回退旧的 appsettings.ai.local.json + 环境变量。
+        var aiOptions = AiConfigStore.Load(ResolveAiConfig());
+        var aiChat = new MutableAiChat(SharedHttp, aiOptions);
+        var sanitizer = new SanitizationGateway();
+        var explanation = new ExplanationService(aiChat);
+        var validator = new AiOutputValidator();
+        var advisor = new CleanupAdvisor(aiChat);   // S-H: 整盘参谋复用同一 (可变) chat
 
         var useCase = new ScanAndAnalyzeUseCase(
             new ScanEngine(), new EvidenceCollector(windows), new RuleEngine(rules),
             new AttributionEngine(), new RiskEngine(), new DecisionService(), AppVersion,
             sanitizer, explanation, validator);
 
-        return new AppServices
+        var services = new AppServices
         {
             UseCase = useCase,
             ReportExporterFor = path => path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
@@ -84,13 +76,16 @@ public static class CompositionRoot
             IgnoreRepository = ignore,
             ActionExecutor = executor,
             SafetyGuard = safety,
-            AiEnabled = aiEnabled,
+            AiChat = aiChat,
+            Http = SharedHttp,
             Annotator = new AiAnnotator(sanitizer, explanation, validator),  // 详情页按需解释 (S6)
             CleanupAdvisor = advisor,                                        // 整盘参谋 (S-H)
             OfficialActions = OfficialCleanupCatalog.BuildForThisMachine(),  // P0: 系统级官方清理手段 (确定性)
             Migrator = new DirectoryMigrator(new WindowsJunctionCreator(), audit, AppVersion),  // P0: 跨盘迁移 + 目录联接
             AppVersion = AppVersion,
         };
+        services.InitAiOptions(aiOptions);
+        return services;
     }
 
     private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromSeconds(30) };

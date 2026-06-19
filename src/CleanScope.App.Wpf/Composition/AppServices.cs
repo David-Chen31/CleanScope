@@ -1,3 +1,5 @@
+using System.Net.Http;
+using CleanScope.Ai.Chat;
 using CleanScope.Application;
 using CleanScope.Domain.Abstractions;
 using CleanScope.Domain.Entities;
@@ -20,14 +22,38 @@ public sealed class AppServices
     public required IActionExecutor ActionExecutor { get; init; }
     public required ISafetyGuard SafetyGuard { get; init; }
 
-    /// <summary>AI 解释是否启用 (脱敏后出云); 未配置密钥则为 false, 全程本地。</summary>
-    public required bool AiEnabled { get; init; }
+    /// <summary>可热替换的对话客户端 (D): 设置页保存后即时生效, 无需重启。</summary>
+    public required MutableAiChat AiChat { get; init; }
+
+    /// <summary>共享 HttpClient (检索模型 / 测试连通性 / 对话)。</summary>
+    public required HttpClient Http { get; init; }
+
+    /// <summary>AI 解释是否启用 (脱敏后出云); 随 <see cref="AiChat"/> 当前配置实时反映, 未配置则全程本地。</summary>
+    public bool AiEnabled => AiChat.Enabled;
+
+    /// <summary>当前 AI 配置 (供设置页预填; Key 为用户自有, 不外传)。</summary>
+    public AiOptions CurrentAiOptions { get; private set; } = AiOptions.Disabled;
 
     /// <summary>按需 AI 注解器 (S6): 详情页打开时按需解释单项 (缓存复用), 扫描不再批量串行。</summary>
     public required AiAnnotator Annotator { get; init; }
 
     /// <summary>整盘清理参谋 (S-H): 对脱敏聚合做一次跨项建议; AI 未配置则 Enabled=false。</summary>
     public ICleanupAdvisor? CleanupAdvisor { get; init; }
+
+    /// <summary>AI 配置变化 (设置页保存后) → UI 刷新徽章/菜单可见性。</summary>
+    public event Action? AiChanged;
+
+    /// <summary>初始化当前配置 (组合根装配时调用一次)。</summary>
+    public void InitAiOptions(AiOptions options) => CurrentAiOptions = options;
+
+    /// <summary>D 运行时重组: 用新配置热替换对话客户端 + 持久化(DPAPI 加密 Key) + 广播。</summary>
+    public void ReconfigureAi(AiOptions options)
+    {
+        CurrentAiOptions = options;
+        AiChat.Reconfigure(options);
+        AiConfigStore.Save(options);
+        AiChanged?.Invoke();
+    }
 
     /// <summary>系统级官方清理手段目录 (P0): 关闭休眠/清空回收站/DISM/磁盘清理等, 确定性检测, 经官方命令执行。</summary>
     public required IReadOnlyList<OfficialCleanupAction> OfficialActions { get; init; }

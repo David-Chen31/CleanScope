@@ -1,0 +1,48 @@
+<UserControl x:Class="CleanScope.App.Wpf.Views.AiSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:CleanScope.App.Wpf.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DataContext="{d:DesignInstance vm:AiSettingsViewModel}"
+             mc:Ignorable="d" d:DesignWidth="760">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <Border Style="{StaticResource Cards}">
+        <StackPanel>
+            <TextBlock Text="AI 设置" Style="{StaticResource H2}"/>
+            <TextBlock Text="填入兼容 OpenAI 接口的中转地址与 API Key，检索模型后选择并测试。AI 仅在你点击「AI 解释 / 识别 / 生成建议」时按需出云，默认零 token；不配置则全程本地。"
+                       Style="{StaticResource Sub}" Margin="0,0,0,4"/>
+            <TextBlock Text="Key 仅以 DPAPI（按当前 Windows 用户）加密保存在本机用户目录，绝不上传、不入库、不出现在报告/日志。"
+                       Style="{StaticResource Sub}" Margin="0,0,0,12"/>
+
+            <TextBlock Text="{Binding CurrentState}" FontWeight="SemiBold" Foreground="#1F4E8C" Margin="0,0,0,12"/>
+
+            <TextBlock Text="Base URL（如 https://your-relay/v1）" Foreground="{StaticResource Ink}" Margin="0,0,0,4"/>
+            <TextBox Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" Margin="0,0,0,12"
+                     VerticalContentAlignment="Center"/>
+
+            <TextBlock Text="API Key" Foreground="{StaticResource Ink}" Margin="0,0,0,4"/>
+            <PasswordBox x:Name="KeyBox" Padding="8,6" Margin="0,0,0,12" PasswordChanged="KeyBox_PasswordChanged"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Button Content="🔍 检索模型" Command="{Binding ListModelsCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"/>
+                <ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}"
+                          MinWidth="240" Padding="8,6" VerticalContentAlignment="Center"/>
+            </StackPanel>
+
+            <CheckBox Content="启用 AI（脱敏后按需出云）" IsChecked="{Binding CloudEnabled}"
+                      Foreground="{StaticResource Ink}" Margin="0,0,0,14"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Button Content="测试连接" Command="{Binding TestCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"/>
+                <Button Content="保存并生效" Command="{Binding SaveCommand}" Style="{StaticResource Primary}"/>
+            </StackPanel>
+
+            <Border Background="#F3F6FB" CornerRadius="6" Padding="10,8"
+                    Visibility="{Binding Status, Converter={StaticResource NotEmptyToVis}}">
+                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{StaticResource Ink}"/>
+            </Border>
+        </StackPanel>
+    </Border>
+  </ScrollViewer>
+</UserControl>
