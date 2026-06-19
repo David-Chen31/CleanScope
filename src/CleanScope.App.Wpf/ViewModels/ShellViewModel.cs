@@ -21,7 +21,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     {
         Services = services;
         _home = new HomeViewModel(services, this);
-        _list = new FileListViewModel(this);
+        _list = new FileListViewModel(services, this);
         _map = new SpaceMapViewModel(this);
         _explorer = new ExplorerViewModel(services);
         _software = new SpaceBySoftwareViewModel(this);

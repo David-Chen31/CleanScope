@@ -1,4 +1,5 @@
 using CleanScope.App.Wpf.Common;
+using CleanScope.App.Wpf.Mvvm;
 using CleanScope.Domain.Entities;
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
@@ -9,9 +10,10 @@ namespace CleanScope.App.Wpf.ViewModels;
 /// 列表/详情共用的逐文件行视图模型。包裹精简的 <see cref="DecisionItem"/> (展示用)
 /// 与完整的 <see cref="FileAnalysis"/> (证据链/归因/AI 解释), 由两者拼出 UI 字段。
 ///
-/// 红线: 本类不提供任何删除入口 (MVP 零删除); D/E 高风险仅作"不建议删除"提示。
+/// 删除入口仅对"可清理"桶 (A/B) 渲染, 且只移入回收站 (可恢复); D/E 高风险仅作"不建议删除"提示。
+/// 勾选/已删状态供"可清理清单"批量操作 (P1)。
 /// </summary>
-public sealed class FileRowViewModel
+public sealed class FileRowViewModel : ViewModelBase
 {
     public FileRowViewModel(DecisionItem item, FileAnalysis analysis)
     {
@@ -129,6 +131,21 @@ public sealed class FileRowViewModel
     /// <summary>S-C: AI 对未知项的调查推测 (已校验, 仅供参考, 不改判风险)。批量调查或详情按需均可填充。</summary>
     public string? AiInvestigation { get; }
     public bool HasAiInvestigation => !string.IsNullOrWhiteSpace(AiInvestigation);
+
+    // —— 可清理清单 (P1) 的批量勾选 / 已删状态 ——
+    private bool _isSelected;
+    /// <summary>是否被勾选 (批量移入回收站)。仅可清理项有意义。</summary>
+    public bool IsSelected { get => _isSelected; set => SetField(ref _isSelected, value); }
+
+    private bool _isDeleted;
+    /// <summary>是否已移入回收站 (UI 显示删除线, 退出选择)。</summary>
+    public bool IsDeleted { get => _isDeleted; private set => SetField(ref _isDeleted, value); }
+
+    /// <summary>标记为已移入回收站: 取消勾选并置删除线。</summary>
+    public void MarkDeleted() { IsDeleted = true; IsSelected = false; }
+
+    /// <summary>当前是否仍可被批量回收 (可清理桶、未删、未占用)。</summary>
+    public bool IsRecyclable => CanRecycle && !IsDeleted;
 }
 
 /// <summary>归因候选展示 (应用名 + 置信度 + 来源)。非单一答案, 按置信度排序。</summary>

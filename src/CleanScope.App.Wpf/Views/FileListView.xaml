@@ -9,26 +9,61 @@
     <Border Style="{StaticResource Cards}">
         <DockPanel>
             <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                <TextBlock Text="文件清单" Style="{StaticResource H2}"/>
-                <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}"/>
+                <TextBlock Text="可清理清单" Style="{StaticResource H2}"/>
+                <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}" TextWrapping="Wrap"/>
+
+                <!-- 批量操作条 -->
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <CheckBox Content="只看可清理" IsChecked="{Binding ShowCleanableOnly}"
+                              VerticalAlignment="Center" Foreground="{StaticResource Ink}" Margin="0,0,16,0"/>
+                    <Button Content="全选" Command="{Binding SelectAllCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+                    <Button Content="全不选" Command="{Binding SelectNoneCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+                    <Button Content="🗑 移入回收站（可还原）" Command="{Binding RecycleSelectedCommand}"
+                            Style="{StaticResource Primary}" Margin="0,0,16,0"/>
+                    <TextBlock Text="{Binding SelectionSummary}" VerticalAlignment="Center" Style="{StaticResource Sub}"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <TextBlock Text="排序：" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
-                    <Button Content="按分类" Command="{Binding SortByBucketCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
                     <Button Content="按大小" Command="{Binding SortBySizeCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+                    <Button Content="按分类" Command="{Binding SortByBucketCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
                     <Button Content="按风险" Command="{Binding SortByRiskCommand}" Style="{StaticResource Ghost}"/>
-                    <TextBlock Text="（点击任意行查看详情与证据链；可清理项可在详情页移入回收站，可还原）"
+                    <TextBlock Text="（勾选可清理项后批量移入回收站；点路径列查看详情与证据链）"
                                VerticalAlignment="Center" Margin="16,0,0,0" Style="{StaticResource Sub}"/>
                 </StackPanel>
+
+                <TextBlock Text="{Binding ActionStatus}" Style="{StaticResource Sub}" Margin="0,8,0,0"
+                           Foreground="#1E7E34"
+                           Visibility="{Binding ActionStatus, Converter={StaticResource NotEmptyToVis}}"/>
             </StackPanel>
 
-            <ListView ItemsSource="{Binding View}" SelectedItem="{Binding Selected}"
+            <ListView ItemsSource="{Binding View}"
                       BorderThickness="0" Background="Transparent"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       VirtualizingPanel.ScrollUnit="Pixel">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsDeleted}" Value="True">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.ItemContainerStyle>
                 <ListView.View>
                     <GridView>
+                        <GridViewColumn Header="选" Width="36">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              IsEnabled="{Binding IsRecyclable}"
+                                              HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
                         <GridViewColumn Header="分类" Width="96">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
@@ -43,17 +78,23 @@
                                         DisplayMemberBinding="{Binding RiskText}"/>
                         <GridViewColumn Header="大小" Width="100"
                                         DisplayMemberBinding="{Binding SizeText}"/>
-                        <GridViewColumn Header="来源/归属" Width="150"
+                        <GridViewColumn Header="来源/归属" Width="140"
                                         DisplayMemberBinding="{Binding Origin}"/>
-                        <GridViewColumn Header="路径" Width="360">
+                        <GridViewColumn Header="路径（点击看详情）" Width="330">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis"
-                                               ToolTip="{Binding Path}"/>
+                                               ToolTip="{Binding Path}" Foreground="#1F4E8C" Cursor="Hand">
+                                        <TextBlock.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                          Command="{Binding DataContext.OpenDetailCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                          CommandParameter="{Binding}"/>
+                                        </TextBlock.InputBindings>
+                                    </TextBlock>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="建议" Width="200">
+                        <GridViewColumn Header="建议" Width="180">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding RecommendedAction}" TextTrimming="CharacterEllipsis"
