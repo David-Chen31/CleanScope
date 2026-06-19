@@ -47,3 +47,6 @@ docs/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# 扫描报告输出 (本地生成, 不入库)
+report/

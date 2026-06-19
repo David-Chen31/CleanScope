@@ -13,14 +13,11 @@
 
 ## Screenshots
 
-<!-- 把截图/GIF 放到 assets/ 后取消下面注释即可显示。建议: 概览、资源管理器目录树、空间地图 treemap，外加一段 ~15s 演示 GIF。 -->
-<!--
-![Overview](assets/overview.png)
-![Explorer tree](assets/explorer.png)
-![Space treemap](assets/treemap.png)
--->
+![CleanScope overview](assets/home.png)
 
-> 📸 *Screenshots / demo GIF coming soon — suggested recording: scan → space map → explorer tree → right-click "Move to Recycle Bin". 截图与演示 GIF 即将补充。*
+<!-- 更多截图放到 assets/ 后按需补充: 资源管理器目录树、空间地图 treemap，外加一段 ~15s 演示 GIF。 -->
+
+> 📸 *More screenshots / demo GIF coming soon — suggested recording: scan → space map → explorer tree → right-click "Move to Recycle Bin / Move to another drive". 更多截图与演示 GIF 即将补充。*
 
 CleanScope scans your disk and explains every file/directory by its origin, ownership, dependencies and risk, gives graded recommendations, and **leaves the final delete decision entirely to you**. It prioritizes answering "what is this, who owns it, what happens if I delete it"; when you confirm a cleanup, it **only moves cleanable items (A/B) to the Recycle Bin (recoverable)** — never permanent deletion, never touching system-critical files.
 
