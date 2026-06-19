@@ -102,6 +102,47 @@ public sealed class EvidenceCollectorTests
         Assert.All(b.Evidences, e => Assert.True(e.IsFact));
     }
 
+    [Fact] // E1: AppData 数据目录的段名匹配已安装应用 → 归属 (即便不在安装目录下)。
+    public async Task AppData_dir_matching_installed_app_name_yields_attribution()
+    {
+        var win = new FakeWin
+        {
+            Apps = new[] { new InstalledApp("Postman x86_64 11.19.0", "Postman Inc", null, "Registry") },
+        };
+        var b = await new EvidenceCollector(win).CollectAsync(
+            Node(@"C:\Users\me\AppData\Local\Postman\app-11.19.0\resources\x.bin"));
+
+        var attr = Assert.Single(b.Evidences, e => e.Kind == EvidenceKind.InstalledApp);
+        Assert.Contains("Postman", attr.Value);
+    }
+
+    [Fact] // Roaming\<App> + Programs\<App> 同样可归属。
+    public async Task Roaming_and_programs_dir_match()
+    {
+        var win = new FakeWin { Apps = new[] { new InstalledApp("Notion", null, null, "Registry") } };
+        var roaming = await new EvidenceCollector(win).CollectAsync(Node(@"C:\Users\me\AppData\Roaming\Notion\cache\f.dat"));
+        Assert.Contains(roaming.Evidences, e => e.Kind == EvidenceKind.InstalledApp && e.Value.Contains("Notion"));
+
+        var prog = await new EvidenceCollector(win).CollectAsync(Node(@"C:\Users\me\AppData\Local\Programs\Notion\app.bin"));
+        Assert.Contains(prog.Evidences, e => e.Kind == EvidenceKind.InstalledApp && e.Value.Contains("Notion"));
+    }
+
+    [Fact] // 噪声段 (Temp / Microsoft) 不产生误归属。
+    public async Task Noise_segments_do_not_attribute()
+    {
+        var win = new FakeWin { Apps = new[] { new InstalledApp("Temp Cleaner", null, null, "Registry") } };
+        var b = await new EvidenceCollector(win).CollectAsync(Node(@"C:\Users\me\AppData\Local\Temp\abc.tmp"));
+        Assert.DoesNotContain(b.Evidences, e => e.Kind == EvidenceKind.InstalledApp);
+    }
+
+    [Fact] // 无任何已安装应用匹配 → 不臆造归属。
+    public async Task Unmatched_data_dir_yields_no_attribution()
+    {
+        var win = new FakeWin { Apps = new[] { new InstalledApp("Visual Studio", null, null, "Registry") } };
+        var b = await new EvidenceCollector(win).CollectAsync(Node(@"C:\Users\me\AppData\Local\ObscureThing\x.bin"));
+        Assert.DoesNotContain(b.Evidences, e => e.Kind == EvidenceKind.InstalledApp);
+    }
+
     private static FileMetadata Meta(string? signer = null, bool? signed = null,
         string? company = null, string? version = null) =>
         new(0, ".exe", null, null, company, version, signed, signer, null, null, null);

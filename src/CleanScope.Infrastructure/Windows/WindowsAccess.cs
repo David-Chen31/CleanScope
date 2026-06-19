@@ -110,7 +110,9 @@ public sealed class WindowsAccess : IWindowsAccess
                     if (sub.GetValue("SystemComponent") is int sc && sc == 1) continue; // 系统组件
                     if (sub.GetValue("ParentKeyName") is string pk && pk.Length > 0) continue; // 补丁子项
 
-                    var location = NullIfBlank(sub.GetValue("InstallLocation") as string);
+                    // E2: InstallLocation 常为空 → 从 DisplayIcon 反推安装目录, 提升归属命中率。
+                    var location = NullIfBlank(sub.GetValue("InstallLocation") as string)
+                        ?? NullIfBlank(RegistryInstallPath.FromDisplayIcon(sub.GetValue("DisplayIcon") as string));
                     if (!seen.Add(display + "|" + (location ?? string.Empty))) continue; // 跨视图去重
 
                     outp.Add(new InstalledApp(

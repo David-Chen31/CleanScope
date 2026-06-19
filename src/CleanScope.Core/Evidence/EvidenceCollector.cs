@@ -65,10 +65,11 @@ public sealed class EvidenceCollector : IEvidenceCollector
             }
         }
 
-        // 已安装应用归属 (事实): 路径位于某应用安装目录下。
-        var app = MatchInstalledApp(path);
+        // 已安装应用归属 (事实): 优先按安装目录前缀; 否则 (E1) 按 AppData/用户级程序下的目录段名匹配已安装应用名,
+        // 把"数据/缓存目录"(不在安装目录下、却正是我们要清理的东西) 接回它的归属。
+        var app = MatchInstalledApp(path) ?? MatchInstalledAppByDataDir(path);
         if (app is not null)
-            list.Add(Fact(EvidenceKind.InstalledApp, $"under installed app: {app.Name}", "registry-uninstall", 0.85));
+            list.Add(Fact(EvidenceKind.InstalledApp, $"under installed app: {app.Name}", "registry", 0.85));
 
         return new EvidenceBundle(node.Id, metadata, list);
     }
@@ -86,6 +87,65 @@ public sealed class EvidenceCollector : IEvidenceCollector
 
     private static string? Ext(string path) =>
         Path.GetExtension(path) is { Length: > 0 } e ? e : null;
+
+    // E1: AppData / 用户级程序目录下的目录段名 ↔ 已安装应用名 匹配 → 数据/缓存目录也能归属其应用。
+    private static readonly HashSet<string> DataDirNoise = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "AppData", "Local", "LocalLow", "Roaming", "Packages", "Programs", "Temp", "Microsoft",
+        "Common Files", "Cache", "CacheStorage", "Data", "Storage",
+    };
+
+    // 取最能代表"应用"的目录段: AppData\{Local|Roaming|LocalLow}\<X> 的 X (Programs\<X> 再下钻一层; Packages\<家族>_hash 取家族)。
+    private static string? DataDirSegment(string path)
+    {
+        var segs = path.Replace('/', '\\').Split('\\', StringSplitOptions.RemoveEmptyEntries);
+        var ai = Array.FindIndex(segs, s => s.Equals("AppData", StringComparison.OrdinalIgnoreCase));
+        if (ai < 0 || ai + 2 >= segs.Length) return null;
+
+        var bucket = segs[ai + 1];
+        if (!bucket.Equals("Local", StringComparison.OrdinalIgnoreCase) &&
+            !bucket.Equals("Roaming", StringComparison.OrdinalIgnoreCase) &&
+            !bucket.Equals("LocalLow", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var x = segs[ai + 2];
+        if (x.Equals("Programs", StringComparison.OrdinalIgnoreCase) && ai + 3 < segs.Length) x = segs[ai + 3];
+        else if (x.Equals("Packages", StringComparison.OrdinalIgnoreCase) && ai + 3 < segs.Length) x = segs[ai + 3].Split('_')[0];
+        return DataDirNoise.Contains(x) ? null : x;
+    }
+
+    private InstalledApp? MatchInstalledAppByDataDir(string path)
+    {
+        var seg = DataDirSegment(path);
+        if (seg is null) return null;
+        var normSeg = NormalizeName(seg);
+        if (normSeg.Length < 3) return null;
+
+        InstalledApp? best = null;
+        var bestScore = 0;
+        foreach (var app in _installedApps.Value)
+        {
+            var normApp = NormalizeName(app.Name);
+            if (normApp.Length < 3) continue;
+            var score = NameMatchScore(normSeg, normApp);
+            if (score > bestScore) { bestScore = score; best = app; }
+        }
+        return bestScore > 0 ? best : null;
+    }
+
+    private static string NormalizeName(string s) =>
+        new string(s.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+
+    // 评分: 完全相等最高; 一方为另一方前缀 (>=4) 次之; 含子串 (>=5) 再次。0 = 不匹配 (避免短词误配)。
+    private static int NameMatchScore(string seg, string app)
+    {
+        if (seg == app) return 3;
+        if (seg.Length >= 4 && app.StartsWith(seg, StringComparison.Ordinal)) return 2;
+        if (app.Length >= 4 && seg.StartsWith(app, StringComparison.Ordinal)) return 2;
+        if (seg.Length >= 5 && app.Contains(seg, StringComparison.Ordinal)) return 1;
+        if (app.Length >= 5 && seg.Contains(app, StringComparison.Ordinal)) return 1;
+        return 0;
+    }
 
     // 路径前缀落在某安装目录段边界 → 归属该应用。
     private InstalledApp? MatchInstalledApp(string path)
