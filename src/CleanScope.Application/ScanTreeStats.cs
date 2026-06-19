@@ -27,4 +27,24 @@ public static class ScanTreeStats
         foreach (var c in node.Children) n += CleanableCount(c);
         return n;
     }
+
+    /// <summary>
+    /// 枚举"最顶层可清理节点"(与 <see cref="CleanableTotal"/> 同口径去重): 一旦某目录可清理就产出它、不再下钻。
+    /// 供"只看可清理"扁平视图把深埋在谨慎容器(如 AppData\Local)里的可清理项一次性、完整地铺平展示
+    /// —— 不必逐层展开就能找到 %TEMP% 这类小而可清理的目录。按聚合大小降序。
+    /// </summary>
+    public static IReadOnlyList<ScanTreeNode> EnumerateCleanable(ScanTreeNode? node)
+    {
+        var acc = new List<ScanTreeNode>();
+        Collect(node, acc);
+        acc.Sort((a, b) => b.Size.CompareTo(a.Size));
+        return acc;
+    }
+
+    private static void Collect(ScanTreeNode? node, List<ScanTreeNode> acc)
+    {
+        if (node is null) return;
+        if (node.IsCleanable) { acc.Add(node); return; }   // 顶层可清理: 收下, 不再下钻 (去重)
+        foreach (var c in node.Children) Collect(c, acc);
+    }
 }

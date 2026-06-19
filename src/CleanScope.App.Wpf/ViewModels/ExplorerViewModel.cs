@@ -3,6 +3,7 @@ using System.Windows;
 using CleanScope.App.Wpf.Common;
 using CleanScope.App.Wpf.Composition;
 using CleanScope.App.Wpf.Mvvm;
+using CleanScope.Application;
 using CleanScope.Domain.Entities;
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
@@ -26,6 +27,7 @@ public interface IExplorerActions
 public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
 {
     private readonly AppServices _services;
+    private ScanSession? _session;
 
     public ExplorerViewModel(AppServices services) => _services = services;
 
@@ -37,13 +39,40 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     private string _actionStatus = "";
     public string ActionStatus { get => _actionStatus; private set => SetField(ref _actionStatus, value); }
 
+    // "只看可清理": 把深埋在谨慎容器(如 AppData\Local)里的可清理项一次性铺平, 不必逐层展开才找到 (如 %TEMP%)。
+    private bool _showCleanableOnly;
+    public bool ShowCleanableOnly
+    {
+        get => _showCleanableOnly;
+        set { if (SetField(ref _showCleanableOnly, value)) Rebuild(); }
+    }
+
     public void Load(ScanSession session)
     {
-        Roots.Clear();
+        _session = session;
         ActionStatus = "";
-        if (session.Tree is null)
+        Rebuild();
+    }
+
+    private void Rebuild()
+    {
+        Roots.Clear();
+        var session = _session;
+        if (session?.Tree is null)
         {
             Summary = "本次扫描未生成目录树。";
+            return;
+        }
+
+        if (_showCleanableOnly)
+        {
+            // 扁平列出整盘所有"最顶层可清理"节点 (与概览的处数/总量同口径), 按大小降序; 比例条相对最大者。
+            var items = ScanTreeStats.EnumerateCleanable(session.Tree);
+            var max = items.Count > 0 ? items[0].Size : 1;
+            foreach (var n in items)
+                Roots.Add(new ExplorerNodeViewModel(n, max, withinCleanable: false, actions: this));
+            Summary = $"只看可清理：{items.Count} 处，共约 {Format.HumanSize(session.TreeReclaimable)}" +
+                      "（含深埋各软件内部缓存）。右键即可移入回收站（可还原）；取消勾选可看完整目录树。";
             return;
         }
 

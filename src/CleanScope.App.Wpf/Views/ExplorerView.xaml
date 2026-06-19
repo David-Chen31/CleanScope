@@ -9,7 +9,11 @@
     <Border Style="{StaticResource Cards}">
         <DockPanel>
             <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                <TextBlock Text="资源管理器（整盘目录树）" Style="{StaticResource H2}"/>
+                <Grid>
+                    <TextBlock Text="资源管理器（整盘目录树）" Style="{StaticResource H2}" VerticalAlignment="Center"/>
+                    <CheckBox Content="✓ 只看可清理（扁平，含深埋缓存）" IsChecked="{Binding ShowCleanableOnly}"
+                              HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#1E7E34" FontWeight="SemiBold"/>
+                </Grid>
                 <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}"/>
             </StackPanel>
 

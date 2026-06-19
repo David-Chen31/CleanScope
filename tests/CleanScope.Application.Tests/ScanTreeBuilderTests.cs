@@ -62,6 +62,10 @@ public sealed class ScanTreeBuilderTests
 
         Assert.Equal(600 + 150, ScanTreeStats.CleanableTotal(root));   // AppCache(600) + Data\Logs(150)
         Assert.Equal(2, ScanTreeStats.CleanableCount(root));          // 两处顶层可清理
+
+        // "只看可清理"扁平枚举: 同口径去重(AppCache 收下后不再下钻其子), 按大小降序。
+        var flat = ScanTreeStats.EnumerateCleanable(root);
+        Assert.Equal(new[] { @"C:\AppCache", @"C:\Data\Logs" }, flat.Select(n => n.Path));
     }
 
     [Fact] // bug 修复: 大文件作为叶子挂到父目录下, 让"只装一个大文件的目录"在树里可见且有内容 (而非整条等大余量)。
