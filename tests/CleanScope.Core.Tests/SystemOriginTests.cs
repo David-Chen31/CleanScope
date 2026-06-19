@@ -30,6 +30,10 @@ public sealed class SystemOriginTests
     [InlineData(@"C:\Users\me\AppData\Roaming\Tencent\QQ")]
     [InlineData(@"C:\some\random\file.dat")]
     [InlineData(@"C:\")]
+    // 用户目录里的同名 \Microsoft\Windows 子目录是用户数据, 不可被当成系统文件 (盘符根锚定后才正确)。
+    [InlineData(@"C:\Users\me\AppData\Local\Microsoft\Windows")]
+    [InlineData(@"C:\Users\me\AppData\Local\Microsoft\Windows\Fonts")]
+    [InlineData(@"C:\Users\me\AppData\Local\Microsoft\Windows\INetCache")]
     public void Non_system_paths_return_null(string path)
         => Assert.Null(SystemOrigin.Resolve(path));
 }

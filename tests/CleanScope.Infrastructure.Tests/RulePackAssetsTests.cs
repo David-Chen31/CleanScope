@@ -9,8 +9,8 @@ namespace CleanScope.Infrastructure.Tests;
 public sealed class RulePackAssetsTests
 {
     private const int ExpectedFiles = 12;   // 知识库 §1: 11 包 + 33-dev-cache (S3 可清理类别扩充)
-    private const int ExpectedRules = 59;   // 12 包合计 59 条 (新增 7 条开发缓存)
-    private const int ExpectedSystemCritical = 17; // 00-system-critical 16 + 10-installer:package-cache 1
+    private const int ExpectedRules = 60;   // 12 包合计 60 条 (+ localappdata-package-cache)
+    private const int ExpectedSystemCritical = 18; // 00-system-critical 16 + 10-installer 的 2 条 package-cache (ProgramData/LocalAppData)
 
     private static string RulesDir()
     {

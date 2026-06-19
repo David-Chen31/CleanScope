@@ -54,11 +54,21 @@ public static class SystemOrigin
         if (lower.Contains(@"\$recycle.bin")) return ("回收站", "已删除文件的回收站 (可清空)");
         if (lower.Contains(@"\system volume information")) return (WindowsOwner, "系统还原点 / 卷影副本");
 
-        // 3) Windows\<子目录> → 具体用途; 否则笼统 Windows 系统。
-        if (lower.Contains(@"\windows\"))
-            foreach (var (frag, purpose) in WindowsSubdirs)
-                if (lower.Contains(@"\windows" + frag)) return (WindowsOwner, purpose);
-        if (lower.EndsWith(@"\windows") || lower.Contains(@"\windows\")) return (WindowsOwner, "Windows 系统文件");
+        // 3) 系统 Windows 目录 → 具体用途; 否则笼统 Windows 系统文件。
+        //    必须锚定盘符根下的 \Windows (如 C:\Windows), 即 ":\windows"。否则 "\windows" 会误命中
+        //    用户目录里的同名子目录 (如 ...\AppData\Local\Microsoft\Windows), 把用户数据错标成系统文件。
+        const string winMarker = @":\windows";
+        int winIdx = lower.IndexOf(winMarker, StringComparison.Ordinal);
+        if (winIdx >= 0)
+        {
+            var afterRoot = lower[(winIdx + winMarker.Length)..];   // \Windows 之后 (含前导 '\'), 整盘根则为 ""
+            if (afterRoot.Length == 0 || afterRoot[0] == '\\')      // 必须是 \Windows 这一段本身, 排除 windows.old/windowsapps 等
+            {
+                foreach (var (frag, purpose) in WindowsSubdirs)
+                    if (afterRoot.StartsWith(frag, StringComparison.Ordinal)) return (WindowsOwner, purpose);
+                return (WindowsOwner, "Windows 系统文件");
+            }
+        }
 
         // 4) 安装器/更新的包缓存。
         if (lower.Contains(@"\package cache")) return (WindowsOwner, "安装包缓存 (经官方安装器管理)");

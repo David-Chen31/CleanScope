@@ -5,6 +5,12 @@
     "recommended_action":"用对应官方安装器(如 VS Installer)管理，勿直删",
     "evidence_type":"path_rule", "confidence":0.95, "priority":100 },
 
+  { "id":"localappdata-package-cache", "pattern":"%LocalAppData%\\Package Cache", "match_type":"path_prefix",
+    "category":"Package Cache", "risk_level":"D", "direct_delete":false, "is_system_critical":true,
+    "description":"用户级安装包缓存(WiX/Burn bundle，如 PowerToys/.NET/部分 VS 组件)，修复/卸载所需，不会自动重建",
+    "recommended_action":"用对应官方安装器管理，勿直删",
+    "evidence_type":"path_rule", "confidence":0.93, "priority":100 },
+
   { "id":"win-update-cache", "pattern":"%SystemRoot%\\SoftwareDistribution\\Download", "match_type":"path_prefix",
     "category":"Windows 更新缓存", "risk_level":"C", "direct_delete":false, "is_system_critical":false,
     "description":"Windows Update 下载缓存", "recommended_action":"经磁盘清理或停 wuauserv 后清理，非直删",
