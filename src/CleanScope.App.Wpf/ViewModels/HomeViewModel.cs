@@ -25,11 +25,16 @@ public sealed class HomeViewModel : ViewModelBase
         _targetPath = SuggestDefaultTarget();
         ScanCommand = new AsyncRelayCommand(_ => ScanAsync(), _ => CanScan);
         ViewListCommand = new RelayCommand(_host.ShowList, () => Session is not null);
+        AdviseCommand = new AsyncRelayCommand(_ => AdviseAsync(), _ => CanAdvise);
         RefreshDrive();
     }
 
     public AsyncRelayCommand ScanCommand { get; }
     public RelayCommand ViewListCommand { get; }
+    public AsyncRelayCommand AdviseCommand { get; }   // 按需生成 AI 清理参谋 (脱敏后请求一次), 非自动
+
+    /// <summary>AI 是否已配置 (决定是否显示按需 AI 入口)。</summary>
+    public bool AiEnabled => _services.AiEnabled;
 
     private string _targetPath;
     public string TargetPath
@@ -85,10 +90,52 @@ public sealed class HomeViewModel : ViewModelBase
     private int _highRiskCount;
     public int HighRiskCount { get => _highRiskCount; private set => SetField(ref _highRiskCount, value); }
 
-    // S-H: 整盘 AI 参谋 (跨项建议); 无 AI / 未生成则为空, 卡片隐藏。
+    // S-H: 整盘 AI 参谋 (跨项建议); 按需生成, 无 AI / 未生成则为空, 卡片隐藏。
     private string? _aiAdvice;
-    public string? AiAdvice { get => _aiAdvice; private set { if (SetField(ref _aiAdvice, value)) OnPropertyChanged(nameof(HasAiAdvice)); } }
+    public string? AiAdvice
+    {
+        get => _aiAdvice;
+        private set { if (SetField(ref _aiAdvice, value)) { OnPropertyChanged(nameof(HasAiAdvice)); OnPropertyChanged(nameof(ShowAdviseButton)); AdviseCommand.RaiseCanExecuteChanged(); } }
+    }
     public bool HasAiAdvice => !string.IsNullOrWhiteSpace(_aiAdvice);
+
+    private bool _advising;
+    private string _adviseStatus = "";
+    public string AdviseStatus { get => _adviseStatus; private set => SetField(ref _adviseStatus, value); }
+
+    // 仅在 AI 已配置、已有扫描结果、且尚未生成时可点 (生成后按钮隐藏, 改显建议卡)。
+    public bool CanAdvise => _services.CleanupAdvisor is { Enabled: true } && HasResult && !HasAiAdvice && !_advising;
+    public bool ShowAdviseButton => _services.CleanupAdvisor is { Enabled: true } && HasResult && !HasAiAdvice;
+
+    // 按需: 用户点击才发一次脱敏聚合请求 (整盘跨项建议)。失败不阻断, 仅提示。
+    private async Task AdviseAsync()
+    {
+        if (Session is null || _services.CleanupAdvisor is not { Enabled: true }) return;
+        _advising = true;
+        AdviseCommand.RaiseCanExecuteChanged();
+        AdviseStatus = "正在生成 AI 清理建议（脱敏后请求一次，仅供参考）…";
+        try
+        {
+            var advice = await _services.CleanupAdvisor.AdviseAsync(CleanupSummaryBuilder.From(Session.Report.Items));
+            if (string.IsNullOrWhiteSpace(advice))
+            {
+                AdviseStatus = "AI 未能生成建议（以确定性的按类别/按软件清理为准）。";
+                return;
+            }
+            Session.ApplyAiAdvice(advice);   // 写回报告, 让导出的报告也含此建议
+            AiAdvice = advice;
+            AdviseStatus = "";
+        }
+        catch
+        {
+            AdviseStatus = "AI 生成建议失败（以确定性的按类别/按软件清理为准）。";
+        }
+        finally
+        {
+            _advising = false;
+            AdviseCommand.RaiseCanExecuteChanged();
+        }
+    }
 
     public IReadOnlyList<FileRowViewModel> TopDirectories { get; private set; } = Array.Empty<FileRowViewModel>();
 
@@ -111,10 +158,10 @@ public sealed class HomeViewModel : ViewModelBase
                 Status = $"扫描中… 已观察 {p.FilesScanned} 项　{p.CurrentPath}";
             });
 
-            // AI 配置后, 扫描末尾对无主未知项做调查/归因兜底 (S-C/S-G, 上限受控); 否则秒级返回。
-            var aiMode = _services.AiEnabled ? AiMode.InvestigateUnknowns : AiMode.OnDemand;
+            // 扫描默认不调用 AI (零 token 负担): 确定性的规则/风险/目录名启发已能覆盖绝大多数。
+            // AI 仅在用户明确请求时按需触发 (详情页「AI 解释」、资源管理器右键「AI 识别」、概览「生成 AI 建议」)。
             // P1: buildTree 让扫描顺带产出全盘目录树, 供资源管理器浏览。
-            var result = await _services.UseCase.ExecuteAsync(options, progress, default, aiMode, buildTree: true);
+            var result = await _services.UseCase.ExecuteAsync(options, progress, default, AiMode.OnDemand, buildTree: true);
 
             // 决议项与完整分析按路径关联, 构造行 VM。
             var byPath = result.Analyses.ToDictionary(a => a.Node.Path, a => a);
@@ -122,16 +169,7 @@ public sealed class HomeViewModel : ViewModelBase
                 .Select(d => new FileRowViewModel(d, byPath[d.Path]))
                 .ToList();
 
-            // S-H: 整盘 AI 参谋 (脱敏聚合 → 跨项建议)。失败/未启用 → 跳过, 不阻断结果。
-            var report = result.Report;
-            if (_services.CleanupAdvisor is { Enabled: true })
-            {
-                Status = "正在生成 AI 清理参谋…";
-                var advice = await _services.CleanupAdvisor.AdviseAsync(CleanupSummaryBuilder.From(result.Decisions));
-                if (!string.IsNullOrWhiteSpace(advice)) report = report with { AiCleanupAdvice = advice };
-            }
-
-            var session = new ScanSession(TargetPath, report, rows, result.Tree);
+            var session = new ScanSession(TargetPath, result.Report, rows, result.Tree);
             _host.LoadSession(session);   // 触发各页加载 (含本页 OnSessionLoaded)
             Status = $"扫描完成：{rows.Count} 项，用时已计入报告。点击「查看清单」浏览明细。";
         }
@@ -158,9 +196,12 @@ public sealed class HomeViewModel : ViewModelBase
         OverviewReclaimable = $"{Format.HumanSize(session.TreeReclaimable)}（约 {session.TreeCleanableCount} 处）";
         HighRiskCount = session.HighRiskCount;
         AiAdvice = session.AiCleanupAdvice;
+        AdviseStatus = "";
         TopDirectories = session.Rows.OrderByDescending(r => r.Size).Take(10).ToList();
         OnPropertyChanged(nameof(TopDirectories));
+        OnPropertyChanged(nameof(ShowAdviseButton));
         ViewListCommand.RaiseCanExecuteChanged();
+        AdviseCommand.RaiseCanExecuteChanged();
     }
 
     private void RefreshDrive()

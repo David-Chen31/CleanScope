@@ -159,6 +159,11 @@
             </StackPanel>
         </Border>
 
+        <!-- 按需 AI 解释入口: 不自动出云, 用户点了才请求 (省 token); 未配置 AI / 已解释 / 系统关键时不显示 -->
+        <Button Content="✨ 用 AI 解释这一项（脱敏后请求，可选）" Command="{Binding ExplainCommand}" Style="{StaticResource Ghost}"
+                HorizontalAlignment="Left" Margin="0,0,0,8"
+                Visibility="{Binding CanExplain, Converter={StaticResource BoolToVis}}"/>
+
         <!-- AI 状态 (生成中 / 不可用; 无解释卡时显示) -->
         <TextBlock Text="{Binding AiStatus}" Style="{StaticResource Sub}" Margin="2,-4,0,8"
                    Visibility="{Binding AiStatus, Converter={StaticResource NotEmptyToVis}}"/>

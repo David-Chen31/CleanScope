@@ -32,6 +32,7 @@ public sealed class FileDetailViewModel : ViewModelBase
         UninstallCommand = new AsyncRelayCommand(_ =>
             DoActionAsync(ActionType.OpenSettings, target: "ms-settings:appsfeatures"));
         MoveToRecycleBinCommand = new AsyncRelayCommand(_ => MoveToRecycleBinAsync());
+        ExplainCommand = new AsyncRelayCommand(_ => ExplainAsync(), _ => CanExplain);
     }
 
     public RelayCommand BackCommand { get; }
@@ -42,6 +43,13 @@ public sealed class FileDetailViewModel : ViewModelBase
     public AsyncRelayCommand CopyCommandCommand { get; }    // S-D: 复制官方清理命令
     public AsyncRelayCommand UninstallCommand { get; }      // S-D: 打开卸载程序
     public AsyncRelayCommand MoveToRecycleBinCommand { get; }  // S-E: 移入回收站 (可恢复, 两步确认)
+    public AsyncRelayCommand ExplainCommand { get; }           // 按需 AI 解释 (脱敏后请求, 非自动)
+
+    /// <summary>AI 已配置且当前项可解释 (非系统关键、尚未解释) → 显示「AI 解释」按钮。</summary>
+    public bool AiEnabled => _services.AiEnabled;
+    public bool CanExplain => _services.AiEnabled && _ai is null && !_explaining
+        && _row?.Analysis.RuleMatch?.IsSystemCritical != true;
+    private bool _explaining;
 
     private FileRowViewModel? _row;
     public FileRowViewModel? Row { get => _row; private set => SetField(ref _row, value); }
@@ -54,7 +62,7 @@ public sealed class FileDetailViewModel : ViewModelBase
     public AiExplanationViewModel? Ai
     {
         get => _ai;
-        private set { if (SetField(ref _ai, value)) OnPropertyChanged(nameof(HasAi)); }
+        private set { if (SetField(ref _ai, value)) { OnPropertyChanged(nameof(HasAi)); OnPropertyChanged(nameof(CanExplain)); ExplainCommand.RaiseCanExecuteChanged(); } }
     }
     public bool HasAi => _ai is not null;
 
@@ -71,14 +79,23 @@ public sealed class FileDetailViewModel : ViewModelBase
         ActionStatus = "";
         EvaluateGate(row);
 
-        // AI 解释: 批量已得则直接用; 否则按需生成 (脱敏后请求, 仅供参考)。
+        // AI 解释: 不再自动出云 (省 token); 若该项此前已生成过则直接显示, 否则等用户点「AI 解释」按钮。
         Ai = row.Ai;
         AiStatus = "";
-        if (Ai is null && _services.AiEnabled && row.Analysis.RuleMatch?.IsSystemCritical != true)
-        {
-            AiStatus = "正在生成 AI 解释（脱敏后请求，仅供参考）…";
-            _ = LoadAiAsync(row);
-        }
+        ExplainCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(CanExplain));
+    }
+
+    // 按需: 用户点击「AI 解释」才发一次脱敏请求。
+    private async Task ExplainAsync()
+    {
+        if (Row is null) return;
+        _explaining = true;
+        ExplainCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(CanExplain));
+        AiStatus = "正在生成 AI 解释（脱敏后请求，仅供参考）…";
+        try { await LoadAiAsync(Row); }
+        finally { _explaining = false; ExplainCommand.RaiseCanExecuteChanged(); OnPropertyChanged(nameof(CanExplain)); }
     }
 
     private async Task LoadAiAsync(FileRowViewModel row)

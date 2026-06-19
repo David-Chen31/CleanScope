@@ -19,8 +19,11 @@ public sealed class ScanSession
     }
 
     public string TargetPath { get; }
-    public ScanReport Report { get; }
+    public ScanReport Report { get; private set; }
     public IReadOnlyList<FileRowViewModel> Rows { get; }
+
+    /// <summary>按需生成的整盘 AI 参谋写回报告 (S-H), 使后续导出的报告也包含该建议。</summary>
+    public void ApplyAiAdvice(string advice) => Report = Report with { AiCleanupAdvice = advice };
 
     /// <summary>全盘目录树 (P1): 资源管理器式浏览; 无树时 null。</summary>
     public ScanTreeNode? Tree { get; }

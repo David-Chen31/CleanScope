@@ -73,7 +73,15 @@
                     </StackPanel>
                 </UniformGrid>
 
-                <!-- S-H: 整盘 AI 清理参谋 (跨项建议); 仅 AI 配置且生成成功时显示 -->
+                <!-- S-H: 整盘 AI 清理参谋 —— 按需生成 (零默认 token); 未配置 AI 时按钮不显示 -->
+                <StackPanel Margin="0,0,0,12" Visibility="{Binding ShowAdviseButton, Converter={StaticResource BoolToVis}}">
+                    <Button Content="🧭 生成 AI 清理建议（脱敏后请求一次，可选）" Command="{Binding AdviseCommand}"
+                            Style="{StaticResource Ghost}" HorizontalAlignment="Left"/>
+                    <TextBlock Text="{Binding AdviseStatus}" Style="{StaticResource Sub}" Margin="2,6,0,0"
+                               Visibility="{Binding AdviseStatus, Converter={StaticResource NotEmptyToVis}}"/>
+                </StackPanel>
+
+                <!-- 生成成功后展示参谋建议 -->
                 <Border Background="#F1F7FF" CornerRadius="6" Padding="12,10" Margin="0,0,0,12"
                         Visibility="{Binding HasAiAdvice, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
