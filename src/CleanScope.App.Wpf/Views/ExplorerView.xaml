@@ -61,14 +61,22 @@
                                 <!-- ContextMenu 不在同一可视树, 需经 PlacementTarget 取回行的 DataContext -->
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                     <MenuItem Header="复制路径" Command="{Binding CopyPathCommand}"/>
-                                    <MenuItem Header="复制用途 / 说明" Command="{Binding CopyPurposeCommand}"/>
-                                    <MenuItem Header="在资源管理器中打开位置" Command="{Binding OpenLocationCommand}"/>
+                                    <!-- 删除后失效的"对实物的操作"整体隐藏 (定位/AI/迁移/回收) -->
+                                    <MenuItem Header="复制用途 / 说明" Command="{Binding CopyPurposeCommand}"
+                                              Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
+                                    <MenuItem Header="在资源管理器中打开位置" Command="{Binding OpenLocationCommand}"
+                                              Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
                                     <!-- 仅在已配置 AI 时出现; 点一次发一次脱敏请求, 识别这个目录是什么 (推测) -->
                                     <MenuItem Header="用 AI 识别用途 / 归属（推测）" Command="{Binding InvestigateCommand}"
                                               Visibility="{Binding ShowAiMenu, Converter={StaticResource BoolToVis}}"/>
-                                    <Separator/>
-                                    <MenuItem Header="迁移到其他盘（建目录联接，省 C 盘且软件照常用）" Command="{Binding MigrateCommand}"/>
-                                    <MenuItem Header="移入回收站（可还原）" Command="{Binding RecycleCommand}"/>
+                                    <Separator Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
+                                    <MenuItem Header="迁移到其他盘（建目录联接，省 C 盘且软件照常用）" Command="{Binding MigrateCommand}"
+                                              Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
+                                    <MenuItem Header="移入回收站（可还原）" Command="{Binding RecycleCommand}"
+                                              Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
+                                    <!-- 删除后唯一可用动作 -->
+                                    <MenuItem Header="在回收站中查看 / 还原" Command="{Binding OpenRecycleBinCommand}"
+                                              Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}"/>
                                 </ContextMenu>
                             </Grid.ContextMenu>
                             <Grid.ColumnDefinitions>
@@ -104,6 +112,9 @@
                                 <TextBlock Text="  ✨AI推测" Foreground="#8451C4" FontSize="11" VerticalAlignment="Center"
                                            ToolTip="来源/用途由 AI 推测补充，仅供参考"
                                            Visibility="{Binding IsAiResolved, Converter={StaticResource BoolToVis}}"/>
+                                <TextBlock Text="  ✨识别中…" Foreground="#8451C4" FontSize="11" VerticalAlignment="Center"
+                                           FontStyle="Italic"
+                                           Visibility="{Binding IsInvestigating, Converter={StaticResource BoolToVis}}"/>
                             </StackPanel>
 
                             <!-- 大小 + 占父目录比例条 -->

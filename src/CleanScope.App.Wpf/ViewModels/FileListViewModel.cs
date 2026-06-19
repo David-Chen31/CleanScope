@@ -69,6 +69,11 @@ public sealed class FileListViewModel : ViewModelBase
     }
 
     private bool _busy;
+    public bool IsBusy
+    {
+        get => _busy;
+        private set { if (SetField(ref _busy, value)) RecycleSelectedCommand.RaiseCanExecuteChanged(); }
+    }
 
     private FileRowViewModel? _selected;
     public FileRowViewModel? Selected
@@ -121,7 +126,8 @@ public sealed class FileListViewModel : ViewModelBase
         RecycleSelectedCommand.RaiseCanExecuteChanged();
     }
 
-    // 批量移入回收站: 一次确认 → 逐项过安全闸门 (黑名单/容器/占用/风险独立复核) → 先写审计 → 仅移入回收站。
+    // 批量移入回收站: 先弹确认(瞬时) → 整个"逐项闸门 + 执行"循环放后台线程 (占用检测/回收站均可能耗时,
+    // 在 UI 线程跑会冻住像出 bug) → 经 IProgress 在 UI 线程报进度并标记已删行。仍是: 黑名单/容器/占用/风险独立复核 + 先写审计 + 仅回收站。
     private async Task RecycleSelectedAsync()
     {
         var targets = _rows.Where(r => r.IsSelected && r.IsRecyclable).ToList();
@@ -135,26 +141,37 @@ public sealed class FileListViewModel : ViewModelBase
             MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
         if (confirm != MessageBoxResult.OK) { ActionStatus = "已取消，未做任何改动。"; return; }
 
-        _busy = true;
-        RecycleSelectedCommand.RaiseCanExecuteChanged();
+        IsBusy = true;
         int ok = 0, skipped = 0;
         long freed = 0;
+        var count = targets.Count;
+        // Progress 捕获 UI 同步上下文: 回调在 UI 线程执行, 安全更新状态与标记已删行。
+        var reporter = (IProgress<(int done, FileRowViewModel? deleted)>)new Progress<(int done, FileRowViewModel? deleted)>(p =>
+        {
+            ActionStatus = $"正在处理 {p.done}/{count}…";
+            p.deleted?.MarkDeleted();
+        });
         try
         {
-            foreach (var r in targets)
+            await Task.Run(async () =>
             {
-                var request = new ActionRequest(null, r.Path, ActionType.MoveToRecycleBin);
-                var verdict = _services.SafetyGuard.Evaluate(request, r.Analysis.RuleMatch, r.Analysis.Risk);
-                if (verdict.Outcome != GuardOutcome.Allowed) { skipped++; continue; }
+                var i = 0;
+                foreach (var r in targets)
+                {
+                    i++;
+                    var request = new ActionRequest(null, r.Path, ActionType.MoveToRecycleBin);
+                    var verdict = _services.SafetyGuard.Evaluate(request, r.Analysis.RuleMatch, r.Analysis.Risk);
+                    if (verdict.Outcome != GuardOutcome.Allowed) { skipped++; reporter.Report((i, null)); continue; }
 
-                var log = await _services.ActionExecutor.ExecuteAsync(request, verdict);
-                if (log.Result == ActionResult.Success) { r.MarkDeleted(); ok++; freed += r.Size; }
-                else skipped++;
-            }
+                    var log = await _services.ActionExecutor.ExecuteAsync(request, verdict);
+                    if (log.Result == ActionResult.Success) { ok++; freed += r.Size; reporter.Report((i, r)); }
+                    else { skipped++; reporter.Report((i, null)); }
+                }
+            });
         }
         finally
         {
-            _busy = false;
+            IsBusy = false;
         }
 
         ActionStatus = $"已移入回收站 {ok} 项（约 {Format.HumanSize(freed)}，可还原）"

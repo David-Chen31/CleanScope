@@ -19,6 +19,7 @@ public interface IExplorerActions
     Task RecycleAsync(ExplorerNodeViewModel node);
     Task InvestigateAsync(ExplorerNodeViewModel node);
     Task MigrateAsync(ExplorerNodeViewModel node);
+    Task OpenRecycleBinAsync();
 }
 
 /// <summary>
@@ -94,6 +95,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     public async Task InvestigateAsync(ExplorerNodeViewModel node)
     {
         if (node is null || !node.CanInvestigate) return;
+        node.BeginInvestigating();   // A4: 行内"✨识别中…"+ 禁用再点, 让用户明确知道在转
         ActionStatus = $"正在用 AI 识别「{node.Name}」（脱敏后请求，仅供参考）…";
 
         // 构造轻量分析 (空证据、无逐项 I/O) 交注解器: 脱敏 → 解释 → 校验。AI 永不进入风险/删除判定。
@@ -128,6 +130,10 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         catch
         {
             ActionStatus = $"AI 识别失败「{node.Name}」（以现有结论为准）。";
+        }
+        finally
+        {
+            node.EndInvestigating();
         }
     }
 
@@ -187,12 +193,15 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
 
     // E3 删除: 安全闸门当场判定 (黑名单/容器/A·B/占用按路径独立强制) → 两步确认 → 执行器先写审计后仅移入回收站。
     // 绝不永久删除; 被拒则只提示理由, 连确认框都不弹。
+    // B: 占用检测(Restart Manager)与回收站执行可能耗时, 一律放后台线程, 先给"检查中"提示, 避免确认框迟迟不弹/界面冻住像出 bug。
     public async Task RecycleAsync(ExplorerNodeViewModel node)
     {
         if (node is null || !node.CanRecycle) return;
 
         var request = new ActionRequest(null, node.Path, ActionType.MoveToRecycleBin);
-        var verdict = _services.SafetyGuard.Evaluate(request, null, node.ToRiskAssessment());
+
+        ActionStatus = $"正在检查「{node.Name}」是否可安全清理…";
+        var verdict = await Task.Run(() => _services.SafetyGuard.Evaluate(request, null, node.ToRiskAssessment()));
         if (verdict.Outcome != GuardOutcome.Allowed)
         {
             ActionStatus = string.IsNullOrWhiteSpace(verdict.RecommendedAlternative)
@@ -200,6 +209,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
                 : $"不可删除：{verdict.Reason}　建议：{verdict.RecommendedAlternative}";
             return;
         }
+        ActionStatus = "";
 
         var confirm = MessageBox.Show(
             $"确定把以下项移入回收站吗？（可从回收站还原，非永久删除）\n\n{node.Path}\n\n大小：{node.SizeText}　来源：{node.Origin}",
@@ -207,7 +217,8 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
         if (confirm != MessageBoxResult.OK) { ActionStatus = "已取消，未做任何改动。"; return; }
 
-        var log = await _services.ActionExecutor.ExecuteAsync(request, verdict);
+        ActionStatus = $"正在移入回收站「{node.Name}」…";
+        var log = await Task.Run(() => _services.ActionExecutor.ExecuteAsync(request, verdict));
         if (log.Result == ActionResult.Success)
         {
             node.MarkDeleted();
@@ -219,9 +230,17 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         }
     }
 
+    // A2: 删除后唯一可用动作 —— 打开系统回收站, 用户可在其中查看/还原。
+    public Task OpenRecycleBinAsync()
+    {
+        var request = new ActionRequest(null, "shell:RecycleBinFolder", ActionType.OpenDir);
+        var approval = _services.SafetyGuard.Evaluate(request, null, null);   // 只读操作, 闸门直接放行
+        return RunAsync(request, approval, "已打开回收站，可在其中查看或还原。");
+    }
+
     private async Task RunAsync(ActionRequest request, GuardDecision approval, string okStatus)
     {
-        var log = await _services.ActionExecutor.ExecuteAsync(request, approval);
+        var log = await Task.Run(() => _services.ActionExecutor.ExecuteAsync(request, approval));
         ActionStatus = log.Result == ActionResult.Success ? okStatus : $"操作未完成：{log.RejectReason}";
     }
 }

@@ -34,10 +34,11 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
         CopyPurposeCommand = new RelayCommand(
             _ => _actions?.CopyToClipboard(string.IsNullOrWhiteSpace(Purpose) ? RecommendedAction : Purpose, "已复制用途说明"),
             _ => !string.IsNullOrWhiteSpace(Purpose) || !string.IsNullOrWhiteSpace(RecommendedAction));
-        OpenLocationCommand = new AsyncRelayCommand(_ => _actions?.OpenLocationAsync(Path) ?? Task.CompletedTask, _ => HasPath);
+        OpenLocationCommand = new AsyncRelayCommand(_ => _actions?.OpenLocationAsync(Path) ?? Task.CompletedTask, _ => HasPath && !_isDeleted);
         RecycleCommand = new AsyncRelayCommand(_ => _actions?.RecycleAsync(this) ?? Task.CompletedTask, _ => CanRecycle);
         InvestigateCommand = new AsyncRelayCommand(_ => _actions?.InvestigateAsync(this) ?? Task.CompletedTask, _ => CanInvestigate);
         MigrateCommand = new AsyncRelayCommand(_ => _actions?.MigrateAsync(this) ?? Task.CompletedTask, _ => CanMigrate);
+        OpenRecycleBinCommand = new AsyncRelayCommand(_ => _actions?.OpenRecycleBinAsync() ?? Task.CompletedTask, _ => _isDeleted);
     }
 
     // 有效可清理: 自身可清理, 或处在可清理祖先之下 (缓存目录里的子项也随父一起清, 颜色应一致)。
@@ -52,6 +53,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     public AsyncRelayCommand RecycleCommand { get; }
     public AsyncRelayCommand InvestigateCommand { get; }   // E5+: 按需用 AI 识别此项 (零默认开销)
     public AsyncRelayCommand MigrateCommand { get; }       // P0: 把此目录迁到其他盘 + 建目录联接
+    public AsyncRelayCommand OpenRecycleBinCommand { get; }  // A2: 删除后唯一可用动作 —— 打开回收站查看/还原
 
     private bool _isExpanded;
     public bool IsExpanded
@@ -76,9 +78,19 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     private bool _aiResolved;
     public bool IsAiResolved { get => _aiResolved; private set { if (SetField(ref _aiResolved, value)) OnPropertyChanged(nameof(CanInvestigate)); } }
 
-    // 仅 AI 已启用 + 真实项 + 尚未识别时可点; 未配置 AI 的用户菜单项不显示, 自然零开销。
+    // 仅 AI 已启用 + 真实项 + 尚未识别/识别中/已删 时可点; 未配置 AI 的用户菜单项不显示, 自然零开销。
     public bool ShowAiMenu => _actions?.AiEnabled == true;
-    public bool CanInvestigate => ShowAiMenu && HasPath && !IsRemainder && !_aiResolved;
+    public bool CanInvestigate => ShowAiMenu && HasPath && !IsRemainder && !_aiResolved && !_isInvestigating && !_isDeleted;
+
+    // A4: AI 识别中的瞬时态 —— 行内显示"✨识别中…", 期间禁用该动作, 让用户明确知道在转。
+    private bool _isInvestigating;
+    public bool IsInvestigating
+    {
+        get => _isInvestigating;
+        private set { if (SetField(ref _isInvestigating, value)) { OnPropertyChanged(nameof(CanInvestigate)); InvestigateCommand.RaiseCanExecuteChanged(); } }
+    }
+    public void BeginInvestigating() => IsInvestigating = true;
+    public void EndInvestigating() => IsInvestigating = false;
 
     // 写回 AI 识别结果 (推测), 触发界面刷新。
     public void ApplyAiInvestigation(string? origin, string? purpose)
@@ -101,15 +113,30 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     // 迁移入口: 真实目录 (非余量/非容器/未删) 才显示; 是否真能迁由迁移器保守白名单当场判定。
     public bool CanMigrate => HasPath && IsDirectory && !_node.IsContainer && !_isDeleted;
 
-    // 已移入回收站: UI 置灰 + 删除线, 给即时反馈。
+    // 已移入回收站: UI 置灰 + 删除线, 给即时反馈。A2: 删除后失效的动作一并禁用, 只留"打开回收站"。
     private bool _isDeleted;
     public bool IsDeleted
     {
         get => _isDeleted;
-        private set { if (SetField(ref _isDeleted, value)) { OnPropertyChanged(nameof(CanRecycle)); RecycleCommand.RaiseCanExecuteChanged(); } }
+        private set
+        {
+            if (!SetField(ref _isDeleted, value)) return;
+            OnPropertyChanged(nameof(CanRecycle));
+            OnPropertyChanged(nameof(CanMigrate));
+            OnPropertyChanged(nameof(CanInvestigate));
+            OnPropertyChanged(nameof(ShowLiveActions));
+            RecycleCommand.RaiseCanExecuteChanged();
+            MigrateCommand.RaiseCanExecuteChanged();
+            InvestigateCommand.RaiseCanExecuteChanged();
+            OpenLocationCommand.RaiseCanExecuteChanged();
+            OpenRecycleBinCommand.RaiseCanExecuteChanged();
+        }
     }
 
     public void MarkDeleted() => IsDeleted = true;
+
+    /// <summary>是否仍显示"对实物的操作"(复制/打开/AI/迁移/回收)。删除后这些都失效, 仅留"打开回收站"。</summary>
+    public bool ShowLiveActions => !_isDeleted;
 
     // 送交安全闸门的风险快照: 处在可清理祖先下的子项按"可清理(B)"评估, 与绿色显示一致;
     // 其余用本节点真实等级。黑名单/容器/占用仍由闸门独立按路径强制 (不受此影响)。
