@@ -3,17 +3,20 @@ using System.Windows;
 using CleanScope.App.Wpf.Common;
 using CleanScope.App.Wpf.Composition;
 using CleanScope.App.Wpf.Mvvm;
+using CleanScope.Domain.Entities;
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
 
 namespace CleanScope.App.Wpf.ViewModels;
 
-/// <summary>节点右键操作契约 (E3): 复制 / 打开位置 / 移入回收站。由 <see cref="ExplorerViewModel"/> 实现。</summary>
+/// <summary>节点右键操作契约 (E3): 复制 / 打开位置 / 移入回收站 / 按需 AI 识别。由 <see cref="ExplorerViewModel"/> 实现。</summary>
 public interface IExplorerActions
 {
+    bool AiEnabled { get; }
     void CopyToClipboard(string text, string okStatus);
     Task OpenLocationAsync(string path);
     Task RecycleAsync(ExplorerNodeViewModel node);
+    Task InvestigateAsync(ExplorerNodeViewModel node);
 }
 
 /// <summary>
@@ -53,6 +56,50 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     }
 
     // —— IExplorerActions ——
+
+    public bool AiEnabled => _services.AiEnabled;
+
+    // E5+ 按需 AI 识别 (最小用量): 只在用户点了右键"用 AI 识别"时, 对这一个目录发一次脱敏请求。
+    // 确定性目录名启发(NameHeuristics)已先免费兜底; AI 仅消化它认不出的残余未知。未配置 AI 的用户菜单项不显示, 零开销。
+    public async Task InvestigateAsync(ExplorerNodeViewModel node)
+    {
+        if (node is null || !node.CanInvestigate) return;
+        ActionStatus = $"正在用 AI 识别「{node.Name}」（脱敏后请求，仅供参考）…";
+
+        // 构造轻量分析 (空证据、无逐项 I/O) 交注解器: 脱敏 → 解释 → 校验。AI 永不进入风险/删除判定。
+        var fileNode = new FileNode(0, 0, null, node.Path, null, node.Name, node.RawIsDirectory, false,
+            node.RawSize, null, null, null, AccessState.Accessible, null, DateTime.UtcNow);
+        var analysis = new FileAnalysis(fileNode, new EvidenceBundle(0, null, Array.Empty<Evidence>()),
+            RuleMatch: null, Array.Empty<AttributionCandidate>(), node.ToRiskAssessment(), Explanation: null);
+
+        try
+        {
+            var ai = await _services.Annotator.AnnotateAsync(analysis);
+            if (ai is not { Validated: true })
+            {
+                ActionStatus = $"AI 未能识别「{node.Name}」（以现有结论为准）。";
+                return;
+            }
+
+            var owner = ai.OwnerApp?.Trim();
+            var why = ai.UserFriendlyExplanation?.Trim();
+            var what = ai.WhatIsIt?.Trim();
+            var purpose = !string.IsNullOrWhiteSpace(why) ? why : what;
+            var origin = !string.IsNullOrWhiteSpace(owner) ? $"{owner}（AI 推测）" : null;
+
+            if (origin is null && string.IsNullOrWhiteSpace(purpose))
+            {
+                ActionStatus = $"AI 未能识别「{node.Name}」（以现有结论为准）。";
+                return;
+            }
+            node.ApplyAiInvestigation(origin, purpose);
+            ActionStatus = $"已用 AI 补充识别「{node.Name}」（推测，仅供参考）。";
+        }
+        catch
+        {
+            ActionStatus = $"AI 识别失败「{node.Name}」（以现有结论为准）。";
+        }
+    }
 
     public void CopyToClipboard(string text, string okStatus)
     {

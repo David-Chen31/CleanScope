@@ -36,6 +36,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
             _ => !string.IsNullOrWhiteSpace(Purpose) || !string.IsNullOrWhiteSpace(RecommendedAction));
         OpenLocationCommand = new AsyncRelayCommand(_ => _actions?.OpenLocationAsync(Path) ?? Task.CompletedTask, _ => HasPath);
         RecycleCommand = new AsyncRelayCommand(_ => _actions?.RecycleAsync(this) ?? Task.CompletedTask, _ => CanRecycle);
+        InvestigateCommand = new AsyncRelayCommand(_ => _actions?.InvestigateAsync(this) ?? Task.CompletedTask, _ => CanInvestigate);
     }
 
     // 有效可清理: 自身可清理, 或处在可清理祖先之下 (缓存目录里的子项也随父一起清, 颜色应一致)。
@@ -48,6 +49,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     public RelayCommand CopyPurposeCommand { get; }
     public AsyncRelayCommand OpenLocationCommand { get; }
     public AsyncRelayCommand RecycleCommand { get; }
+    public AsyncRelayCommand InvestigateCommand { get; }   // E5+: 按需用 AI 识别此项 (零默认开销)
 
     private bool _isExpanded;
     public bool IsExpanded
@@ -59,11 +61,36 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     public string Name => _node.Name;
     public string Path => _node.Path;
     public string SizeText => Format.HumanSize(_node.Size);
-    public string Origin => _node.Origin;
-    public string Purpose => _node.Purpose ?? "";
+    // AI 按需识别的结果优先于确定性结论 (并明确标注"AI 推测", 仅展示, 不改判风险/删除)。
+    public string Origin => _aiOrigin ?? _node.Origin;
+    public string Purpose => _aiPurpose ?? _node.Purpose ?? "";
     public string RecommendedAction => _node.RecommendedAction;
     public bool IsCleanable => EffectiveCleanable;
     public bool IsRemainder { get; private init; }
+
+    // —— E5+ 按需 AI 识别 ——
+    private string? _aiOrigin;
+    private string? _aiPurpose;
+    private bool _aiResolved;
+    public bool IsAiResolved { get => _aiResolved; private set { if (SetField(ref _aiResolved, value)) OnPropertyChanged(nameof(CanInvestigate)); } }
+
+    // 仅 AI 已启用 + 真实项 + 尚未识别时可点; 未配置 AI 的用户菜单项不显示, 自然零开销。
+    public bool ShowAiMenu => _actions?.AiEnabled == true;
+    public bool CanInvestigate => ShowAiMenu && HasPath && !IsRemainder && !_aiResolved;
+
+    // 写回 AI 识别结果 (推测), 触发界面刷新。
+    public void ApplyAiInvestigation(string? origin, string? purpose)
+    {
+        if (!string.IsNullOrWhiteSpace(origin)) _aiOrigin = origin;
+        if (!string.IsNullOrWhiteSpace(purpose)) _aiPurpose = purpose;
+        IsAiResolved = true;
+        OnPropertyChanged(nameof(Origin));
+        OnPropertyChanged(nameof(Purpose));
+        InvestigateCommand.RaiseCanExecuteChanged();
+    }
+
+    internal long RawSize => _node.Size;
+    internal bool RawIsDirectory => _node.IsDirectory;
 
     private bool HasPath => !string.IsNullOrEmpty(_node.Path);
     // 真实文件/目录 (有路径、非余量合成块) 才允许尝试移入回收站; 是否放行由安全闸门当场判定。

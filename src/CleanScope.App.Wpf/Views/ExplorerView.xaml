@@ -59,6 +59,9 @@
                                     <MenuItem Header="复制路径" Command="{Binding CopyPathCommand}"/>
                                     <MenuItem Header="复制用途 / 说明" Command="{Binding CopyPurposeCommand}"/>
                                     <MenuItem Header="在资源管理器中打开位置" Command="{Binding OpenLocationCommand}"/>
+                                    <!-- 仅在已配置 AI 时出现; 点一次发一次脱敏请求, 识别这个目录是什么 (推测) -->
+                                    <MenuItem Header="用 AI 识别用途 / 归属（推测）" Command="{Binding InvestigateCommand}"
+                                              Visibility="{Binding ShowAiMenu, Converter={StaticResource BoolToVis}}"/>
                                     <Separator/>
                                     <MenuItem Header="移入回收站（可还原）" Command="{Binding RecycleCommand}"/>
                                 </ContextMenu>
@@ -93,6 +96,9 @@
                                            Visibility="{Binding IsCleanable, Converter={StaticResource BoolToVis}}"/>
                                 <TextBlock Text="  ♻已移入回收站" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center"
                                            Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}"/>
+                                <TextBlock Text="  ✨AI推测" Foreground="#8451C4" FontSize="11" VerticalAlignment="Center"
+                                           ToolTip="来源/用途由 AI 推测补充，仅供参考"
+                                           Visibility="{Binding IsAiResolved, Converter={StaticResource BoolToVis}}"/>
                             </StackPanel>
 
                             <!-- 大小 + 占父目录比例条 -->
