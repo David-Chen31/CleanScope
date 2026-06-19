@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/github/license/David-Chen31/CleanScope)](LICENSE)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6)
-![Tests](https://img.shields.io/badge/tests-309%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-324%20passing-2ea44f)
 
 **English** | [中文](#中文)
 
@@ -24,6 +24,8 @@
 
 CleanScope scans your disk and explains every file/directory by its origin, ownership, dependencies and risk, gives graded recommendations, and **leaves the final delete decision entirely to you**. It prioritizes answering "what is this, who owns it, what happens if I delete it"; when you confirm a cleanup, it **only moves cleanable items (A/B) to the Recycle Bin (recoverable)** — never permanent deletion, never touching system-critical files.
 
+Three ways to free up your C: drive, all from one app: **(1) safely delete** cleanable junk (Recycle Bin only), **(2) one-click official Windows methods** (disable hibernation, empty Recycle Bin, Disk Cleanup, DISM component cleanup), and **(3) move** the bulky-but-undeletable app folders **to another drive + a directory junction** so the app keeps working as if nothing moved.
+
 ## Four Product Tenets (design red lines)
 
 1. **AI never deletes important C-drive files** — AI only explains/investigates; it can never trigger deletion.
@@ -41,6 +43,8 @@ Deletion model (S-E): the single disk-mutating safety gate **only admits items i
 | Can it permanently delete? | **❌ Recycle Bin only** | ✅ | — (viewer) | ✅ |
 | Risk grading A–E + system-critical blacklist | ✅ | ⚠️ | ❌ | ⚠️ |
 | Whole-disk tree (WizTree-style) | ✅ | ❌ | ✅ | ❌ |
+| One-click **official** methods (disable hibernation, empty Recycle Bin, DISM, Disk Cleanup) | ✅ | ⚠️ | ❌ | ❌ |
+| **Move bulky apps to another drive + junction** (free C: without deleting) | ✅ | ❌ | ❌ | ❌ |
 | AI explanations (on-demand, advisory, never deletes) | ✅ | ❌ | ❌ | ❌ |
 | Local-only by default (no telemetry) | ✅ | ❌ | ✅ | ✅ |
 | Open source | ✅ MIT | ❌ | ❌ | ✅ |
@@ -218,6 +222,14 @@ Architecture: Clean Architecture + "AI sidecar + single safety gate". AI is advi
 [English](#cleanscope) | **中文**
 
 > AI 辅助的 Windows C 盘清理分析工具 —— **先解释清楚，删除只进回收站**。
+
+**C 盘满了怎么办？** CleanScope 是一款开源的 **Windows C 盘清理工具 / 磁盘清理软件**，专治 **C 盘空间不足**：
+它扫描整个 C 盘，把每个占空间的文件夹（缓存、临时文件 %TEMP%、AppData 大目录、休眠文件、Windows.old 等）
+**讲清楚“从哪来、能不能删、删了会怎样”**，再分级给建议。和盲目一键清理不同，它**删除前先解释每个文件、且只移入回收站（可还原）**，
+绝不永久删除、绝不碰系统关键文件。三种省空间方式一站搞定：**安全删除可清理项**、**一键调用 Windows 官方手段**（关闭休眠、
+清空回收站、磁盘清理、DISM 组件清理）、**把占大头但不能删的软件目录迁移到其他盘 + 目录联接**（软件照常用，实现 C 盘瘦身）。
+
+> 关键词：C盘清理 · C盘清理工具 · C盘清理软件 · C盘空间不足 · C盘满了怎么办 · 磁盘清理 · AppData 清理 · C盘瘦身 · Windows 清理。
 
 CleanScope 扫描你的磁盘，按来源、归属、依赖和风险把文件/目录讲清楚，给出分级建议，
 **把最终删除决定权完全交还给你**。它优先解释“这是什么、属于谁、删了会怎样”；当你确认清理时，
