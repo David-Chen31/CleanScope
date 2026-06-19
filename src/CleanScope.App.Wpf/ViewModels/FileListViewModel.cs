@@ -22,6 +22,7 @@ public sealed class FileListViewModel : ViewModelBase
     private readonly INavigationHost _host;
     private readonly AppServices _services;
     private readonly ObservableCollection<FileRowViewModel> _rows = new();
+    private ScanSession? _session;
 
     public FileListViewModel(AppServices services, INavigationHost host)
     {
@@ -84,14 +85,17 @@ public sealed class FileListViewModel : ViewModelBase
 
     public void Load(ScanSession session)
     {
+        if (_session is not null) _session.ItemRemoved -= OnItemRemoved;
+        _session = session;
+        _session.ItemRemoved += OnItemRemoved;   // A1: 别处删除 → 本页同步置删除
         foreach (var r in _rows) r.PropertyChanged -= OnRowPropertyChanged;
         _rows.Clear();
-        foreach (var r in session.Rows)
+        foreach (var r in session.ActiveRows)
         {
             r.PropertyChanged += OnRowPropertyChanged;
             _rows.Add(r);
         }
-        var cleanable = session.Rows.Count(r => r.IsRecyclable);
+        var cleanable = session.ActiveRows.Count(r => r.IsRecyclable);
         Summary = $"{session.TargetPath} — 可清理 {cleanable} 项可勾选批量移入回收站（可还原）；" +
                   $"全部 {session.Rows.Count} 项（✅可清理 {session.CleanableCount} · ⚠谨慎 {session.CautionCount} · 🛑勿动 {session.KeepCount} · 🗂容器 {session.ContainerCount}）。";
         ActionStatus = "";
@@ -106,6 +110,20 @@ public sealed class FileListViewModel : ViewModelBase
     private void OnRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(FileRowViewModel.IsSelected)) UpdateSelectionSummary();
+    }
+
+    // A1: 别处(资源管理器)删除某路径 → 本页对应行置删除 + 刷新。
+    private void OnItemRemoved(string path)
+    {
+        var p = path.Replace('/', '\\').TrimEnd('\\');
+        var changed = false;
+        foreach (var r in _rows)
+            if (!r.IsDeleted && string.Equals(r.Path?.TrimEnd('\\'), p, StringComparison.OrdinalIgnoreCase))
+            {
+                r.MarkDeleted();
+                changed = true;
+            }
+        if (changed) { View.Refresh(); UpdateSelectionSummary(); }
     }
 
     private void SetAllSelected(bool selected)
@@ -149,7 +167,13 @@ public sealed class FileListViewModel : ViewModelBase
         var reporter = (IProgress<(int done, FileRowViewModel? deleted)>)new Progress<(int done, FileRowViewModel? deleted)>(p =>
         {
             ActionStatus = $"正在处理 {p.done}/{count}…";
-            p.deleted?.MarkDeleted();
+            if (p.deleted is not null)
+            {
+                p.deleted.MarkDeleted();
+                // A1: 广播 (UI 线程内) → 资源管理器/空间地图/概览同步; 计入概览可清理扣减。
+                _session?.NotifyRemoved(p.deleted.Path, p.deleted.ExclusiveSize,
+                    p.deleted.RiskLevel is RiskLevel.A or RiskLevel.B);
+            }
         });
         try
         {

@@ -223,23 +223,43 @@ public sealed class HomeViewModel : ViewModelBase
 
     public void OnSessionLoaded(ScanSession session)
     {
+        if (Session is not null) Session.ItemRemoved -= OnItemRemoved;
         Session = session;
+        Session.ItemRemoved += OnItemRemoved;   // A3: 别处删除 → 概览数字随之扣减
         HasResult = true;
         OverviewTotal = $"{Format.HumanSize(session.TotalSize)}（{session.FileCount} 项）";
-        // 用整盘目录树估算 (含各 app 内部缓存), 比 Top-N 真实得多。
-        OverviewReclaimable = $"{Format.HumanSize(session.TreeReclaimable)}（约 {session.TreeCleanableCount} 处）";
         HighRiskCount = session.HighRiskCount;
         AiAdvice = session.AiCleanupAdvice;
         AdviseStatus = "";
-        // 概览不再展示"最大目录 Top10"(多为不可动容器), 改展示最大的可清理项 (真能腾出的空间)。
-        BestCleanable = session.BestCleanable(8)
+        RecomputeOverview();
+        OnPropertyChanged(nameof(ShowAdviseButton));
+        ViewListCommand.RaiseCanExecuteChanged();
+        AdviseCommand.RaiseCanExecuteChanged();
+    }
+
+    private void OnItemRemoved(string path) => RecomputeOverview();
+
+    // A3: 按"已扣减已清理"的口径重算概览可清理估算与"最划算的几步"(排除已删项)。
+    private void RecomputeOverview()
+    {
+        var s = Session;
+        if (s is null) return;
+        var processed = s.RemovedCount > 0 ? $"，已清理 {s.RemovedCount} 项" : "";
+        OverviewReclaimable = $"{Format.HumanSize(s.RemainingReclaimable)}（约 {Math.Max(0, s.TreeCleanableCount - s.RemovedCount)} 处{processed}）";
+        BestCleanable = s.BestCleanable(24)
+            .Where(n => !s.IsRemoved(n.Path))
+            .Take(8)
             .Select(n => new OverviewItem(Format.HumanSize(n.Size), n.Name, n.Path, n.Origin))
             .ToList();
         OnPropertyChanged(nameof(BestCleanable));
         OnPropertyChanged(nameof(HasBestCleanable));
-        OnPropertyChanged(nameof(ShowAdviseButton));
-        ViewListCommand.RaiseCanExecuteChanged();
-        AdviseCommand.RaiseCanExecuteChanged();
+    }
+
+    // A3: 回到首页时刷新磁盘容量条 (官方清理/删除后空间已变, 例如关闭休眠/清空回收站)。
+    public void OnActivated()
+    {
+        RefreshDrive();
+        RecomputeOverview();
     }
 
     public bool HasBestCleanable => BestCleanable.Count > 0;
@@ -262,8 +282,9 @@ public sealed class HomeViewModel : ViewModelBase
         var approval = _services.SafetyGuard.Evaluate(request, null, null);   // 非破坏性辅助操作 → 放行
         var log = await _services.ActionExecutor.ExecuteAsync(request, approval);
         OfficialStatus = log.Result == ActionResult.Success
-            ? $"已启动「{a.Title}」（请在弹出的工具/终端中完成操作）。"
+            ? $"已启动「{a.Title}」（请在弹出的工具/终端中完成操作）。完成后磁盘容量会在回到本页时刷新。"
             : $"未能执行「{a.Title}」：{log.RejectReason}";
+        RefreshDrive();   // A3: 尽力刷新磁盘条 (清空回收站等即时生效的能立刻反映)
     }
 
     private void RefreshDrive()

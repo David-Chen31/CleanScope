@@ -22,6 +22,53 @@ public sealed class ScanSession
     public ScanReport Report { get; private set; }
     public IReadOnlyList<FileRowViewModel> Rows { get; }
 
+    // —— A1 变更总线: 任一页删除/迁移一个路径后通知全会话, 其它页据此移除/重算 (跨页一致) ——
+    private readonly HashSet<string> _removed = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>某路径被移除(回收/迁移)时触发, 参数为被移除路径。各页订阅后移除对应项或重算。</summary>
+    public event Action<string>? ItemRemoved;
+
+    /// <summary>修订号: 每次移除递增, 供导航时判断某页是否需要按最新状态重载。</summary>
+    public int Revision { get; private set; }
+
+    /// <summary>已被移除且原本计入"可清理"的字节合计 (用于概览扣减)。</summary>
+    public long RemovedReclaimableBytes { get; private set; }
+
+    /// <summary>已移除项数。</summary>
+    public int RemovedCount { get; private set; }
+
+    /// <summary>登记一次移除: 记入集合、累计、递增修订号并广播。重复路径忽略。</summary>
+    public void NotifyRemoved(string path, long size, bool wasReclaimable)
+    {
+        var p = Norm(path);
+        if (p.Length == 0 || !_removed.Add(p)) return;
+        RemovedCount++;
+        if (wasReclaimable) RemovedReclaimableBytes += size;
+        Revision++;
+        ItemRemoved?.Invoke(path);
+    }
+
+    /// <summary>该路径或其某个祖先是否已被移除 (移除父目录则其子孙都视为已移除)。</summary>
+    public bool IsRemoved(string path)
+    {
+        var p = Norm(path);
+        if (p.Length == 0) return false;
+        foreach (var r in _removed)
+            if (p.Equals(r, StringComparison.OrdinalIgnoreCase) ||
+                p.StartsWith(r + "\\", StringComparison.OrdinalIgnoreCase))
+                return true;
+        return false;
+    }
+
+    /// <summary>排除已移除后的有效行 (各聚合页按此重算, 保证删后总量/分组同步)。</summary>
+    public IReadOnlyList<FileRowViewModel> ActiveRows =>
+        Rows.Where(r => !r.IsDeleted && !IsRemoved(r.Path)).ToList();
+
+    /// <summary>扣减已清理后的剩余整盘可清理估算。</summary>
+    public long RemainingReclaimable => Math.Max(0, TreeReclaimable - RemovedReclaimableBytes);
+
+    private static string Norm(string p) => string.IsNullOrEmpty(p) ? "" : p.Replace('/', '\\').TrimEnd('\\');
+
     /// <summary>按需生成的整盘 AI 参谋写回报告 (S-H), 使后续导出的报告也包含该建议。</summary>
     public void ApplyAiAdvice(string advice) => Report = Report with { AiCleanupAdvice = advice };
 

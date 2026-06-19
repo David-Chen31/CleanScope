@@ -47,7 +47,8 @@ public sealed class SpaceMapViewModel : ViewModelBase
 
     public void Load(ScanSession session)
     {
-        var root = TreeBuilder.Build(session.TargetPath, session.Rows, session.TotalSize);
+        // A1: 用排除已删项的有效行重建 treemap, 删后空间地图同步。
+        var root = TreeBuilder.Build(session.TargetPath, session.ActiveRows, session.TotalSize);
         Breadcrumb.Clear();
         Breadcrumb.Add(root);
         Current = root;

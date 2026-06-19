@@ -51,9 +51,37 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
 
     public void Load(ScanSession session)
     {
+        if (_session is not null) _session.ItemRemoved -= OnItemRemoved;
         _session = session;
+        _session.ItemRemoved += OnItemRemoved;   // A1: 别处删除时, 本页同步移除/置删除
         ActionStatus = "";
         Rebuild();
+    }
+
+    // A1: 任一页移除某路径 → 本页同步。只看可清理模式直接移除对应根(便宜, 避免每次全量重建);
+    // 树模式标记已物化的对应节点为已删。
+    private void OnItemRemoved(string path)
+    {
+        var p = path.Replace('/', '\\').TrimEnd('\\');
+        if (_showCleanableOnly)
+        {
+            var match = Roots.FirstOrDefault(r =>
+                !string.IsNullOrEmpty(r.Path) && string.Equals(r.Path.TrimEnd('\\'), p, StringComparison.OrdinalIgnoreCase));
+            if (match is not null) Roots.Remove(match);
+            return;
+        }
+        MarkMaterializedDeleted(Roots, p);
+    }
+
+    private static void MarkMaterializedDeleted(IEnumerable<ExplorerNodeViewModel> nodes, string path)
+    {
+        foreach (var n in nodes)
+        {
+            if (!n.IsDeleted && !string.IsNullOrEmpty(n.Path) &&
+                string.Equals(n.Path.TrimEnd('\\'), path, StringComparison.OrdinalIgnoreCase))
+                n.MarkDeleted();
+            if (n.Children.Count > 0) MarkMaterializedDeleted(n.Children, path);
+        }
     }
 
     private void Rebuild()
@@ -69,7 +97,8 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         if (_showCleanableOnly)
         {
             // 扁平列出整盘所有"最顶层可清理"节点 (与概览的处数/总量同口径), 按大小降序; 比例条相对最大者。
-            var items = ScanTreeStats.EnumerateCleanable(session.Tree);
+            // A1: 排除已被(本页或别页)移除的项, 删后即从清单消失。
+            var items = ScanTreeStats.EnumerateCleanable(session.Tree).Where(n => !session.IsRemoved(n.Path)).ToList();
             var max = items.Count > 0 ? items[0].Size : 1;
             foreach (var n in items)
                 Roots.Add(new ExplorerNodeViewModel(n, max, withinCleanable: false, actions: this));
@@ -222,6 +251,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         if (log.Result == ActionResult.Success)
         {
             node.MarkDeleted();
+            _session?.NotifyRemoved(node.Path, node.RawSize, node.IsCleanable);   // A1: 广播给其它页 + 概览扣减
             ActionStatus = $"已移入回收站（可还原）：{node.Name}";
         }
         else

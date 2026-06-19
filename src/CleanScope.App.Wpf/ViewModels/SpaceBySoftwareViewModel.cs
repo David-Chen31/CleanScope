@@ -32,12 +32,14 @@ public sealed class SpaceBySoftwareViewModel : ViewModelBase
         Groups.Clear();
 
         // 用与报告/CLI 同一套聚合 (SoftwareAggregator) 得到顺序与口径一致的汇总, 再挂上各自的明细行。
-        var byOwner = session.Rows
+        // A1: 用排除已删项的有效行, 删后按软件聚合同步。
+        var active = session.ActiveRows;
+        var byOwner = active
             .Where(r => !r.IsContainer)
             .GroupBy(r => string.IsNullOrWhiteSpace(r.OwnerApp) ? SoftwareAggregator.Unattributed : r.OwnerApp!)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var usages = SoftwareAggregator.Aggregate(session.Rows.Select(r => r.Item).ToList());
+        var usages = SoftwareAggregator.Aggregate(active.Select(r => r.Item).ToList());
         foreach (var u in usages)
             if (byOwner.TryGetValue(u.Name, out var rows))
                 Groups.Add(new SoftwareGroupViewModel(u.Name, u.ItemCount, u.TotalSize, u.CleanableSize, rows));

@@ -59,6 +59,9 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public RelayCommand GoBySoftwareCommand { get; }
     public RelayCommand GoReportCommand { get; }
 
+    // A1: 聚合页(空间地图/按软件/报告)按修订号懒重载 —— 删除发生在别处时, 切回来才按最新状态重算一次, 避免每次删除都全量重建。
+    private readonly Dictionary<object, int> _shownRevision = new();
+
     public void LoadSession(ScanSession session)
     {
         Session = session;
@@ -68,6 +71,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         _software.Load(session);
         _report.Load(session);
         _home.OnSessionLoaded(session);
+        _shownRevision[_map] = _shownRevision[_software] = _shownRevision[_report] = session.Revision;
         GoListCommand.RaiseCanExecuteChanged();
         GoMapCommand.RaiseCanExecuteChanged();
         GoExplorerCommand.RaiseCanExecuteChanged();
@@ -75,12 +79,21 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         GoReportCommand.RaiseCanExecuteChanged();
     }
 
-    public void ShowHome() => CurrentView = _home;
+    // 切到某聚合页时, 若会话已变更(有删除), 先按最新状态重载一次。
+    private void EnsureFresh(object page, Action reload)
+    {
+        if (Session is null) return;
+        if (_shownRevision.TryGetValue(page, out var rev) && rev == Session.Revision) return;
+        reload();
+        _shownRevision[page] = Session.Revision;
+    }
+
+    public void ShowHome() { _home.OnActivated(); CurrentView = _home; }
     public void ShowList() => CurrentView = _list;
-    public void ShowMap() => CurrentView = _map;
+    public void ShowMap() { EnsureFresh(_map, () => _map.Load(Session!)); CurrentView = _map; }
     public void ShowExplorer() => CurrentView = _explorer;
-    public void ShowBySoftware() => CurrentView = _software;
-    public void ShowReport() => CurrentView = _report;
+    public void ShowBySoftware() { EnsureFresh(_software, () => _software.Load(Session!)); CurrentView = _software; }
+    public void ShowReport() { EnsureFresh(_report, () => _report.Load(Session!)); CurrentView = _report; }
 
     public void ShowDetail(FileRowViewModel row)
     {

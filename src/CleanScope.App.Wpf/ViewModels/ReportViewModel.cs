@@ -67,7 +67,8 @@ public sealed class ReportViewModel : ViewModelBase
         ExportStatus = "";
         CleanupCategories.Clear();
         foreach (var c in session.CleanupCategories) CleanupCategories.Add(new CleanupCategoryViewModel(c));
-        ReclaimableTotal = Common.Format.HumanSize(session.ReclaimableEstimate);
+        // A1/A3: 扣减已清理后的剩余可回收 (与概览同口径)。
+        ReclaimableTotal = Common.Format.HumanSize(session.RemainingReclaimable);
         OnPropertyChanged(nameof(HasCategories));
         ExportCommand.RaiseCanExecuteChanged();
     }
