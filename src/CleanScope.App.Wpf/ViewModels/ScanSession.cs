@@ -57,6 +57,10 @@ public sealed class ScanSession
 
     /// <summary>整盘可清理的"处数" (顶层可清理目录数)。</summary>
     public int TreeCleanableCount => Tree is not null ? ScanTreeStats.CleanableCount(Tree) : CleanableCount;
+
+    /// <summary>整棵树里最大的若干"可清理"项 (扁平、去重), 供概览"最划算的几步"预览。无树则空。</summary>
+    public IReadOnlyList<ScanTreeNode> BestCleanable(int take) =>
+        Tree is not null ? ScanTreeStats.EnumerateCleanable(Tree).Take(take).ToList() : Array.Empty<ScanTreeNode>();
 }
 
 /// <summary>导航宿主契约 (Shell 实现)。子页通过它跳转, 不互相直接耦合。</summary>

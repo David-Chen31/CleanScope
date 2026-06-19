@@ -181,3 +181,23 @@ public record InstalledApp(
     string? Publisher,
     string? InstallLocation,
     string? Source);           // Registry / WinGet / Appx
+
+/// <summary>
+/// 系统级官方清理手段 (P0): 不依赖逐文件扫描的"整盘机会" —— 关闭休眠、清空回收站、组件清理 (DISM)、
+/// 磁盘清理 (cleanmgr)、存储感知等。这些不是某个文件的规则命中, 而是机器层面的动作; 由确定性目录
+/// (<see cref="CleanScope.Domain.Models"/> 之外的 Core 目录, 非 AI) 维护, 执行走**受控白名单**官方命令/设置跳转。
+///
+/// 红线: 我们不替厂商删文件 —— 执行 = 启动 Windows 官方工具 (powercfg/DISM/cleanmgr) 或打开设置页,
+/// 命令对用户可见, 仍经安全闸门 (非破坏性辅助操作放行) + 先写审计。AI 永不生成这些命令 (确定性目录)。
+/// </summary>
+public record OfficialCleanupAction(
+    string Id,
+    string Title,                  // 中文标题, 如 "关闭休眠（移除 hiberfil.sys）"
+    string Description,            // 一句话说明
+    CleanupActionKind ActionKind,  // RunCommand=跑官方命令; OpenFolder=打开设置/资源管理器
+    ActionType ExecAction,         // 经 ActionExecutor 执行的具体动作 (RunCleanupCommand / OpenSettings)
+    string Payload,                // 命令 (RunCleanupCommand) 或 ms-settings: URI (OpenSettings)
+    long EstimatedBytes,           // 预估可释放字节 (能检测则给, 0=未知)
+    bool Detected,                 // 本机是否确实检测到该机会 (如 hiberfil.sys 存在)
+    bool NeedsAdmin,               // 是否需要管理员权限
+    string Note);                  // 可逆性/风险提示

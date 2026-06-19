@@ -29,5 +29,8 @@ public sealed class AppServices
     /// <summary>整盘清理参谋 (S-H): 对脱敏聚合做一次跨项建议; AI 未配置则 Enabled=false。</summary>
     public ICleanupAdvisor? CleanupAdvisor { get; init; }
 
+    /// <summary>系统级官方清理手段目录 (P0): 关闭休眠/清空回收站/DISM/磁盘清理等, 确定性检测, 经官方命令执行。</summary>
+    public required IReadOnlyList<OfficialCleanupAction> OfficialActions { get; init; }
+
     public required string AppVersion { get; init; }
 }

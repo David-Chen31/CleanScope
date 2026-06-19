@@ -7,6 +7,7 @@ using CleanScope.Ai.Sanitization;
 using CleanScope.Ai.Validation;
 using CleanScope.Application;
 using CleanScope.Core.Attribution;
+using CleanScope.Core.Cleanup;
 using CleanScope.Core.Decisions;
 using CleanScope.Core.Evidences;
 using CleanScope.Core.Risk;
@@ -85,6 +86,7 @@ public static class CompositionRoot
             AiEnabled = aiEnabled,
             Annotator = new AiAnnotator(sanitizer, explanation, validator),  // 详情页按需解释 (S6)
             CleanupAdvisor = advisor,                                        // 整盘参谋 (S-H)
+            OfficialActions = OfficialCleanupCatalog.BuildForThisMachine(),  // P0: 系统级官方清理手段 (确定性)
             AppVersion = AppVersion,
         };
     }

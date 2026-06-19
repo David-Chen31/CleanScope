@@ -36,5 +36,13 @@ public interface IAiOutputValidator
 public interface ICleanupAdvisor
 {
     bool Enabled { get; }
-    Task<string?> AdviseAsync(CleanupSummary summary, CancellationToken ct = default);
+
+    /// <summary>
+    /// 生成跨项清理建议。<paramref name="officialActions"/> 为本机适用的系统级官方手段 (关闭休眠/磁盘清理等,
+    /// 含预估收益), 让 AI 把"网上常见手段 + 本机实测"结合成带优先级的可执行计划, 而非泛泛而谈。可传空。
+    /// </summary>
+    Task<string?> AdviseAsync(
+        CleanupSummary summary,
+        IReadOnlyList<OfficialCleanupAction>? officialActions = null,
+        CancellationToken ct = default);
 }

@@ -19,23 +19,44 @@
             </StackPanel>
         </Border>
 
-        <!-- 扫描入口 -->
+        <!-- 扫描入口 (盘符优先) -->
         <Border Style="{StaticResource Cards}">
             <StackPanel>
-                <TextBlock Text="开始扫描" Style="{StaticResource H2}"/>
+                <TextBlock Text="清理哪个磁盘？" Style="{StaticResource H2}"/>
                 <TextBlock Text="CleanScope 仅读取文件元数据与系统信息，全程不删除、不修改任何文件。"
-                           Style="{StaticResource Sub}" Margin="0,0,0,12"/>
+                           Style="{StaticResource Sub}" Margin="0,0,0,10"/>
 
-                <Grid>
+                <!-- 盘符芯片: 一键把目标设为某个磁盘根 -->
+                <ItemsControl ItemsSource="{Binding AvailableDrives}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding}" Margin="0,0,8,8" Padding="14,7"
+                                    Style="{StaticResource Ghost}"
+                                    Command="{Binding DataContext.ScanDriveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Grid Margin="0,4,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0" Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}"
-                             VerticalContentAlignment="Center" Padding="8,6" FontSize="13"/>
-                    <Button Grid.Column="1" Content="扫描" Command="{Binding ScanCommand}"
+                             VerticalContentAlignment="Center" Padding="8,6" FontSize="13"
+                             ToolTip="可填磁盘根 (如 C:\) 或任意文件夹路径"/>
+                    <Button Grid.Column="1" Content="完整扫描" Command="{Binding ScanCommand}"
                             Style="{StaticResource Primary}" Margin="10,0,0,0" MinWidth="96"/>
                 </Grid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button Content="⚡ 快速扫描（仅高价值区 AppData，更快）" Command="{Binding QuickScanCommand}"
+                            Style="{StaticResource Ghost}"/>
+                </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                     <TextBlock Text="TopN：" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
@@ -47,6 +68,49 @@
                 <Border Margin="0,12,0,0" Padding="10" CornerRadius="6" Background="#F3F6FB">
                     <TextBlock Text="{Binding Status}" Style="{StaticResource Sub}"/>
                 </Border>
+            </StackPanel>
+        </Border>
+
+        <!-- 官方清理手段 (P0): 不依赖扫描, 始终可用; 启动 Windows 自带工具 -->
+        <Border Style="{StaticResource Cards}" Visibility="{Binding HasOfficialActions, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <TextBlock Text="一键官方清理手段" Style="{StaticResource H2}"/>
+                <TextBlock Text="这些是 Windows 自带的安全清理方式（关闭休眠、清空回收站、磁盘清理等）。CleanScope 不替你删文件，只启动官方工具，过程可见。"
+                           Style="{StaticResource Sub}" Margin="0,0,0,10"/>
+                <ItemsControl ItemsSource="{Binding OfficialActions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#F7F9FC" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+                                            <Border Background="#FDECEA" CornerRadius="3" Padding="5,1" Margin="8,0,0,0"
+                                                    Visibility="{Binding NeedsAdmin, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="管理员" FontSize="11" Foreground="#C5221F"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Description}" Style="{StaticResource Sub}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{Binding SavingsText}" VerticalAlignment="Center" Margin="0,0,12,0"
+                                               FontWeight="Bold" Foreground="#1E7E34"
+                                               Visibility="{Binding HasSavings, Converter={StaticResource BoolToVis}}"/>
+                                    <Button Grid.Column="2" Content="执行" VerticalAlignment="Center" MinWidth="72"
+                                            Style="{StaticResource Ghost}"
+                                            Command="{Binding DataContext.RunOfficialActionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding OfficialStatus}" Style="{StaticResource Sub}" Margin="2,4,0,0"
+                           Visibility="{Binding OfficialStatus, Converter={StaticResource NotEmptyToVis}}"/>
             </StackPanel>
         </Border>
 
@@ -75,7 +139,7 @@
 
                 <!-- S-H: 整盘 AI 清理参谋 —— 按需生成 (零默认 token); 未配置 AI 时按钮不显示 -->
                 <StackPanel Margin="0,0,0,12" Visibility="{Binding ShowAdviseButton, Converter={StaticResource BoolToVis}}">
-                    <Button Content="🧭 生成 AI 清理建议（脱敏后请求一次，可选）" Command="{Binding AdviseCommand}"
+                    <Button Content="🧭 生成 AI 行动计划（结合本机官方手段，脱敏后请求一次，可选）" Command="{Binding AdviseCommand}"
                             Style="{StaticResource Ghost}" HorizontalAlignment="Left"/>
                     <TextBlock Text="{Binding AdviseStatus}" Style="{StaticResource Sub}" Margin="2,6,0,0"
                                Visibility="{Binding AdviseStatus, Converter={StaticResource NotEmptyToVis}}"/>
@@ -85,27 +149,27 @@
                 <Border Background="#F1F7FF" CornerRadius="6" Padding="12,10" Margin="0,0,0,12"
                         Visibility="{Binding HasAiAdvice, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
-                        <TextBlock Text="🧭 AI 清理参谋（跨项建议，仅供参考）" FontWeight="SemiBold" Foreground="#1F4E8C"/>
+                        <TextBlock Text="🧭 AI 清理行动计划（跨项建议，仅供参考）" FontWeight="SemiBold" Foreground="#1F4E8C"/>
                         <TextBlock Text="{Binding AiAdvice}" TextWrapping="Wrap" Margin="0,6,0,0" Foreground="#243B53"/>
                     </StackPanel>
                 </Border>
 
-                <TextBlock Text="占用大头 Top 10" Style="{StaticResource H2}"/>
-                <ItemsControl ItemsSource="{Binding TopDirectories}">
+                <!-- 最划算的几步: 最大的"可清理"项 (取代旧 Top10 最大目录, 后者多为不可动容器) -->
+                <TextBlock Text="最划算的几步（最大的可清理项）" Style="{StaticResource H2}"
+                           Visibility="{Binding HasBestCleanable, Converter={StaticResource BoolToVis}}"/>
+                <ItemsControl ItemsSource="{Binding BestCleanable}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Grid Margin="0,3">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="48"/>
                                     <ColumnDefinition Width="110"/>
-                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="3*"/>
                                 </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Background="{Binding RiskLevel, Converter={StaticResource RiskToBrush}}"
-                                        CornerRadius="4" Padding="6,2" HorizontalAlignment="Left">
-                                    <TextBlock Text="{Binding RiskText}" FontWeight="Bold" Foreground="#222"/>
-                                </Border>
-                                <TextBlock Grid.Column="1" Text="{Binding SizeText}" FontWeight="SemiBold"
-                                           Foreground="{StaticResource Ink}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="{Binding SizeText}" FontWeight="Bold"
+                                           Foreground="#1E7E34" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                           Foreground="{StaticResource Ink}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding Path}" TextTrimming="CharacterEllipsis"
                                            Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
                             </Grid>
@@ -113,7 +177,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Button Content="查看完整清单 →" Command="{Binding ViewListCommand}"
+                <Button Content="去可清理清单批量处理 →" Command="{Binding ViewListCommand}"
                         Style="{StaticResource Ghost}" HorizontalAlignment="Left" Margin="0,14,0,0"/>
             </StackPanel>
         </Border>

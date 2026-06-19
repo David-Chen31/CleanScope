@@ -18,10 +18,12 @@ namespace CleanScope.Ai.Advice;
 public sealed class CleanupAdvisor : ICleanupAdvisor
 {
     private const string SystemPrompt =
-        "你是 Windows 磁盘清理顾问。基于用户的占用汇总, 给出简洁的中文**跨项**清理建议: " +
-        "识别重复/冗余 (如多套同类工具链、重复缓存)、指出优先清理顺序、提示哪些通常可安全清理。" +
-        "要求: 只给要点 (markdown 无序列表, 至多 6 条); 不要逐文件复述; " +
-        "**绝对不要输出任何删除命令、脚本或路径**; 末尾提醒以官方方式清理、删除前确认。";
+        "你是 Windows 磁盘清理顾问。基于用户的占用汇总与本机适用的官方清理手段, 给出简洁中文的**可执行行动计划**: " +
+        "1) 按「省得多 + 风险低 + 操作简单」排出**优先顺序**; 2) 识别重复/冗余 (如多套同类工具链、重复缓存); " +
+        "3) 每条尽量对应一个明确动作 (在本程序点哪个按钮 / 用哪个官方手段)。" +
+        "只可引用我提供的官方手段, **不要自创命令**。" +
+        "要求: markdown 有序列表, 至多 7 条, 每条一句话且尽量带预估收益; 不要逐文件复述; " +
+        "**绝对不要输出任何删除命令、脚本或路径**; 末尾一句提醒删除前确认、优先用官方方式。";
 
     private readonly IAiChat _chat;
 
@@ -29,14 +31,17 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
 
     public bool Enabled => _chat.Enabled;
 
-    public async Task<string?> AdviseAsync(CleanupSummary summary, CancellationToken ct = default)
+    public async Task<string?> AdviseAsync(
+        CleanupSummary summary,
+        IReadOnlyList<OfficialCleanupAction>? officialActions = null,
+        CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(summary);
         if (!Enabled) return null;
 
         try
         {
-            var reply = await _chat.CompleteAsync(SystemPrompt, BuildUserPrompt(summary), ct);
+            var reply = await _chat.CompleteAsync(SystemPrompt, BuildUserPrompt(summary, officialActions), ct);
             return string.IsNullOrWhiteSpace(reply) ? null : reply.Trim();
         }
         catch
@@ -45,7 +50,7 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
         }
     }
 
-    private static string BuildUserPrompt(CleanupSummary s)
+    private static string BuildUserPrompt(CleanupSummary s, IReadOnlyList<OfficialCleanupAction>? official)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"总占用 {Size(s.TotalSize)}, 其中估算可清理 {Size(s.ReclaimableSize)}。").AppendLine();
@@ -63,6 +68,17 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
             sb.AppendLine("可清理类别 (类别 | 项数 | 可回收 | 官方清理方式):");
             foreach (var c in s.Categories.Take(15))
                 sb.AppendLine($"- {c.Name} | {c.ItemCount} | {Size(c.ReclaimableSize)} | {c.RecommendedAction}");
+            sb.AppendLine();
+        }
+
+        // P1: 把本机适用的系统级官方手段 (含预估收益) 作为 grounding —— AI 只能在这些手段里挑选与排序,
+        // 既把"网上常见手段"接进来, 又防止它臆造命令。这些是本程序里可一键执行的动作。
+        var applicable = official?.Where(a => a.Detected).ToList();
+        if (applicable is { Count: > 0 })
+        {
+            sb.AppendLine("本机可用的官方清理手段 (手段 | 预估收益 | 需管理员 | 本程序内可一键执行):");
+            foreach (var a in applicable)
+                sb.AppendLine($"- {a.Title} | {(a.EstimatedBytes > 0 ? Size(a.EstimatedBytes) : "未知")} | {(a.NeedsAdmin ? "是" : "否")} | 是");
         }
         return sb.ToString();
     }
