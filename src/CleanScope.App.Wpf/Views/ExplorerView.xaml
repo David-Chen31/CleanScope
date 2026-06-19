@@ -50,7 +50,59 @@
                 <TextBlock Grid.Column="3" Text="用途 / 存在解释" FontWeight="Bold" Margin="6,0" Foreground="{StaticResource Muted}"/>
             </Grid>
 
+            <!-- C2 详情面板: 选中某项后, 在底部完整展示来源/用途/AI 解释/建议 (长文本自动换行, 不必复制) + 该项动作 -->
+            <Border DockPanel.Dock="Bottom" Margin="0,8,0,0" Padding="12,10" CornerRadius="6"
+                    Background="#F7F9FC" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                    Visibility="{Binding HasSelectedNode, Converter={StaticResource BoolToVis}}">
+                <StackPanel DataContext="{Binding SelectedNode}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Glyph}" Margin="0,0,6,0"/>
+                        <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource Ink}" TextTrimming="CharacterEllipsis"/>
+                        <Border Background="{Binding BucketBrush}" CornerRadius="3" Padding="6,1" Margin="8,0,0,0">
+                            <TextBlock Text="{Binding BucketLabel}" FontSize="11" Foreground="#222"/>
+                        </Border>
+                        <TextBlock Text="{Binding SizeText}" Margin="10,0,0,0" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBox Text="{Binding Path, Mode=OneWay}" IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                             Foreground="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                            <TextBlock Text="来源 / 归属" FontSize="11" Foreground="{StaticResource Muted}"/>
+                            <TextBlock Text="用途 / 说明" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
+                            <TextBlock Text="建议" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding Origin}" TextWrapping="Wrap" Foreground="{StaticResource Ink}"/>
+                            <TextBlock Text="{Binding Purpose}" TextWrapping="Wrap" Foreground="{StaticResource Ink}" Margin="0,6,0,0"/>
+                            <TextBlock Text="{Binding RecommendedAction}" TextWrapping="Wrap" Foreground="{StaticResource Ink}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                    <!-- 行内动作 (C3 可发现性): 选中项即可直接操作, 不必右键 -->
+                    <WrapPanel Margin="0,10,0,0">
+                        <Button Content="复制路径" Command="{Binding CopyPathCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"/>
+                        <Button Content="打开位置" Command="{Binding OpenLocationCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
+                                Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
+                        <Button Content="✨ 用 AI 识别" Command="{Binding InvestigateCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
+                                Visibility="{Binding ShowAiMenu, Converter={StaticResource BoolToVis}}"/>
+                        <Button Content="加入忽略名单" Command="{Binding AddIgnoreCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
+                                Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
+                        <Button Content="迁移到其他盘" Command="{Binding MigrateCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
+                                Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
+                        <Button Content="🗑 移入回收站" Command="{Binding RecycleCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
+                                Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
+                        <Button Content="在回收站中查看 / 还原" Command="{Binding OpenRecycleBinCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
+                                Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
             <TreeView ItemsSource="{Binding Roots}" BorderThickness="0" Background="Transparent"
+                      SelectedItemChanged="Tree_SelectedItemChanged"
+                      PreviewMouseRightButtonDown="Tree_PreviewMouseRightButtonDown"
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">

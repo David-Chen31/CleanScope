@@ -95,6 +95,15 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     /// <summary>批量操作条仅在"只看可清理"时显示。</summary>
     public bool ShowBatchBar => _showCleanableOnly;
 
+    // C2: 当前选中节点 → 底部详情面板完整展示来源/用途/AI 解释/建议 (长文本不再被列截断、不必复制)。
+    private ExplorerNodeViewModel? _selectedNode;
+    public ExplorerNodeViewModel? SelectedNode
+    {
+        get => _selectedNode;
+        set { if (SetField(ref _selectedNode, value)) OnPropertyChanged(nameof(HasSelectedNode)); }
+    }
+    public bool HasSelectedNode => _selectedNode is not null;
+
     public void Load(ScanSession session)
     {
         if (_session is not null) _session.ItemRemoved -= OnItemRemoved;
