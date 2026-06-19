@@ -1,5 +1,188 @@
 # CleanScope
 
+**English** | [中文](#中文)
+
+> AI-assisted Windows C-drive cleanup analyzer — **explain first, delete only to the Recycle Bin.**
+
+CleanScope scans your disk and explains every file/directory by its origin, ownership, dependencies and risk, gives graded recommendations, and **leaves the final delete decision entirely to you**. It prioritizes answering "what is this, who owns it, what happens if I delete it"; when you confirm a cleanup, it **only moves cleanable items (A/B) to the Recycle Bin (recoverable)** — never permanent deletion, never touching system-critical files.
+
+## Four Product Tenets (design red lines)
+
+1. **AI never deletes important C-drive files** — AI only explains/investigates; it can never trigger deletion.
+2. **Explain first** — surface a file's origin / dependencies / risk rather than acting on it directly.
+3. **The user makes the final delete decision** (deletion requires an explicit click + two-step confirmation).
+4. The product must be **safe, explainable, testable, extensible**.
+
+Deletion model (S-E): the single disk-mutating safety gate **only admits items in the "cleanable" bucket (A/B) that are non-system-critical, non-container and not in use**, and deletion **only moves them to the Recycle Bin (recoverable)** — there is **no permanent-delete API anywhere in the codebase** (the one Recycle-Bin delete is isolated in a single file, with a static test positively asserting "Recycle Bin only, never permanent", gated in CI). At its core it remains an analyzer: scan → evidence → rules → attribution → risk → decision → report.
+
+---
+
+## Requirements
+
+- **Windows 10/11** (some capabilities rely on Win32: registry, Restart Manager in-use detection, Authenticode signature reading)
+- **.NET 8 SDK** (`dotnet --version` ≥ 8.0)
+- The WPF desktop app needs the Windows Desktop Runtime (installed together with the .NET 8 SDK)
+
+## Build
+
+```bash
+git clone https://github.com/David-Chen31/CleanScope.git
+cd CleanScope
+dotnet build CleanScope.sln -c Release
+```
+
+---
+
+## Usage 1: Command Line (CLI)
+
+The fastest way to see the core value: scan a path, output graded risk and a Markdown report. **Read-only throughout — deletes nothing.**
+
+```bash
+# Scan the user cache dir, print graded stats and Top 10
+dotnet run --project src/CleanScope.App.Console -- scan "%LocalAppData%"
+
+# Scan and export a Markdown report
+dotnet run --project src/CleanScope.App.Console -- scan "C:\SomeFolder" --report report.md --top 200
+
+# Enable AI explanations (desensitized before leaving the machine; requires a key, see below)
+dotnet run --project src/CleanScope.App.Console -- scan "%LocalAppData%" --ai --report report.md
+```
+
+Options:
+
+| Option | Description |
+|---|---|
+| `scan <path>` | Root path to scan (required) |
+| `--report <file>` | Export a Markdown report to the given file |
+| `--top <N>` | Keep the top N largest items (default 100) |
+| `--admin` | Admin mode, widens scan coverage (run the terminal as administrator) |
+| `--sanitize` | Desensitize usernames in report paths (for sharing) |
+| `--ai` | Enable AI explanations (needs a key; skipped automatically if unconfigured — pure local rules/risk) |
+| `--rules <dir>` | Rule-pack directory (defaults to `rules/` next to the output dir or repo root) |
+
+Exit codes: `0` success / `2` usage error / `3` rule load failure / `4` path error / `1` other error.
+
+---
+
+## Usage 2: Desktop App (WPF)
+
+```bash
+dotnet run --project src/CleanScope.App.Wpf
+```
+
+Main pages:
+
+1. **Overview / Scan** — C-drive capacity, pick a path and scan; afterwards shows root aggregate usage, cleanable estimate (A+B), high-risk count, Top 10.
+2. **Explorer (whole-disk tree)** — browse the entire disk like a directory tree: expand/collapse, size + share bars, sorted by size, per-node origin/purpose/risk. Right-click a row to copy path, copy purpose, open location, or move to the Recycle Bin.
+3. **Space Map** — treemap (area = size, color = risk) to drill into "where did my space go".
+4. **File List** — path / size / ownership / risk / recommendation, grouped into four buckets (✅ Cleanable / ⚠ Caution / 🛑 Keep / 🗂 Container).
+5. **By Software** — aggregate "who took my space and how much is cleanable" per owning app.
+6. **Detail** — properties, risk assessment, **evidence chain (facts vs AI guesses, visually distinguished)**, attribution candidates, AI explanation/investigation; **cleanable items (A/B) offer "🗑 Move to Recycle Bin (recoverable)"** — two-step confirm + gate re-check + audit-first, Recycle Bin only; high-risk (D/E) / container / system-critical have no delete entry, only the reason.
+7. **Report / Ignore List** — export Markdown reports; manage the global ignore list (local only).
+
+The desktop app creates a local SQLite database at `%LocalAppData%\CleanScope\cleanscope.db` for the **audit log** and **ignore list** (local only, never uploaded).
+
+---
+
+## Risk Levels at a Glance
+
+| Level | Meaning |
+|---|---|
+| **A** | Safe to clean (e.g. user temp files, thumbnail cache) |
+| **B** | Clean via the official method (e.g. browser cache, via the app's own cleanup) |
+| **C** | Confirm before acting (the default bucket; personal data or insufficient info) |
+| **D** | Not recommended (matches the system-critical blacklist, forced ≥ D) |
+| **E** | Cannot determine, do not delete (fail-safe worst-case fallback) |
+
+The rule and risk engines are **authoritative**: AI can never lower a risk level (the validator takes `max(AI, engine)`).
+
+---
+
+## Configure AI (optional, off by default)
+
+CleanScope runs fully without AI (pure local rules + risk explanations). To enable cloud AI explanations:
+
+1. Copy the template and fill in real values:
+
+   ```bash
+   cp appsettings.ai.example.json appsettings.ai.local.json
+   ```
+
+   ```jsonc
+   {
+     "baseUrl": "https://your-relay/v1",
+     "apiKey": "sk-...",
+     "model": "deepseek-chat",
+     "cloudEnabled": true        // must be true to actually go to the cloud
+   }
+   ```
+
+2. Or override via environment variables (higher priority than the file):
+
+   ```
+   CLEANSCOPE_AI_BASEURL   CLEANSCOPE_AI_KEY   CLEANSCOPE_AI_MODEL   CLEANSCOPE_AI_CLOUD=1
+   ```
+
+> 🔒 **`appsettings.ai.local.json` is excluded by `.gitignore`; the key is never committed.** Only the key-free `appsettings.ai.example.json` template is checked in.
+
+**Privacy boundary**: AI only goes to the cloud after desensitization (username → `%USER%`, filename → `%FILE%`), and **file contents are never uploaded**; with the cloud off, everything stays local with no remote calls. The desensitization gateway is the only outbound channel.
+
+---
+
+## Rule Packs
+
+Classification knowledge lives as **declarative data** in [`rules/`](rules/) (11 packs, 52 rules), not hardcoded. Extend recognition by editing JSON, no code changes needed. System-critical directories are forced into a non-deletable blacklist in `00-system-critical.json`.
+
+---
+
+## Tests & CI
+
+```bash
+dotnet test CleanScope.sln
+```
+
+- 309 tests, including **safety red-line tests** (only A/B cleanable items are deletable and only to the Recycle Bin; C-E/container/blacklist/in-use/symlink must be rejected; no permanent-delete API — the Recycle-Bin delete is isolated in one file with a positive assertion; AI never lowers risk or triggers deletion; desensitized before cloud; audit written before execution …).
+- Architecture dependency tests (NetArchTest) guard the layering: Core/Domain don't depend on WPF, AI doesn't reference Safety, SQLite stays in Infrastructure.
+- These are **hard CI gates** ([.github/workflows/ci.yml](.github/workflows/ci.yml), windows-latest): any failure blocks merge/release.
+
+---
+
+## Project Structure
+
+```
+src/
+  CleanScope.Domain          Domain entities/enums/contracts (zero deps, innermost)
+  CleanScope.Core            Decision chain: scan/evidence/rules/attribution/risk/decision
+  CleanScope.Safety          Safety gate (only disk-mutating path) + executor (Recycle Bin only, no permanent-delete code)
+  CleanScope.Ai              AI sidecar: desensitize → explain → validate (advisory only)
+  CleanScope.Infrastructure  Win32 access, SQLite storage, rule loading (net8.0-windows)
+  CleanScope.Reporting       Markdown report export
+  CleanScope.Application     Use-case orchestration (wires the decision chain via abstractions)
+  CleanScope.App.Console     CLI host + composition root
+  CleanScope.App.Wpf         WPF desktop (MVVM) + composition root
+tests/                       xUnit tests (incl. safety red-lines and architecture guards)
+rules/                       Declarative rule packs (*.json)
+```
+
+Architecture: Clean Architecture + "AI sidecar + single safety gate". AI is advisory only; the only disk-mutating path is the Safety gate.
+
+---
+
+## Safety Summary
+
+- **No permanent-delete API exists in the codebase**: the only deletion is "move to Recycle Bin (recoverable)", isolated in a single file, with a static test positively asserting it uses only the Recycle-Bin API.
+- The only disk-mutating path is the safety gate: it admits only "cleanable" (A/B) items that are non-system-critical, non-container and not in use; C-E/container/blacklist/in-use are all rejected.
+- Deletion needs an explicit user click + two-step confirmation, with an audit written before execution (log first, then act).
+- AI cannot bypass the rule engine, cannot lower risk, cannot trigger deletion; when uncertain it outputs "cannot determine, do not delete".
+- File contents are never uploaded; cloud is reached only after desensitization; with cloud off everything stays local.
+- Every action writes its audit before executing; if the audit write fails, the action aborts.
+
+---
+
+# 中文
+
+[English](#cleanscope) | **中文**
+
 > AI 辅助的 Windows C 盘清理分析工具 —— **先解释清楚，删除只进回收站**。
 
 CleanScope 扫描你的磁盘，按来源、归属、依赖和风险把文件/目录讲清楚，给出分级建议，
@@ -28,7 +211,7 @@ CleanScope 扫描你的磁盘，按来源、归属、依赖和风险把文件/�
 ## 构建
 
 ```bash
-git clone <repo-url> CleanScope
+git clone https://github.com/David-Chen31/CleanScope.git
 cd CleanScope
 dotnet build CleanScope.sln -c Release
 ```
@@ -72,17 +255,17 @@ dotnet run --project src/CleanScope.App.Console -- scan "%LocalAppData%" --ai --
 dotnet run --project src/CleanScope.App.Wpf
 ```
 
-六个页面（侧栏 5 个导航 + 详情）：
+主要页面：
 
 1. **概览 / 扫描** —— C 盘容量、选择路径开始扫描；完成后展示根聚合占用、可清理估算（A+B）、高风险数、占用 Top10。
-2. **空间地图** —— treemap 矩形树图，面积=占用、颜色=风险，可下钻定位“空间去哪了”。
-3. **文件清单** —— 路径 / 大小 / 归属 / 风险 / 建议，按四桶（✅可清理 / ⚠谨慎 / 🛑勿动 / 🗂容器）分类；
-   清单本身不放删除按钮，删除入口集中在详情页。
-4. **按软件** —— 按归属软件聚合“谁占了我的空间 + 各能清多少”，可展开看名下文件。
-5. **文件详情** —— 属性、风险评估、**证据链（事实证据 vs AI 推测，视觉区分）**、归因候选、AI 解释/调查；
+2. **资源管理器（整盘目录树）** —— 像目录树一样浏览整个磁盘：可展开/折叠、显示大小与占比、按大小排序、逐节点标来源/用途/风险。右键可复制路径、复制用途、打开位置、移入回收站。
+3. **空间地图** —— treemap 矩形树图，面积=占用、颜色=风险，可下钻定位“空间去哪了”。
+4. **文件清单** —— 路径 / 大小 / 归属 / 风险 / 建议，按四桶（✅可清理 / ⚠谨慎 / 🛑勿动 / 🗂容器）分类。
+5. **按软件** —— 按归属软件聚合“谁占了我的空间 + 各能清多少”，可展开看名下文件。
+6. **文件详情** —— 属性、风险评估、**证据链（事实证据 vs AI 推测，视觉区分）**、归因候选、AI 解释/调查；
    **可清理项 (A/B) 提供「🗑 移入回收站（可还原）」**——两步确认 + 闸门复核 + 先写审计，仅进回收站、可还原；
-   高风险（D/E）/ 容器 / 系统关键无删除入口，仅提示原因。命令型缓存给「运行/复制官方命令」，安装目录给「打开卸载程序」。
-6. **报告 / 忽略名单** —— 导出 Markdown 报告；管理全局忽略名单（增删，仅本地存储）。
+   高风险（D/E）/ 容器 / 系统关键无删除入口，仅提示原因。
+7. **报告 / 忽略名单** —— 导出 Markdown 报告；管理全局忽略名单（增删，仅本地存储）。
 
 桌面端会在 `%LocalAppData%\CleanScope\cleanscope.db` 建一个本地 SQLite 库，存放**审计日志**与**忽略名单**
 （仅本地，绝不上云）。
@@ -149,11 +332,10 @@ CleanScope 不配置 AI 也能完整运行（纯本地规则 + 风险解释）�
 dotnet test CleanScope.sln
 ```
 
-- 233 个测试，含 **安全红线测试**（仅 A/B 可清理项可删且只进回收站、C-E/容器/黑名单/占用/symlink 必拒 /
+- 309 个测试，含 **安全红线测试**（仅 A/B 可清理项可删且只进回收站、C-E/容器/黑名单/占用/symlink 必拒 /
   无永久删除 API（回收站删除集中单一文件并正向断言）/ AI 不放低风险、不触发删除 / 脱敏出云 / 审计先写后执行 …）。
 - 架构依赖测试（NetArchTest）守护分层：Core/Domain 不依赖 WPF、AI 不引用 Safety、SQLite 仅在 Infrastructure。
 - 这些测试是 **CI 硬门禁**（[.github/workflows/ci.yml](.github/workflows/ci.yml)，windows-latest）：任一失败即阻断合并/发布。
-- 详见 [安全测试门禁.md](安全测试门禁.md)。
 
 ---
 
@@ -174,14 +356,7 @@ tests/                       xUnit 测试（含安全红线与架构守护）
 rules/                       声明式规则包（*.json）
 ```
 
-架构：Clean Architecture + “AI 旁路 + 单一安全闸门”。AI 只给建议，唯一能改盘的是 Safety 闸门
-（MVP 永不放行）。
-
-## 设计文档
-
-需求/架构/安全/数据模型等冻结文档见仓库根目录：
-[需求冻结文档.md](需求冻结文档.md)、[架构设计.md](架构设计.md)、[安全设计.md](安全设计.md)、
-[风险分级细则.md](风险分级细则.md)、[数据模型设计.md](数据模型设计.md)、[模块划分.md](模块划分.md)。
+架构：Clean Architecture + “AI 旁路 + 单一安全闸门”。AI 只给建议，唯一能改盘的是 Safety 闸门。
 
 ---
 

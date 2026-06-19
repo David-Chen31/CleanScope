@@ -36,6 +36,9 @@ appsettings.*.local.json
 .env.*
 secrets.json
 
+# 内部规划/改进文档 (不公开)
+docs/
+
 # 日志 / 审计 (仅本地)
 *.log
 /audit/
