@@ -98,13 +98,30 @@ public sealed class RiskEngineTests
         Assert.Equal(RiskLevel.C, r.Level);
     }
 
-    // 真正来源不明 (非应用/安装/缓存/无归因) 才落 E。
-    [Fact]
-    public void Truly_unknown_path_yields_E()
+    // 系统区 (Windows/回收站/恢复等) 内真正来源不明 → E (保守, 未知=可疑)。
+    [Theory]
+    [InlineData(@"C:\Windows\System32\a8f3kd9")]
+    [InlineData(@"C:\Windows\weird\unknownthing")]
+    [InlineData(@"C:\$Recycle.Bin\stale")]
+    public void Truly_unknown_system_path_yields_E(string path)
     {
-        var r = Assess(Node(@"D:\randomstuff\a8f3kd9", isDir: true), null);
+        var r = Assess(Node(path, isDir: true), null);
         Assert.Equal(RiskLevel.E, r.Level);
         Assert.NotEmpty(r.EvidenceChain);          // 即便 E 也有观测证据 (SR-5)
+    }
+
+    // 用户区 (数据盘/用户自建目录) 的三无项 → C「个人文件」, 不再一律 E
+    // (个人资料不应整盘渲染成最高危; 仍非可清理、无直删入口, 安全不变)。
+    [Theory]
+    [InlineData(@"D:\randomstuff\a8f3kd9")]
+    [InlineData(@"D:\吉林大学\学习\编译原理")]
+    [InlineData(@"E:\我的项目\notes")]
+    public void Unknown_user_area_yields_C_personal(string path)
+    {
+        var r = Assess(Node(path, isDir: true), null);
+        Assert.Equal(RiskLevel.C, r.Level);
+        Assert.False(r.CanDeleteDirectly);          // C 非可直删, 安全不变
+        Assert.NotEmpty(r.EvidenceChain);
     }
 
     // S-B: 顶层容器目录 → IsContainer (仅浏览), 不再"无法判断"。

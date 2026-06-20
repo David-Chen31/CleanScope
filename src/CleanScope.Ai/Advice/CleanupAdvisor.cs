@@ -21,9 +21,11 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
         "你是 Windows 磁盘清理顾问。基于用户的占用汇总与本机适用的官方清理手段, 给出简洁中文的**可执行行动计划**: " +
         "1) 按「省得多 + 风险低 + 操作简单」排出**优先顺序**; 2) 识别重复/冗余 (如多套同类工具链、重复缓存); " +
         "3) 每条尽量对应一个明确动作 (在本程序点哪个按钮 / 用哪个官方手段)。" +
+        "若我额外提供了「具体大项」(含真实路径/名称), 请针对它们给出有依据的个性化建议 (指出哪些可清、哪些是个人资料应保留), " +
+        "但**只描述、不要输出删除命令或脚本**。" +
         "只可引用我提供的官方手段, **不要自创命令**。" +
         "要求: markdown 有序列表, 至多 7 条, 每条一句话且尽量带预估收益; 不要逐文件复述; " +
-        "**绝对不要输出任何删除命令、脚本或路径**; 末尾一句提醒删除前确认、优先用官方方式。";
+        "**绝对不要输出任何删除命令、脚本**; 末尾一句提醒删除前确认、优先用官方方式。";
 
     private readonly IAiChat _chat;
 
@@ -34,6 +36,7 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
     public async Task<string?> AdviseAsync(
         CleanupSummary summary,
         IReadOnlyList<OfficialCleanupAction>? officialActions = null,
+        IReadOnlyList<string>? concreteItems = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(summary);
@@ -41,7 +44,7 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
 
         try
         {
-            var reply = await _chat.CompleteAsync(SystemPrompt, BuildUserPrompt(summary, officialActions), ct);
+            var reply = await _chat.CompleteAsync(SystemPrompt, BuildUserPrompt(summary, officialActions, concreteItems), ct);
             return string.IsNullOrWhiteSpace(reply) ? null : reply.Trim();
         }
         catch
@@ -50,7 +53,8 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
         }
     }
 
-    private static string BuildUserPrompt(CleanupSummary s, IReadOnlyList<OfficialCleanupAction>? official)
+    private static string BuildUserPrompt(CleanupSummary s, IReadOnlyList<OfficialCleanupAction>? official,
+        IReadOnlyList<string>? concreteItems)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"总占用 {Size(s.TotalSize)}, 其中估算可清理 {Size(s.ReclaimableSize)}。").AppendLine();
@@ -79,6 +83,15 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
             sb.AppendLine("本机可用的官方清理手段 (手段 | 预估收益 | 需管理员 | 本程序内可一键执行):");
             foreach (var a in applicable)
                 sb.AppendLine($"- {a.Title} | {(a.EstimatedBytes > 0 ? Size(a.EstimatedBytes) : "未知")} | {(a.NeedsAdmin ? "是" : "否")} | 是");
+            sb.AppendLine();
+        }
+
+        // 关闭/放宽脱敏时由宿主附上的"具体大项"(真实路径/名称) —— 让 AI 能给个性化、有依据的建议。
+        if (concreteItems is { Count: > 0 })
+        {
+            sb.AppendLine("具体大项 (路径/名称 | 大小 | 风险等级) —— 请据此给出针对性建议, 区分可清理与个人资料:");
+            foreach (var line in concreteItems.Take(15))
+                sb.AppendLine($"- {line}");
         }
         return sb.ToString();
     }

@@ -14,8 +14,9 @@ using CleanScope.Domain.Models;
 
 namespace CleanScope.Application.Tests;
 
-// S-C: 给 AI 真实定位 —— InvestigateUnknowns 模式只对"真正三无"未知项 (E, 非容器) 跑 AI 调查,
+// S-C: 给 AI 真实定位 —— InvestigateUnknowns 模式对"无主"未知项 (C/E, 非容器、无确定归因) 跑 AI 调查,
 // 把推测写回 DecisionItem.AiInvestigation; AI 永不进入裁决 (风险仍由本地引擎权威判定)。
+// 注: 用户区 (数据盘/自建目录) 的三无项现判为 C「个人文件」(非 E), 仍属"无主"会被调查。
 public sealed class AiInvestigationTests
 {
     private const string ValidJson = """
@@ -24,7 +25,7 @@ public sealed class AiInvestigationTests
          "userFriendlyExplanation":"这看起来像某个软件留下的数据。"}
         """;
 
-    // 两节点: cache 命中规则→B; weird 三无 (无规则/无归因/无缓存名/非容器/非 AppData) → E。
+    // 两节点: cache 命中规则→B; weird 三无 (无规则/无归因/无缓存名/非容器, 用户区) → C「个人文件」。
     private static readonly FileNode CacheNode = Node(@"D:\App\Cache", "Cache");
     private static readonly FileNode UnknownNode = Node(@"D:\Weird\blob", "blob");
 
@@ -44,16 +45,16 @@ public sealed class AiInvestigationTests
         "test", new SanitizationGateway(), new ExplanationService(chat), new AiOutputValidator());
 
     [Fact]
-    public async Task InvestigateUnknowns_runs_ai_only_on_E_items_and_writes_investigation()
+    public async Task InvestigateUnknowns_runs_ai_only_on_unattributed_items_and_writes_investigation()
     {
         var chat = new CountingChat(ValidJson);
         var result = await Build(chat).ExecuteAsync(
             new ScanOptions(@"D:\", 50, ScanMode.Normal), aiMode: AiMode.InvestigateUnknowns);
 
-        Assert.Equal(1, chat.Calls);   // 仅 E 项调一次, B 项不调
+        Assert.Equal(1, chat.Calls);   // 仅"无主"未知项 (C) 调一次, B 项不调
 
         var unknown = result.Decisions.Single(d => d.Path == UnknownNode.Path);
-        Assert.Equal(RiskLevel.E, unknown.RiskLevel);                         // 风险未被 AI 改判
+        Assert.Equal(RiskLevel.C, unknown.RiskLevel);                         // 用户区个人文件 C, 风险未被 AI 改判
         Assert.False(string.IsNullOrWhiteSpace(unknown.AiInvestigation));     // AI 推测已写入
 
         var cache = result.Decisions.Single(d => d.Path == CacheNode.Path);
@@ -74,7 +75,7 @@ public sealed class AiInvestigationTests
         var cand = Assert.Single(analysis.Attributions);
         Assert.Equal("AI 推测", cand.Source);                                // 诚实标注来源
         Assert.True(cand.Confidence <= 0.45);                                // 置信封顶, 够不到风险阈值
-        Assert.Equal(RiskLevel.E, unknown.RiskLevel);                        // 风险不被归属改判
+        Assert.Equal(RiskLevel.C, unknown.RiskLevel);                        // 用户区个人文件 C, 风险不被归属改判
     }
 
     [Fact]

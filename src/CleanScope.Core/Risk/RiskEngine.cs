@@ -36,6 +36,15 @@ public sealed class RiskEngine : IRiskEngine
         @"\\(Program Files( \(x86\))?|ProgramData)\\[^\\]+",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    // 系统区: 即便"三无"也应保守标 E (未知=可疑)。Windows 目录、回收站、卷信息、恢复/启动等。
+    // 用户区 (数据盘、用户自建目录) 的三无项则视为个人文件 (C), 不再一律 E。
+    private static readonly Regex SystemAreaRx = new(
+        @"\\Windows(\\|$)" +
+        @"|^[A-Za-z]:\\\$Recycle\.Bin" +
+        @"|^[A-Za-z]:\\System Volume Information" +
+        @"|^[A-Za-z]:\\(Recovery|Boot|PerfLogs|Config\.Msi)(\\|$)",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
     // S-B: 顶层容器目录 (盘符根/Users/用户主目录/AppData[\Local|LocalLow|Roaming]/Program Files[(x86)]/ProgramData)。
     // 这些只是"装东西的柜子", 不是删除对象 —— 标 IsContainer, UI 单列"容器"桶, 不进风险/可清理统计。
     private static readonly Regex ContainerRx = new(
@@ -137,8 +146,16 @@ public sealed class RiskEngine : IRiskEngine
             return Build(node, evidence, RiskLevel.C, 50,
                 new[] { $"归属 {owner.AppName}, 暂无清理方式, 谨慎处理" }, Math.Max(0.4, owner.Confidence), false);
 
-        // Q4: 真正三无 (无规则/无归因/无缓存特征) → E (无法判断, 不建议删除)。
-        return Build(node, evidence, RiskLevel.E, 85, new[] { "无规则/无归因/无缓存特征, 无法判断" }, 0.2, false);
+        // 三无 (无规则/无归因/无缓存特征): 区分系统区与用户区, 别把一整盘个人资料都判成最高危。
+        //  · 系统区 (Windows/回收站/卷信息/恢复等) 未知项 → E (保守, 未知=可疑, 不建议删)。
+        //  · 其余 (数据盘、用户自建目录等) 极可能是用户自己的文件 → C「个人文件, 自行判断」。
+        //    仍非可清理桶、无直删入口, 安全模型不变 (闸门仍独立把关); 只是不再渲染成一片危险红。
+        if (SystemAreaRx.IsMatch(path))
+            return Build(node, evidence, RiskLevel.E, 85,
+                new[] { "位于系统区且无规则/无归因, 无法判断, 不建议删除" }, 0.2, false);
+
+        return Build(node, evidence, RiskLevel.C, 45,
+            new[] { "个人文件 (非系统位置, 非软件产生), 建议自行判断" }, 0.45, false);
     }
 
     private static bool IsInUse(EvidenceBundle evidence) =>

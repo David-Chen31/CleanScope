@@ -40,9 +40,13 @@ public interface ICleanupAdvisor
     /// <summary>
     /// 生成跨项清理建议。<paramref name="officialActions"/> 为本机适用的系统级官方手段 (关闭休眠/磁盘清理等,
     /// 含预估收益), 让 AI 把"网上常见手段 + 本机实测"结合成带优先级的可执行计划, 而非泛泛而谈。可传空。
+    ///
+    /// <paramref name="concreteItems"/>: 已按当前脱敏档位处理过的"具体大项"描述行 (如"路径 | 大小 | 风险")。
+    /// 关闭脱敏时由宿主附上真实路径以便 AI 给个性化建议; 严格档位下应传空 (保持仅聚合)。可传空。
     /// </summary>
     Task<string?> AdviseAsync(
         CleanupSummary summary,
         IReadOnlyList<OfficialCleanupAction>? officialActions = null,
+        IReadOnlyList<string>? concreteItems = null,
         CancellationToken ct = default);
 }

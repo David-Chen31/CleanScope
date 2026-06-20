@@ -137,11 +137,18 @@ public sealed class HomeViewModel : ViewModelBase
         if (Session is null || _services.CleanupAdvisor is not { Enabled: true }) return;
         _advising = true;
         AdviseCommand.RaiseCanExecuteChanged();
-        AdviseStatus = "正在生成 AI 清理建议（基于占用汇总，不含具体路径，仅供参考）…";
+        var level = _services.SanitizationLevel;
+        AdviseStatus = level switch
+        {
+            SanitizationLevel.Off => "正在生成 AI 清理建议（脱敏已关闭：附真实大项路径，建议更个性化）…",
+            SanitizationLevel.Balanced => "正在生成 AI 清理建议（均衡脱敏：附大项名称，不含完整路径/用户名）…",
+            _ => "正在生成 AI 清理建议（严格脱敏：仅占用汇总，不含具体项）…",
+        };
         try
         {
             var summary = CleanupSummaryBuilder.From(Session.Report.Items);
-            var advice = await _services.CleanupAdvisor.AdviseAsync(summary, _services.OfficialActions);
+            var concrete = BuildConcreteItems(level);
+            var advice = await _services.CleanupAdvisor.AdviseAsync(summary, _services.OfficialActions, concrete);
             if (string.IsNullOrWhiteSpace(advice))
             {
                 AdviseStatus = "AI 未能生成建议（以确定性的按类别/按软件清理为准）。";
@@ -160,6 +167,25 @@ public sealed class HomeViewModel : ViewModelBase
             _advising = false;
             AdviseCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    // 按脱敏档位给参谋附"具体大项", 让"关脱敏 = 更个性化"真正生效, 同时尊重三档隐私语义:
+    //  关闭 → 真实完整路径 (最个性化); 均衡 → 仅叶子名 (无完整路径/用户名); 严格 → 不附 (仅聚合)。
+    private IReadOnlyList<string>? BuildConcreteItems(SanitizationLevel level)
+    {
+        if (Session is null || level == SanitizationLevel.Strict) return null;
+        var items = Session.Report.Items
+            .Where(i => !i.IsContainer && i.ExclusiveSize > 0)
+            .OrderByDescending(i => i.ExclusiveSize)
+            .Take(15)
+            .Select(i =>
+            {
+                var loc = level == SanitizationLevel.Off ? i.Path : Path.GetFileName(i.Path.TrimEnd('\\'));
+                if (string.IsNullOrWhiteSpace(loc)) loc = i.Path;
+                return $"{loc} | {Format.HumanSize(i.ExclusiveSize)} | 风险{i.RiskLevel}";
+            })
+            .ToList();
+        return items.Count > 0 ? items : null;
     }
 
     // —— 概览"最划算的几步": 整棵树里最大的可清理项 (扁平去重), 取代旧"Top10 最大目录"(多为容器) ——
