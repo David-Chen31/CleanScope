@@ -9,30 +9,31 @@
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel>
 
-        <!-- 磁盘容量 (减重: 一行 + 状态色条) -->
-        <Border Style="{StaticResource Cards}">
+        <!-- ===== Hero: 一个主操作 (品牌价值标题 + 磁盘焦点 + 主按钮) ===== -->
+        <Border Style="{StaticResource Cards}" Padding="28,26">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#FFFFFF" Offset="0"/>
+                    <GradientStop Color="#F2F7FF" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
             <StackPanel>
-                <TextBlock Text="{Binding DriveInfo}" FontSize="16" FontWeight="SemiBold"
-                           Foreground="{StaticResource Ink}" Margin="0,0,0,10"/>
+                <TextBlock Text="腾出磁盘空间，让电脑更轻快" FontSize="23" FontWeight="Bold"
+                           Foreground="{StaticResource Ink}"/>
+                <TextBlock Text="{Binding DriveInfo}" FontSize="13.5" Foreground="{StaticResource Muted}"
+                           Margin="0,7,0,12"/>
                 <ProgressBar Height="10" Minimum="0" Maximum="1" Value="{Binding DriveUsedRatio, Mode=OneWay}"
                              Foreground="{Binding DriveUsedRatio, Converter={StaticResource UsageToBrush}}"
-                             Background="#EDF0F3" BorderThickness="0"/>
-            </StackPanel>
-        </Border>
+                             Background="#E7ECF3" BorderThickness="0"/>
 
-        <!-- 扫描入口 (盘符优先) -->
-        <Border Style="{StaticResource Cards}">
-            <StackPanel>
-                <TextBlock Text="扫描哪个磁盘？" Style="{StaticResource H2}" Margin="0,0,0,10"/>
-
-                <!-- 盘符芯片: 一键把目标设为某个磁盘根 -->
-                <ItemsControl ItemsSource="{Binding AvailableDrives}">
+                <!-- 盘符芯片 -->
+                <ItemsControl ItemsSource="{Binding AvailableDrives}" Margin="0,18,0,10">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Content="{Binding}" Margin="0,0,8,8" Padding="14,7"
+                            <Button Content="{Binding}" Margin="0,0,8,0" Padding="16,7"
                                     Style="{StaticResource Ghost}"
                                     Command="{Binding DataContext.ScanDriveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                     CommandParameter="{Binding}"/>
@@ -40,34 +41,34 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Grid Margin="0,4,0,0">
+                <!-- 路径 + 主操作 -->
+                <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0" Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource Field}"
+                             Style="{StaticResource Field}" VerticalAlignment="Center"
                              ToolTip="可填磁盘根 (如 C:\) 或任意文件夹路径"/>
-                    <Button Grid.Column="1" Content="扫描此磁盘" Command="{Binding ScanCommand}"
-                            Style="{StaticResource Primary}" Margin="10,0,0,0" MinWidth="96"/>
-                    <Button Grid.Column="2" Content="🖥 扫描整台电脑" Command="{Binding ScanAllDrivesCommand}"
-                            Style="{StaticResource Ghost}" Margin="8,0,0,0" MinWidth="120"
-                            ToolTip="一次扫描本机所有固定磁盘，合并成一份总览"/>
+                    <Button Grid.Column="1" Content="扫描此磁盘  →" Command="{Binding ScanCommand}"
+                            Style="{StaticResource Primary}" Margin="12,0,0,0" MinWidth="150"
+                            FontSize="15" Padding="24,12"/>
                 </Grid>
 
-                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                    <CheckBox Content="管理员模式（更全的扫描覆盖）" IsChecked="{Binding AdminMode}"
-                              VerticalAlignment="Center" Foreground="{StaticResource Ink}"/>
+                <!-- 次要选项: 整台电脑 + 管理员模式 (弱化, 不抢主操作) -->
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0" VerticalAlignment="Center">
+                    <Button Content="🖥 扫描整台电脑" Command="{Binding ScanAllDrivesCommand}"
+                            Style="{StaticResource Ghost}" Padding="12,6"
+                            ToolTip="一次扫描本机所有固定磁盘，合并成一份总览"/>
+                    <CheckBox Content="管理员模式（更全覆盖）" IsChecked="{Binding AdminMode}"
+                              VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Muted}"/>
                 </StackPanel>
 
-                <!-- 扫描进行中的不确定进度条 (就近反馈, 不必盯底部状态行) -->
-                <ProgressBar Height="4" IsIndeterminate="True" Margin="0,12,0,0" BorderThickness="0"
-                             Foreground="{StaticResource Accent}" Background="#EDF0F3"
+                <!-- 扫描进行中反馈 -->
+                <ProgressBar Height="4" IsIndeterminate="True" Margin="0,14,0,0" BorderThickness="0"
+                             Foreground="{StaticResource Accent}" Background="#E7ECF3"
                              Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}"/>
-                <Border Margin="0,12,0,0" Padding="10" CornerRadius="6" Background="{StaticResource Subtle}">
-                    <TextBlock Text="{Binding Status}" Style="{StaticResource Sub}"/>
-                </Border>
+                <TextBlock Text="{Binding Status}" Style="{StaticResource Sub}" Margin="2,10,0,0"/>
             </StackPanel>
         </Border>
 

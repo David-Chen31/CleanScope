@@ -42,7 +42,8 @@ public sealed class SpaceBySoftwareViewModel : ViewModelBase
         var usages = SoftwareAggregator.Aggregate(active.Select(r => r.Item).ToList());
         foreach (var u in usages)
             if (byOwner.TryGetValue(u.Name, out var rows))
-                Groups.Add(new SoftwareGroupViewModel(u.Name, u.ItemCount, u.TotalSize, u.CleanableSize, rows));
+                // 认不出归属的组 → 显示"个人文件"而非"未归类/未知来源"(人话化)。
+                Groups.Add(new SoftwareGroupViewModel(Humanize.Origin(u.Name), u.ItemCount, u.TotalSize, u.CleanableSize, rows));
 
         var cleanable = usages.Sum(u => u.CleanableSize);
         Summary = $"{Groups.Count} 个软件/来源占用了 {Format.HumanSize(usages.Sum(u => u.TotalSize))}，" +

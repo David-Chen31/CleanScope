@@ -71,8 +71,9 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     public string Path => _node.Path;
     public string SizeText => Format.HumanSize(_node.Size);
     // AI 按需识别的结果优先于确定性结论 (并明确标注"AI 推测", 仅展示, 不改判风险/删除)。
-    public string Origin => _aiOrigin ?? _node.Origin;
-    public string Purpose => _aiPurpose ?? _node.Purpose ?? "";
+    // 认不出归属的项 → 展示为"个人文件"而非"未知来源/无法判断"(人话化, 不动裁决)。
+    public string Origin => _aiOrigin ?? Humanize.Origin(_node.Origin);
+    public string Purpose => _aiPurpose ?? Humanize.Purpose(_node.Purpose, Origin);
     public string RecommendedAction => _node.RecommendedAction;
     public bool IsCleanable => EffectiveCleanable;
     public bool IsRemainder { get; private init; }

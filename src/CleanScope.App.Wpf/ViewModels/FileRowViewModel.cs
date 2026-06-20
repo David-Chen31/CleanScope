@@ -72,8 +72,8 @@ public sealed class FileRowViewModel : ViewModelBase
     public string RiskText => RiskLevel.ToString();
     public string RiskMeaning => Format.RiskMeaning(RiskLevel);
     public string? OwnerApp { get; }
-    /// <summary>统一"来源/归属"短标签 (列表列): 应用 ▸ 系统来源 ▸ 容器角色 ▸ 未知。保证非空。</summary>
-    public string Origin => Item.Origin ?? OwnerApp ?? "未知来源";
+    /// <summary>统一"来源/归属"短标签: 应用 ▸ 系统来源 ▸ 容器角色 ▸ 认不出则"个人文件"(人话化)。</summary>
+    public string Origin => Humanize.Origin(Item.Origin ?? OwnerApp);
     public string RecommendedAction { get; }
     public string? Explanation { get; }
 
