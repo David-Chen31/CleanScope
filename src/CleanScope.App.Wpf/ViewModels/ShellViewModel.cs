@@ -34,13 +34,21 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         GoBySoftwareCommand = new RelayCommand(ShowBySoftware, () => Session is not null);
         GoReportCommand = new RelayCommand(ShowReport, () => Session is not null);
         GoAiSettingsCommand = new RelayCommand(ShowAiSettings);
+        GoBackFromAiCommand = new RelayCommand(BackFromAi);
 
         _current = _home;
         _aiBadge = ComputeAiBadge();
-        services.AiChanged += () => AiBadge = ComputeAiBadge();   // D: 保存配置后徽章实时刷新
+        services.AiChanged += () =>           // D: 保存配置后, 标题栏 AI 胶囊文案 + 状态点实时刷新
+        {
+            AiBadge = ComputeAiBadge();
+            OnPropertyChanged(nameof(AiEnabled));
+        };
     }
 
     public AppServices Services { get; }
+
+    // 标题栏 AI 胶囊: 状态点用 (启用=绿 / 未配置=灰)。
+    public bool AiEnabled => Services.AiEnabled;
 
     private string _aiBadge;
     public string AiBadge { get => _aiBadge; private set => SetField(ref _aiBadge, value); }
@@ -86,6 +94,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public RelayCommand GoBySoftwareCommand { get; }
     public RelayCommand GoReportCommand { get; }
     public RelayCommand GoAiSettingsCommand { get; }
+    public RelayCommand GoBackFromAiCommand { get; }
 
     // A1: 聚合页(空间地图/按软件/报告)按修订号懒重载 —— 删除发生在别处时, 切回来才按最新状态重算一次, 避免每次删除都全量重建。
     private readonly Dictionary<object, int> _shownRevision = new();
@@ -123,7 +132,19 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public void ShowExplorer() { ActivePage = "explorer"; CurrentView = _explorer; }
     public void ShowBySoftware() { EnsureFresh(_software, () => _software.Load(Session!)); ActivePage = "software"; CurrentView = _software; }
     public void ShowReport() { EnsureFresh(_report, () => _report.Load(Session!)); _report.RefreshOnShow(); ActivePage = "report"; CurrentView = _report; }
-    public void ShowAiSettings() { ActivePage = "ai"; CurrentView = _aiSettings; }
+    // AI 设置是从任意页"侧进"的配置页 —— 记住来处 + 来处页 key, 供"返回"原路返回 (修复: AI 设置无返回出口的死路)。
+    private object? _aiReturn;
+    private string _aiReturnPage = "home";
+    public void ShowAiSettings()
+    {
+        if (_activePage != "ai") { _aiReturn = _current; _aiReturnPage = _activePage; }
+        ActivePage = "ai"; CurrentView = _aiSettings;
+    }
+    public void BackFromAi()
+    {
+        ActivePage = _aiReturnPage;
+        CurrentView = _aiReturn ?? _home;
+    }
 
     // 进入详情前所在的页, 供详情"返回"原路返回 (修复: 从"按软件"点进详情后返回却跳到资源管理器)。
     private object? _detailReturn;

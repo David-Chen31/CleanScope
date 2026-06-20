@@ -16,6 +16,7 @@
             <conv:FractionToWidthConverter x:Key="FractionToWidth"/>
             <conv:EqualsMultiConverter x:Key="Eq"/>
             <conv:UsageToBrushConverter x:Key="UsageToBrush"/>
+            <conv:AiDotBrushConverter x:Key="AiDotBrush"/>
 
             <!-- VM → View 映射 (Shell 的 ContentControl 依此渲染) -->
             <DataTemplate DataType="{x:Type vm:HomeViewModel}"><views:HomeView/></DataTemplate>
@@ -509,6 +510,30 @@
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="b" Property="Background" Value="#E5484D"/>
                                     <Setter Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 标题栏 AI 状态胶囊 (带标签可点; hover 微亮) -->
+            <Style x:Key="AiPill" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" Background="{StaticResource Subtle}" CornerRadius="8"
+                                    BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="11,5">
+                                <ContentPresenter VerticalAlignment="Center"
+                                                  TextElement.Foreground="{TemplateBinding Foreground}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}"/>
+                                    <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

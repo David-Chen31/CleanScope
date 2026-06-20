@@ -110,6 +110,19 @@ public sealed class BucketToBrushConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>AI 启用状态 → 标题栏胶囊状态点色 (启用=绿, 未配置=灰)。</summary>
+public sealed class AiDotBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var hex = value is true ? "#22A565" : "#9AA4B0";
+        return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+    }
+
+    public object ConvertBack(object value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>事实/推测 → 徽标背景色 (事实=蓝, AI 推测=琥珀, 视觉区分, 安全§9)。</summary>
 public sealed class FactToBrushConverter : IValueConverter
 {

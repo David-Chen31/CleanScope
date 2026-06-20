@@ -18,10 +18,28 @@
                 </LinearGradientBrush>
             </Border.Background>
             <StackPanel>
-                <TextBlock Text="腾出磁盘空间，让电脑更轻快" FontSize="23" FontWeight="Bold"
+                <!-- #5: 不再是任何清理软件都能写的泛句 —— 标题 + 副标题表达本产品独有价值 (先分析、再清理、可还原) -->
+                <TextBlock Text="腾出磁盘空间，且每一步都可还原" FontSize="23" FontWeight="Bold"
                            Foreground="{StaticResource Ink}"/>
+                <TextBlock FontSize="13.5" Foreground="{StaticResource Muted}" Margin="0,7,0,12" TextWrapping="Wrap"
+                           Text="先分析每个文件的来源与用途，帮你避开误删；删除只进回收站，随时找回。"/>
+
+                <!-- 价值锚点 (差异化: 为什么选它) -->
+                <ItemsControl Margin="0,0,0,4">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <Border Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" Margin="0,0,8,0">
+                        <TextBlock Text="🔍 逐项分析来源" FontSize="12" Foreground="{StaticResource Accent}"/>
+                    </Border>
+                    <Border Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" Margin="0,0,8,0">
+                        <TextBlock Text="🛡 降低误删风险" FontSize="12" Foreground="{StaticResource Accent}"/>
+                    </Border>
+                    <Border Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" Margin="0,0,8,0">
+                        <TextBlock Text="↩ 删除全部可还原" FontSize="12" Foreground="{StaticResource Accent}"/>
+                    </Border>
+                </ItemsControl>
+
                 <TextBlock Text="{Binding DriveInfo}" FontSize="13.5" Foreground="{StaticResource Muted}"
-                           Margin="0,7,0,12"/>
+                           Margin="0,14,0,12"/>
                 <ProgressBar Height="10" Minimum="0" Maximum="1" Value="{Binding DriveUsedRatio, Mode=OneWay}"
                              Foreground="{Binding DriveUsedRatio, Converter={StaticResource UsageToBrush}}"
                              Background="#E7ECF3" BorderThickness="0"/>

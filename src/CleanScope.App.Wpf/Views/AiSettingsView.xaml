@@ -9,6 +9,9 @@
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <Border Style="{StaticResource Cards}">
         <StackPanel>
+            <!-- #3 修复: AI 设置页提供明确的返回出口 (此前进来后无路可退) -->
+            <Button Content="←  返回" Style="{StaticResource Ghost}" HorizontalAlignment="Left" Padding="14,6" Margin="0,0,0,14"
+                    Command="{Binding DataContext.GoBackFromAiCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
             <TextBlock Text="AI 设置" Style="{StaticResource H2}"/>
             <TextBlock Text="可选 · AI 仅在你点击 AI 功能时按需调用，不配置则全程本地。"
                        Style="{StaticResource Sub}" Margin="0,0,0,12"/>
