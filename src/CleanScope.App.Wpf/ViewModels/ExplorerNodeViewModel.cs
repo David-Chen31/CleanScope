@@ -121,6 +121,9 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
         IsAiResolved = true;
         OnPropertyChanged(nameof(Origin));
         OnPropertyChanged(nameof(Purpose));
+        OnPropertyChanged(nameof(Grade));        // AI 识别可能把"未知"判为个人文件 → 徽章随之变
+        OnPropertyChanged(nameof(BucketLabel));
+        OnPropertyChanged(nameof(BucketBrush));
         InvestigateCommand.RaiseCanExecuteChanged();
     }
 
@@ -200,6 +203,14 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     public string BucketLabel => IsPersonal ? "个人文件" : Buckets.Label(Bucket);
     public Brush BucketBrush => IsPersonal ? PersonalBrush : Buckets.Brush(Bucket);
     private static readonly Brush PersonalBrush = new SolidColorBrush(Color.FromRgb(0x9D, 0xB4, 0xCE));
+
+    // 品牌签名: A–E 等级徽章 (清单/详情/地图统一)。个人/容器/余量为无字母中性徽章。
+    // 字母等级直取风险引擎的 RiskLevel —— 把过去藏起来的"为什么这么判"提到台面, 成为解释主角。
+    public Common.GradeBadge Grade =>
+        IsRemainder ? Common.GradeBadge.Other
+        : IsPersonal ? Common.GradeBadge.Personal
+        : _node.IsContainer ? Common.GradeBadge.Container
+        : Common.GradeBadge.Of(_node.RiskLevel);
 
     /// <summary>占父目录百分比 (大小条宽度); 0–1。</summary>
     public double FractionOfParent => _parentSize > 0 ? Math.Min(1.0, (double)_node.Size / _parentSize) : 0;
