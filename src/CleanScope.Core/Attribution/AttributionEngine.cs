@@ -12,11 +12,18 @@ public sealed class AttributionEngine : IAttributionEngine
     private const string InstalledAppPrefix = "under installed app: ";
     private const string SignaturePrefix = "signed by ";
     private const string ProductMarker = "product=";
+    private const string CompanyMarker = "company=";
 
-    // 归因强度 (区别于证据可靠性 weight): 安装目录归属最强, 产品名次之, 签名者(厂商)最弱。
+    // 归因强度 (区别于证据可靠性 weight): 安装目录归属最强, 产品名次之, 公司/签名者(厂商)最弱。
     private const double InstalledAppConfidence = 0.85;
     private const double ProductConfidence = 0.70;
+    private const double CompanyConfidence = 0.55;
     private const double SignerConfidence = 0.50;
+
+    private readonly KnownSoftwareCatalog _catalog;
+
+    /// <param name="catalog">知名软件特征库 (① 本地化): 归一厂商名 + 纯数据目录兜底。null=空库 (不增强)。</param>
+    public AttributionEngine(KnownSoftwareCatalog? catalog = null) => _catalog = catalog ?? KnownSoftwareCatalog.Empty;
 
     public IReadOnlyList<AttributionCandidate> Attribute(
         FileNode node, EvidenceBundle evidence, RuleMatch? ruleMatch)
@@ -32,17 +39,22 @@ public sealed class AttributionEngine : IAttributionEngine
             if (!e.IsFact) continue;   // 只采信事实 (§9)
             var (name, conf) = Extract(e);
             if (name is null) continue;
-            Fuse(acc, name, conf, e.Id);
+            // ① 特征库: 把原始公司/签名者归一为友好名 (Valve→Steam 等); 产品名一般已友好, 命不中保留原值。
+            Fuse(acc, _catalog.FriendlyVendor(name) ?? name, conf, e.Id);
         }
 
-        // 无任何事实候选时: 先按路径段推断应用 (S4), 再按系统/共享路径表给来源 (SystemOrigin)。
-        // 目标: 让系统文件 (Windows/共享组件/临时…) 也有"来源", 不落进"未归类"。均为低置信展示, 不驱动风险。
+        // 无任何事实候选时: 先按路径段推断应用 (S4), 再特征库目录名兜底, 最后按系统/共享路径表给来源。
+        // 目标: 让系统文件与纯数据目录也有"来源", 不落进"未归类"。均为低置信展示, 不驱动风险。
         if (acc.Count == 0)
         {
             var path = node.RealPath ?? node.Path;
             var inferred = PathPatternCandidate(path);
             if (inferred is not null)
                 return new[] { new AttributionCandidate(0, node.Id, inferred, 0.5, 1, Array.Empty<long>(), Source: "路径推断") };
+
+            // ① 特征库目录名兜底 (T3 也读不到二进制的纯数据目录, 如微信接收目录、数据集)。
+            if (node.IsDirectory && _catalog.MatchDirectory(LeafName(path)) is { } hint)
+                return new[] { new AttributionCandidate(0, node.Id, hint.App, 0.5, 1, Array.Empty<long>(), Source: "特征库") };
 
             if (SystemOrigin.Resolve(path) is { } origin)
                 return new[] { new AttributionCandidate(0, node.Id, origin.Owner, 0.85, 1, Array.Empty<long>(), Source: "系统目录") };
@@ -73,9 +85,18 @@ public sealed class AttributionEngine : IAttributionEngine
     {
         EvidenceKind.InstalledApp when After(e.Value, InstalledAppPrefix) is { } n => (n, InstalledAppConfidence),
         EvidenceKind.Signature when After(e.Value, SignaturePrefix) is { } s => (s, SignerConfidence),
-        EvidenceKind.Metadata when Product(e.Value) is { } p => (p, ProductConfidence),
+        // 产品名优先 (更友好); 缺产品名时退而用公司名 (T3 采样的 dll 常只有 company)。
+        EvidenceKind.Metadata when Field(e.Value, ProductMarker) is { } p => (p, ProductConfidence),
+        EvidenceKind.Metadata when Field(e.Value, CompanyMarker) is { } c => (c, CompanyConfidence),
         _ => (null, 0),
     };
+
+    private static string LeafName(string path)
+    {
+        var s = path.Replace('/', '\\').TrimEnd('\\');
+        var i = s.LastIndexOf('\\');
+        return i >= 0 && i + 1 < s.Length ? s[(i + 1)..] : s;
+    }
 
     private static void Fuse(Dictionary<string, Candidate> acc, string name, double conf, long evidenceId)
     {
@@ -101,12 +122,12 @@ public sealed class AttributionEngine : IAttributionEngine
             ? value[prefix.Length..].Trim()
             : null;
 
-    // 从 "product=X; company=Y; version=Z" 取 X (空/缺则 null)。
-    private static string? Product(string value)
+    // 从 "product=X; company=Y; version=Z" 取某字段值 (空/缺则 null)。
+    private static string? Field(string value, string marker)
     {
-        var i = value.IndexOf(ProductMarker, StringComparison.Ordinal);
+        var i = value.IndexOf(marker, StringComparison.Ordinal);
         if (i < 0) return null;
-        var start = i + ProductMarker.Length;
+        var start = i + marker.Length;
         var end = value.IndexOf(';', start);
         var p = (end < 0 ? value[start..] : value[start..end]).Trim();
         return p.Length == 0 ? null : p;

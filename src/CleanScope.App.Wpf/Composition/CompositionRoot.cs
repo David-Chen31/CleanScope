@@ -14,6 +14,7 @@ using CleanScope.Core.Risk;
 using CleanScope.Core.Rules;
 using CleanScope.Core.Scanning;
 using CleanScope.Domain.Abstractions;
+using CleanScope.Infrastructure.Attribution;
 using CleanScope.Infrastructure.Migration;
 using CleanScope.Infrastructure.Repositories;
 using CleanScope.Infrastructure.Rules;
@@ -37,6 +38,10 @@ public static class CompositionRoot
         // —— 规则包 (声明式数据) ——
         var rulesDir = ResolveRulesDir();
         var rules = await new RulePackLoader(rulesDir).LoadAsync(ct);
+
+        // —— 知名软件特征库 (① 本地化, 归因增强; 缺失/损坏静默降级为空库) ——
+        var knownSoftware = await new KnownSoftwareLoader(ResolveSignaturesDir()).LoadAsync(ct);
+        var catalog = new KnownSoftwareCatalog(knownSoftware);
 
         // —— 真实系统访问 (只读): 元数据/签名/已安装/占用 ——
         var windows = new WindowsAccess();
@@ -64,7 +69,7 @@ public static class CompositionRoot
 
         var useCase = new ScanAndAnalyzeUseCase(
             new ScanEngine(), new EvidenceCollector(windows), new RuleEngine(rules),
-            new AttributionEngine(), new RiskEngine(), new DecisionService(), AppVersion,
+            new AttributionEngine(catalog), new RiskEngine(), new DecisionService(), AppVersion,
             sanitizer, explanation, validator);
 
         var services = new AppServices
@@ -102,6 +107,20 @@ public static class CompositionRoot
                 return candidate;
         }
         return def; // 交给 loader 抛清晰错误
+    }
+
+    // 优先输出目录旁 signatures/; 开发期回退到仓库根 (CleanScope.sln 旁)。缺失则交给 loader 静默降级。
+    private static string ResolveSignaturesDir()
+    {
+        var def = KnownSoftwareLoader.DefaultSignaturesDirectory;
+        if (Directory.Exists(def)) return def;
+        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d is not null; d = d.Parent)
+        {
+            var candidate = Path.Combine(d.FullName, "signatures");
+            if (File.Exists(Path.Combine(d.FullName, "CleanScope.sln")) && Directory.Exists(candidate))
+                return candidate;
+        }
+        return def;
     }
 
     // appsettings.ai.local.json (已 gitignore): 输出目录旁或仓库根。

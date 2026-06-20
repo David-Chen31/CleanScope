@@ -27,6 +27,13 @@ public interface IScanEngine
 public interface IEvidenceCollector
 {
     Task<EvidenceBundle> CollectAsync(FileNode node, CancellationToken ct = default);
+
+    /// <summary>
+    /// 轻量采集 (供全盘目录树批量调用): 仅取归属相关事实 —— 版本信息 + 目录代表性二进制 (T3) + 已安装归属,
+    /// **不做**进程占用检测与 Authenticode 签名 (建树要跑成百上千节点, 省去昂贵 I/O)。默认委托给 <see cref="CollectAsync"/>。
+    /// </summary>
+    Task<EvidenceBundle> CollectForTreeAsync(FileNode node, CancellationToken ct = default)
+        => CollectAsync(node, ct);
 }
 
 /// <summary>规则引擎 (权威): 匹配规则库, 冲突就高, 输出权威 RuleMatch。命中黑名单 AI 不可翻案 (SR-6)。</summary>

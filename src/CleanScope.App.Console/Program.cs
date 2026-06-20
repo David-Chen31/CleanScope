@@ -14,6 +14,7 @@ using CleanScope.Core.Scanning;
 using CleanScope.Domain.Abstractions;
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
+using CleanScope.Infrastructure.Attribution;
 using CleanScope.Infrastructure.Rules;
 using CleanScope.Infrastructure.Windows;
 using CleanScope.Reporting;
@@ -42,6 +43,10 @@ try
 
     var rules = await new RulePackLoader(rulesDir).LoadAsync();
     Console.WriteLine($"已加载规则: {rules.Count} 条");
+
+    // 知名软件特征库 (① 本地化, 归因增强; 缺失静默降级为空库)。
+    var knownSoftware = await new KnownSoftwareLoader(ResolveSignaturesDir(rulesDir)).LoadAsync();
+    var catalog = new KnownSoftwareCatalog(knownSoftware);
 
     var windows = new WindowsAccess();   // 真实系统访问 (只读): 元数据/签名/已安装/占用
 
@@ -72,7 +77,7 @@ try
         new ScanEngine(),
         new EvidenceCollector(windows),
         new RuleEngine(rules),
-        new AttributionEngine(),
+        new AttributionEngine(catalog),
         new RiskEngine(),
         new DecisionService(),
         AppVersion,
@@ -172,6 +177,21 @@ static string ResolveRulesDir(string? explicitDir)
             return candidate;
     }
     return def; // 交给 loader 抛清晰错误
+}
+
+// 知名软件特征库目录: 输出目录旁 signatures/ → 仓库根 signatures/ → 规则目录同级 signatures/。缺失则 loader 静默降级。
+static string ResolveSignaturesDir(string rulesDir)
+{
+    var def = KnownSoftwareLoader.DefaultSignaturesDirectory;
+    if (Directory.Exists(def)) return def;
+    for (var d = new DirectoryInfo(AppContext.BaseDirectory); d is not null; d = d.Parent)
+    {
+        var candidate = Path.Combine(d.FullName, "signatures");
+        if (File.Exists(Path.Combine(d.FullName, "CleanScope.sln")) && Directory.Exists(candidate))
+            return candidate;
+    }
+    var sibling = Path.Combine(Path.GetDirectoryName(rulesDir.TrimEnd('\\', '/')) ?? ".", "signatures");
+    return Directory.Exists(sibling) ? sibling : def;
 }
 
 static void PrintSummary(ScanAndAnalyzeResult result, TimeSpan elapsed)

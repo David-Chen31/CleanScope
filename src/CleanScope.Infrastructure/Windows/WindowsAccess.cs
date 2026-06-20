@@ -59,6 +59,116 @@ public sealed class WindowsAccess : IWindowsAccess
         }
     }
 
+    // T3 采样预算: 浅层 (主程序几乎都在根层或一层内) + 文件数封顶, 避免在巨树上无界 I/O。
+    private const int SampleMaxDepth = 2;
+    private const int SampleMaxFiles = 256;
+
+    /// <summary>
+    /// T3: 采样目录内代表性二进制的元数据 (版本信息 + 可选签名)。有界搜索, 无可执行文件或无可用元数据 → null。
+    /// 这是"离线 ground-truth 归因"的核心 —— 不依赖任何名表, 厂商写进 exe 的公司/产品/签名直接定身份。
+    /// </summary>
+    public Task<FileMetadata?> SampleDirectoryBinaryAsync(
+        string dirPath, bool includeSignature, CancellationToken ct = default)
+        => Task.Run(() => SampleDirectoryBinary(dirPath, includeSignature), ct);
+
+    private static FileMetadata? SampleDirectoryBinary(string dirPath, bool includeSignature)
+    {
+        try
+        {
+            if (!Directory.Exists(dirPath)) return null;
+
+            var candidates = new List<RepresentativeBinary.Candidate>();
+            var paths = new List<string>();
+            var examined = 0;
+
+            // 浅层 BFS: 逐层枚举文件 (收 exe/dll), 再下钻子目录, 直到深度/文件数预算耗尽。
+            var queue = new Queue<(string Dir, int Depth)>();
+            queue.Enqueue((dirPath, 0));
+            while (queue.Count > 0 && examined < SampleMaxFiles)
+            {
+                var (dir, depth) = queue.Dequeue();
+
+                IEnumerable<string> files;
+                try { files = Directory.EnumerateFiles(dir); }
+                catch { continue; }   // 无权限/被占用目录跳过, 不崩
+
+                foreach (var f in files)
+                {
+                    if (++examined > SampleMaxFiles) break;
+                    var ext = Path.GetExtension(f);
+                    var isExe = ext.Equals(".exe", StringComparison.OrdinalIgnoreCase);
+                    if (!isExe && !ext.Equals(".dll", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    long size;
+                    try { size = new FileInfo(f).Length; } catch { size = 0; }
+                    candidates.Add(new RepresentativeBinary.Candidate(Path.GetFileName(f), depth, size, isExe));
+                    paths.Add(f);
+                }
+
+                if (depth + 1 < SampleMaxDepth && examined < SampleMaxFiles)
+                {
+                    try
+                    {
+                        foreach (var sub in Directory.EnumerateDirectories(dir))
+                            queue.Enqueue((sub, depth + 1));
+                    }
+                    catch { /* 跳过不可枚举子目录 */ }
+                }
+            }
+
+            var leaf = new DirectoryInfo(dirPath.TrimEnd('\\', '/')).Name;
+            var pick = RepresentativeBinary.PickBest(leaf, candidates);
+            if (pick is not int idx) return null;
+
+            return ReadBinaryMetadata(paths[idx], includeSignature);
+        }
+        catch
+        {
+            return null;   // 任意异常不崩 (DoD)
+        }
+    }
+
+    // 读代表性二进制的版本信息 (+ 可选签名)。无任何可用归因字段 → null (避免空壳证据)。
+    private static FileMetadata? ReadBinaryMetadata(string path, bool includeSignature)
+    {
+        try
+        {
+            var fvi = FileVersionInfo.GetVersionInfo(path);
+            var product = NullIfBlank(fvi.ProductName);
+            var company = NullIfBlank(fvi.CompanyName);
+            var version = NullIfBlank(fvi.FileVersion);
+            var desc = NullIfBlank(fvi.FileDescription);
+
+            bool? signed = null;
+            string? signer = null;
+            if (includeSignature)
+            {
+                (var s, signer) = TryReadEmbeddedSigner(path);
+                signed = s;
+            }
+
+            if (product is null && company is null && version is null && signer is null)
+                return null;   // 该二进制没有可归因信息
+
+            return new FileMetadata(
+                FileId: 0,
+                Extension: Path.GetExtension(path) is { Length: > 0 } e ? e : null,
+                Description: desc,
+                ProductName: product,
+                CompanyName: company,
+                FileVersion: version,
+                IsSigned: signed,
+                Signer: signer,
+                Sha256: null,
+                InUse: null,
+                OccupyingProcess: null);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>IR-4: 解析符号链接/junction 到真实最终路径。失败回退规范化原路径。</summary>
     public string ResolveRealPath(string path)
     {

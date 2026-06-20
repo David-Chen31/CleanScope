@@ -182,6 +182,21 @@ public record InstalledApp(
     string? InstallLocation,
     string? Source);           // Registry / WinGet / Appx
 
+/// <summary>公司/签名者别名: 原始串含 <see cref="Contains"/> → 归一为友好名 <see cref="Name"/> (① 特征库数据)。</summary>
+public readonly record struct VendorAlias(string Contains, string Name);
+
+/// <summary>目录名别名: 叶子名匹配 <see cref="Name"/> → 归属 <see cref="App"/> (可带 <see cref="Purpose"/>; ① 特征库数据)。</summary>
+public readonly record struct DirectoryAlias(string Name, string App, string? Purpose);
+
+/// <summary>知名软件特征库原始数据 (KnownSoftwareLoader 产物; 由 Core 的 KnownSoftwareCatalog 包装出匹配能力)。</summary>
+public record KnownSoftwareData(
+    IReadOnlyList<VendorAlias> Vendors,
+    IReadOnlyList<DirectoryAlias> Directories)
+{
+    public static KnownSoftwareData Empty { get; } =
+        new(Array.Empty<VendorAlias>(), Array.Empty<DirectoryAlias>());
+}
+
 /// <summary>
 /// 跨盘迁移请求 (P0): 把 <paramref name="SourceDir"/> 搬到 <paramref name="TargetRootDir"/> 下 (按原名建子目录),
 /// 并在原位创建目录联接 (junction), 对应用透明。用于"占大头但不能删的合法软件"——删除是错的工具, 搬家才对。

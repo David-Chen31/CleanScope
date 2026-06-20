@@ -63,6 +63,36 @@ public sealed class WindowsAccessTests
         Assert.True(signed > 0, "预期输出目录至少有一个嵌入式签名程序集");
     }
 
+    [Fact] // T3: 采样含程序集的目录 → 返回某代表性二进制的版本信息 (不崩, 有归因字段)。
+    public async Task SampleDirectoryBinary_returns_metadata_for_dir_with_binaries()
+    {
+        var md = await Wa.SampleDirectoryBinaryAsync(AppContext.BaseDirectory, includeSignature: false);
+        Assert.NotNull(md);   // 测试输出目录满是带版本信息的 .dll/.exe
+        Assert.True(!string.IsNullOrWhiteSpace(md!.ProductName)
+                    || !string.IsNullOrWhiteSpace(md.CompanyName)
+                    || !string.IsNullOrWhiteSpace(md.FileVersion));
+    }
+
+    [Fact] // T3: includeSignature 时可读签名 (有签名程序集则给签名者)。
+    public async Task SampleDirectoryBinary_with_signature_does_not_crash()
+    {
+        var md = await Wa.SampleDirectoryBinaryAsync(AppContext.BaseDirectory, includeSignature: true);
+        Assert.NotNull(md);
+    }
+
+    [Fact] // 空目录无可执行文件 → null。
+    public async Task SampleDirectoryBinary_returns_null_for_empty_dir()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "cs_sample_empty_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try { Assert.Null(await Wa.SampleDirectoryBinaryAsync(dir, includeSignature: false)); }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact] // 不存在的目录 → null, 不崩。
+    public async Task SampleDirectoryBinary_returns_null_for_missing_dir()
+        => Assert.Null(await Wa.SampleDirectoryBinaryAsync(@"C:\no\such\__cs_missing__", includeSignature: false));
+
     [Fact]
     public void ResolveRealPath_returns_full_path_for_regular_directory()
     {

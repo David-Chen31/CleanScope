@@ -100,21 +100,22 @@ public sealed class ScanAndAnalyzeUseCase
         var task = new ScanTask(0, options.TargetPath, options.Mode, ScanStatus.Completed,
             startedAt, DateTime.UtcNow, totalSize, observed, _appVersion);
 
-        // P1: 用轻量分类 (空证据, 无 I/O) 对收集到的目录/文件节点跑裁决链 → 全盘目录树。
-        var tree = treeNodes is null ? null : BuildTree(treeNodes, options.TargetPath, totalSize, ct);
+        // P1: 用轻量分类对收集到的目录/文件节点跑裁决链 → 全盘目录树。
+        var tree = treeNodes is null ? null : await BuildTreeAsync(treeNodes, options.TargetPath, totalSize, ct);
 
         return new ScanAndAnalyzeResult(new ScanReport(task, decisions), decisions, analyses, tree);
     }
 
-    // P1: 对目录/文件节点做"路径级"分类 (复用规则/归因/风险, 但用空证据包 → 不做逐节点元数据/签名 I/O),
-    // 再交决策汇总, 最后按路径建树。逐文件证据留到点开详情时按需做。
-    private ScanTreeNode BuildTree(List<FileNode> treeNodes, string targetPath, long totalSize, CancellationToken ct)
+    // P1: 对目录/文件节点做"路径级 + T3 二进制"分类 —— 经轻量证据采集 (CollectForTreeAsync):
+    // 目录采样其代表性二进制的厂商/产品 (离线 ground-truth 归因), 但不做占用/签名等昂贵 I/O。
+    // 逐文件深度证据 (扩展名/占用/签名) 仍留到点开详情时按需做。
+    private async Task<ScanTreeNode> BuildTreeAsync(List<FileNode> treeNodes, string targetPath, long totalSize, CancellationToken ct)
     {
         var analyses = new List<FileAnalysis>(treeNodes.Count);
         foreach (var node in treeNodes)
         {
             ct.ThrowIfCancellationRequested();
-            var bundle = new EvidenceBundle(node.Id, null, Array.Empty<Evidence>());
+            var bundle = await _evidence.CollectForTreeAsync(node, ct);
             var ruleMatch = _rules.Match(node, bundle);
             var attributions = _attribution.Attribute(node, bundle, ruleMatch);
             var risk = _risk.Assess(node, bundle, ruleMatch, attributions);

@@ -25,6 +25,17 @@ public interface IWindowsAccess
     IReadOnlyList<InstalledApp> GetInstalledApplications();
     string? GetOccupyingProcessName(string path);     // IR-2: 占用检测
     string ResolveRealPath(string path);              // IR-4: 解析符号链接/junction
+
+    /// <summary>
+    /// T3 (离线 ground-truth 归因): 采样目录内"代表性二进制"(主程序 exe/dll) 的元数据 ——
+    /// 厂商把公司/产品/签名写进二进制, 与我们是否"收录过"无关, 故对任意机器、任意软件都成立。
+    /// 有界搜索 (浅层 + 文件数封顶); 无可执行文件 → null。
+    /// <paramref name="includeSignature"/>=false 时只读版本信息 (省去昂贵的 Authenticode, 供建树批量调用)。
+    /// 默认实现返回 null (非 Windows 实现/测试替身无需采样)。
+    /// </summary>
+    Task<FileMetadata?> SampleDirectoryBinaryAsync(
+        string dirPath, bool includeSignature, CancellationToken ct = default)
+        => Task.FromResult<FileMetadata?>(null);
 }
 
 /// <summary>

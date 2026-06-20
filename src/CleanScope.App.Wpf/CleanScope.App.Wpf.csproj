@@ -34,6 +34,8 @@
     <!-- 声明式规则包随宿主分发: 复制到输出/发布目录的 rules/ (RulePackLoader.DefaultRulesDirectory),
          使发布后的独立应用 (无仓库根) 也能加载规则。 -->
     <Content Include="..\..\rules\*.json" Link="rules\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 知名软件特征库 (① 本地化, 归因增强): 复制到输出/发布目录的 signatures/ (KnownSoftwareLoader.DefaultSignaturesDirectory)。 -->
+    <Content Include="..\..\signatures\*.json" Link="signatures\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <!-- AI 配置模板 (不含密钥): 随包提供, 用户复制为 appsettings.ai.local.json 并填入密钥即可启用 AI。 -->
     <Content Include="..\..\appsettings.ai.example.json" Link="appsettings.ai.example.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

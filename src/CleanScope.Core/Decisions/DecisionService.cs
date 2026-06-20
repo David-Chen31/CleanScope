@@ -162,11 +162,28 @@ public sealed class DecisionService : IDecisionService
 
         var path = a.Node.RealPath ?? a.Node.Path;
         var factors = a.Risk.Factors.Count > 0 ? string.Join("; ", a.Risk.Factors) : null;
-        // 用途优先级: 系统/共享路径用途 → 凭目录名可定的用途 (图片/.claude 等) → 无。
+        // 用途优先级: 系统/共享路径用途 → 凭目录名可定的用途 (图片/.claude 等) → T3/特征库归属推出的用途 → 无。
         var purpose = Attribution.SystemOrigin.Resolve(path)?.Purpose
-                      ?? Attribution.NameHeuristics.Resolve(path)?.Purpose;
+                      ?? Attribution.NameHeuristics.Resolve(path)?.Purpose
+                      ?? DirectoryPurposeFromAttribution(a);
         if (purpose is null) return factors;
         return factors is null ? $"用途: {purpose}" : $"用途: {purpose}; {factors}";
+    }
+
+    // T3/特征库: 目录已归属某软件但路径/目录名表都没给出用途时, 据归属来源给一句诚实的用途
+    // (区分"据二进制/已安装识别"的事实 与"据目录名推断", 守安全§9)。
+    private static string? DirectoryPurposeFromAttribution(FileAnalysis a)
+    {
+        if (!a.Node.IsDirectory) return null;
+        var top = a.Attributions.OrderByDescending(c => c.Confidence).FirstOrDefault();
+        if (top is null) return null;
+        return top.Source switch
+        {
+            null => $"{top.AppName} 的程序/数据目录（据目录内主程序或已安装信息识别）",
+            "特征库" => $"{top.AppName} 相关目录（内置特征库按目录名推断）",
+            "路径推断" => $"可能与 {top.AppName} 相关（据路径推断）",
+            _ => $"可能与 {top.AppName} 相关（{top.Source}）",
+        };
     }
 
     private static string DefaultActionFor(RiskLevel level) => level switch

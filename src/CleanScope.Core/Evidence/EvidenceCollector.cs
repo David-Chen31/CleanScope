@@ -19,7 +19,17 @@ public sealed class EvidenceCollector : IEvidenceCollector
         _installedApps = new Lazy<IReadOnlyList<InstalledApp>>(_win.GetInstalledApplications);
     }
 
-    public async Task<EvidenceBundle> CollectAsync(FileNode node, CancellationToken ct = default)
+    public Task<EvidenceBundle> CollectAsync(FileNode node, CancellationToken ct = default)
+        => CollectCoreAsync(node, deep: true, ct);
+
+    /// <summary>
+    /// 轻量采集 (全盘目录树): 不做进程占用与 Authenticode (建树批量, 省昂贵 I/O), 但**保留 T3 目录二进制采样**
+    /// (只读版本信息) —— 这正是让资源管理器里"D:\steam、D:\obsidian…"也能归属的关键。
+    /// </summary>
+    public Task<EvidenceBundle> CollectForTreeAsync(FileNode node, CancellationToken ct = default)
+        => CollectCoreAsync(node, deep: false, ct);
+
+    private async Task<EvidenceBundle> CollectCoreAsync(FileNode node, bool deep, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(node);
         var path = node.RealPath ?? node.Path;
@@ -30,33 +40,31 @@ public sealed class EvidenceCollector : IEvidenceCollector
         Evidence Fact(EvidenceKind kind, string value, string source, double weight) =>
             new(++id, node.Id, kind, value, source, IsFact: true, weight, now);
 
+        void EmitMetadataFacts(FileMetadata m, string source)
+        {
+            if (HasVersionInfo(m))
+                list.Add(Fact(EvidenceKind.Metadata,
+                    $"product={m.ProductName}; company={m.CompanyName}; version={m.FileVersion}",
+                    source, 0.7));
+            if (m.IsSigned == true && !string.IsNullOrWhiteSpace(m.Signer))
+                list.Add(Fact(EvidenceKind.Signature, $"signed by {m.Signer}", "authenticode", 0.9));
+        }
+
         // 基础观测事实: 保证证据链非空 (SR-5), 即便无任何其它信号。
         list.Add(Fact(EvidenceKind.Metadata, path, "scan", 0.5));
 
         FileMetadata? metadata = null;
 
-        if (!node.IsDirectory)
+        if (!node.IsDirectory && deep)
         {
             var ext = Path.GetExtension(path);
             if (ext.Length > 0)
                 list.Add(Fact(EvidenceKind.Extension, ext, "scan", 0.3));
 
             metadata = await _win.ReadMetadataAsync(path, ct);
-            if (metadata is not null)
-            {
-                if (HasVersionInfo(metadata))
-                    list.Add(Fact(EvidenceKind.Metadata,
-                        $"product={metadata.ProductName}; company={metadata.CompanyName}; version={metadata.FileVersion}",
-                        "version-info", 0.7));
+            if (metadata is not null) EmitMetadataFacts(metadata, "version-info");
 
-                if (metadata.IsSigned == true && !string.IsNullOrWhiteSpace(metadata.Signer))
-                    list.Add(Fact(EvidenceKind.Signature, $"signed by {metadata.Signer}", "authenticode", 0.9));
-            }
-        }
-
-        // 进程占用 (强事实): 影响删除前置 (IR-2)。仅对文件检测。
-        if (!node.IsDirectory)
-        {
+            // 进程占用 (强事实): 影响删除前置 (IR-2)。仅对文件、仅深度采集。
             var proc = _win.GetOccupyingProcessName(path);
             if (!string.IsNullOrWhiteSpace(proc))
             {
@@ -70,6 +78,18 @@ public sealed class EvidenceCollector : IEvidenceCollector
         var app = MatchInstalledApp(path) ?? MatchInstalledAppByDataDir(path);
         if (app is not null)
             list.Add(Fact(EvidenceKind.InstalledApp, $"under installed app: {app.Name}", "registry", 0.85));
+
+        // T3 (离线 ground-truth): 目录无注册表归属时, 采样目录内代表性二进制的厂商/产品/签名 → 归属。
+        // 不依赖任何名表, 对任意机器、任意软件 (含便携绿色软件) 都成立 —— 这是"在别人电脑上也能识别"的根本。
+        if (node.IsDirectory && app is null)
+        {
+            var sampled = await _win.SampleDirectoryBinaryAsync(path, includeSignature: deep, ct);
+            if (sampled is not null)
+            {
+                metadata ??= sampled;
+                EmitMetadataFacts(sampled, "dir-binary");
+            }
+        }
 
         return new EvidenceBundle(node.Id, metadata, list);
     }

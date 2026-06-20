@@ -144,8 +144,46 @@ public sealed class EvidenceCollectorTests
     }
 
     private static FileMetadata Meta(string? signer = null, bool? signed = null,
-        string? company = null, string? version = null) =>
-        new(0, ".exe", null, null, company, version, signed, signer, null, null, null);
+        string? company = null, string? version = null, string? product = null) =>
+        new(0, ".exe", null, product, company, version, signed, signer, null, null, null);
+
+    [Fact] // T3: 目录无注册表归属时, 采样目录内代表性二进制 → 元数据/签名证据 → 可归属。
+    public async Task Directory_without_install_match_samples_representative_binary()
+    {
+        var win = new FakeWin
+        {
+            SampledBinary = Meta(signer: "Valve Corp", signed: true, company: "Valve", version: "1.0",
+                product: "Steam"),
+        };
+        var b = await new EvidenceCollector(win).CollectAsync(Node(@"D:\steam", isDir: true));
+
+        Assert.Contains(b.Evidences, e => e.Kind == EvidenceKind.Metadata && e.Value.Contains("product=Steam"));
+        Assert.Contains(b.Evidences, e => e.Kind == EvidenceKind.Signature && e.Value.Contains("Valve Corp"));
+        Assert.NotNull(b.Metadata);
+    }
+
+    [Fact] // T3: 目录已有注册表归属时不再采样二进制 (避免无谓 I/O 与重复归属)。
+    public async Task Directory_with_install_match_does_not_sample()
+    {
+        var win = new FakeWin
+        {
+            Apps = new[] { new InstalledApp("SteamApp", null, @"D:\steam", "Registry") },
+            SampledBinary = Meta(product: "ShouldNotAppear"),
+        };
+        var b = await new EvidenceCollector(win).CollectAsync(Node(@"D:\steam", isDir: true));
+
+        Assert.Contains(b.Evidences, e => e.Kind == EvidenceKind.InstalledApp);
+        Assert.DoesNotContain(b.Evidences, e => e.Value.Contains("ShouldNotAppear"));
+    }
+
+    [Fact] // 轻量树采集对目录仍采样二进制 (这正是资源管理器树归属的关键), 但不读签名。
+    public async Task Tree_collection_samples_directory_binary_without_signature()
+    {
+        var win = new FakeWin { SampledBinary = Meta(company: "Obsidian", product: "Obsidian") };
+        var b = await new EvidenceCollector(win).CollectForTreeAsync(Node(@"D:\obsidian", isDir: true));
+
+        Assert.Contains(b.Evidences, e => e.Kind == EvidenceKind.Metadata && e.Value.Contains("company=Obsidian"));
+    }
 
     // —— 测试替身: 可配置的 IWindowsAccess ——
     private sealed class FakeWin : IWindowsAccess
@@ -153,11 +191,14 @@ public sealed class EvidenceCollectorTests
         public FileMetadata? Metadata { get; set; }
         public string? Occupier { get; set; }
         public IReadOnlyList<InstalledApp> Apps { get; set; } = Array.Empty<InstalledApp>();
+        public FileMetadata? SampledBinary { get; set; }   // T3: 目录代表性二进制采样结果
 
         public Task<FileMetadata?> ReadMetadataAsync(string path, CancellationToken ct = default)
             => Task.FromResult(Metadata);
         public IReadOnlyList<InstalledApp> GetInstalledApplications() => Apps;
         public string? GetOccupyingProcessName(string path) => Occupier;
         public string ResolveRealPath(string path) => path;
+        public Task<FileMetadata?> SampleDirectoryBinaryAsync(string dirPath, bool includeSignature, CancellationToken ct = default)
+            => Task.FromResult(SampledBinary);
     }
 }

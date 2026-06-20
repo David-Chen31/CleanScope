@@ -159,4 +159,41 @@ public sealed class AttributionEngineTests
         var ai = new Evidence(1, 0, EvidenceKind.AiInference, "under installed app: Guessed", "ai", IsFact: false, 0.3, default);
         Assert.Empty(Engine.Attribute(Node(), new EvidenceBundle(0, null, new[] { ai }), null));
     }
+
+    // —— ① 特征库增强 ——
+
+    private static readonly KnownSoftwareCatalog Catalog = new(
+        new[] { new VendorAlias("Valve", "Steam（Valve）"), new VendorAlias("Tencent", "腾讯") },
+        new[] { new DirectoryAlias("wechat", "微信（WeChat）", "微信本地数据"),
+                new DirectoryAlias("v2rayN-windows-64", "v2rayN", null) });
+
+    [Fact] // T3 取到的公司名经特征库归一为友好名 (Valve→Steam)
+    public void Vendor_alias_normalizes_company_name()
+    {
+        var engine = new AttributionEngine(Catalog);
+        // 无 product=, 退用 company=Valve Corporation → 特征库归一为 "Steam（Valve）"。
+        var b = Bundle(Ev(1, EvidenceKind.Metadata, "product=; company=Valve Corporation; version=1.0"));
+        var c = Assert.Single(engine.Attribute(Node(), b, null));
+        Assert.Equal("Steam（Valve）", c.AppName);
+    }
+
+    [Fact] // 纯数据目录 (无二进制、无事实) → 特征库按目录名兜底归属, 来源标"特征库"
+    public void Catalog_directory_fallback_attributes_pure_data_dir()
+    {
+        var engine = new AttributionEngine(Catalog);
+        var node = new FileNode(0, 0, null, @"D:\wechat", null, "wechat", true, false, 1,
+            null, null, null, AccessState.Accessible, null, default);
+        var c = Assert.Single(engine.Attribute(node, new EvidenceBundle(0, null, Array.Empty<Evidence>()), null));
+        Assert.Equal("微信（WeChat）", c.AppName);
+        Assert.Equal("特征库", c.Source);
+        Assert.True(c.Confidence < 0.8);   // 低置信展示
+    }
+
+    [Fact] // 空库时行为与从前一致 (不增强, 不臆造)
+    public void Empty_catalog_does_not_attribute_unknown_dir()
+    {
+        var node = new FileNode(0, 0, null, @"D:\totally-unknown-xyz", null, "totally-unknown-xyz", true, false, 1,
+            null, null, null, AccessState.Accessible, null, default);
+        Assert.Empty(Engine.Attribute(node, new EvidenceBundle(0, null, Array.Empty<Evidence>()), null));
+    }
 }
