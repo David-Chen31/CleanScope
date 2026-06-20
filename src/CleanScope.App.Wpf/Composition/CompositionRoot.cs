@@ -83,6 +83,7 @@ public static class CompositionRoot
             SafetyGuard = safety,
             AiChat = aiChat,
             Http = SharedHttp,
+            Sanitizer = sanitizer,                                           // 问题#3: 出云脱敏档位 (设置页可改)
             Annotator = new AiAnnotator(sanitizer, explanation, validator),  // 详情页按需解释 (S6)
             CleanupAdvisor = advisor,                                        // 整盘参谋 (S-H)
             OfficialActions = OfficialCleanupCatalog.BuildForThisMachine(),  // P0: 系统级官方清理手段 (确定性)

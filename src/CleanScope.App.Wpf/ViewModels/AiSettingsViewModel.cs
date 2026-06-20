@@ -2,8 +2,12 @@ using System.Collections.ObjectModel;
 using CleanScope.Ai.Chat;
 using CleanScope.App.Wpf.Composition;
 using CleanScope.App.Wpf.Mvvm;
+using CleanScope.Domain.Enums;
 
 namespace CleanScope.App.Wpf.ViewModels;
+
+/// <summary>脱敏档位的展示项 (问题#3: 让用户知情选择)。</summary>
+public sealed record SanitizationChoice(SanitizationLevel Level, string Label, string Hint);
 
 /// <summary>
 /// AI 设置 (D): 在应用内配置 Base URL + Key → 后端检索模型 → 列表选择 → 测试连通 → 保存即时生效。
@@ -21,6 +25,7 @@ public sealed class AiSettingsViewModel : ViewModelBase
         _apiKey = o.ApiKey;
         _cloudEnabled = o.CloudEnabled;
         if (!string.IsNullOrWhiteSpace(o.Model)) { Models.Add(o.Model); _selectedModel = o.Model; }
+        _selectedSanitization = SanitizationChoices.FirstOrDefault(c => c.Level == o.Sanitization) ?? SanitizationChoices[0];
 
         ListModelsCommand = new AsyncRelayCommand(_ => ListModelsAsync(), _ => !_busy && HasBaseUrl);
         TestCommand = new AsyncRelayCommand(_ => TestAsync(), _ => !_busy && CanUse);
@@ -56,6 +61,26 @@ public sealed class AiSettingsViewModel : ViewModelBase
 
     private bool _cloudEnabled;
     public bool CloudEnabled { get => _cloudEnabled; set => SetField(ref _cloudEnabled, value); }
+
+    // 问题#3: 出云脱敏档位 (隐私 vs 识别力, 用户知情选择)。
+    public IReadOnlyList<SanitizationChoice> SanitizationChoices { get; } = new[]
+    {
+        new SanitizationChoice(SanitizationLevel.Strict, "严格（默认 · 最隐私）",
+            "用户名和文件夹/文件名都不发送（替换为占位符）。最大化隐私，但 AI 往往认不出具体是哪个软件。"),
+        new SanitizationChoice(SanitizationLevel.Balanced, "均衡（推荐）",
+            "发送文件夹/应用名以便 AI 识别（如 Steam、Zed），仍隐去用户名。识别力大幅提升；注意文件夹名会发送到云端。"),
+        new SanitizationChoice(SanitizationLevel.Off, "关闭（识别最准）",
+            "发送真实相对路径，AI 识别最准；完整路径与名称会发送到所配置的云端服务。请仅在信任该服务时使用。"),
+    };
+
+    private SanitizationChoice _selectedSanitization;
+    public SanitizationChoice SelectedSanitization
+    {
+        get => _selectedSanitization;
+        set { if (SetField(ref _selectedSanitization, value)) OnPropertyChanged(nameof(SanitizationHint)); }
+    }
+
+    public string SanitizationHint => _selectedSanitization?.Hint ?? "";
 
     private bool _busy;
     public bool IsBusy
@@ -113,8 +138,9 @@ public sealed class AiSettingsViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            var opts = new AiOptions(_baseUrl?.Trim() ?? "", _apiKey?.Trim() ?? "", _selectedModel ?? "", CloudEnabled);
-            _services.ReconfigureAi(opts);   // 热替换 + 持久化(加密) + 广播
+            var opts = new AiOptions(_baseUrl?.Trim() ?? "", _apiKey?.Trim() ?? "", _selectedModel ?? "", CloudEnabled,
+                _selectedSanitization?.Level ?? SanitizationLevel.Strict);
+            _services.ReconfigureAi(opts);   // 热替换 + 更新脱敏档位 + 持久化(加密) + 广播
             Status = _services.AiEnabled
                 ? "已保存并启用。AI 解释 / 识别 / 建议现在可用（按需触发，仍只在你点击时出云）。"
                 : "已保存。未启用云端（勾选「启用」并填全 Base URL/Key/模型 即可启用）。";

@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using CleanScope.Ai.Chat;
+using CleanScope.Domain.Enums;
 
 namespace CleanScope.App.Wpf.Composition;
 
@@ -26,6 +27,7 @@ public static class AiConfigStore
         public string? apiKeyProtected { get; set; }   // 新格式: DPAPI 加密后的 base64
         public string? model { get; set; }
         public bool cloudEnabled { get; set; }
+        public string? sanitization { get; set; }   // 出云脱敏档位 (Strict/Balanced/Off)
     }
 
     /// <summary>读取配置: 先用户目录、再回退仓库/输出目录旁的旧文件; 最后套环境变量覆盖 (经 AiOptions)。</summary>
@@ -37,6 +39,8 @@ public static class AiConfigStore
         string apiKey = DecryptKey(dto);
         string model = string.IsNullOrWhiteSpace(dto?.model) ? "deepseek-chat" : dto!.model!;
         bool cloud = dto?.cloudEnabled ?? false;
+        var sanitization = Enum.TryParse<SanitizationLevel>(dto?.sanitization, ignoreCase: true, out var lvl)
+            ? lvl : SanitizationLevel.Strict;
 
         // 环境变量优先级最高 (与既有约定一致)。
         baseUrl = Env("CLEANSCOPE_AI_BASEURL") ?? baseUrl;
@@ -44,7 +48,7 @@ public static class AiConfigStore
         model = Env("CLEANSCOPE_AI_MODEL") ?? model;
         if (Env("CLEANSCOPE_AI_CLOUD") is { } e) cloud = e is "1" or "true" or "True";
 
-        return new AiOptions(baseUrl, apiKey, model, cloud);
+        return new AiOptions(baseUrl, apiKey, model, cloud, sanitization);
     }
 
     /// <summary>保存配置到用户目录; Key 经 DPAPI 加密。</summary>
@@ -58,6 +62,7 @@ public static class AiConfigStore
             apiKeyProtected = EncryptKey(options.ApiKey),
             model = options.Model,
             cloudEnabled = options.CloudEnabled,
+            sanitization = options.Sanitization.ToString(),
         };
         var json = JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(DefaultPath, json);

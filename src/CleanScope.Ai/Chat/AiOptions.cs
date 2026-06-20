@@ -2,8 +2,13 @@ using System.Text.Json;
 
 namespace CleanScope.Ai.Chat;
 
-/// <summary>AI 中转配置。来源优先级: 环境变量 &gt; 本地配置文件 (均 gitignore, 绝不入库)。</summary>
-public sealed record AiOptions(string BaseUrl, string ApiKey, string Model, bool CloudEnabled)
+/// <summary>
+/// AI 中转配置。来源优先级: 环境变量 &gt; 本地配置文件 (均 gitignore, 绝不入库)。
+/// <paramref name="Sanitization"/> 为出云脱敏档位 (问题#3, 用户在设置页知情选择; 不影响 AI 端点, 仅决定发送多少路径信息)。
+/// </summary>
+public sealed record AiOptions(
+    string BaseUrl, string ApiKey, string Model, bool CloudEnabled,
+    SanitizationLevel Sanitization = SanitizationLevel.Strict)
 {
     public static AiOptions Disabled { get; } = new(string.Empty, string.Empty, string.Empty, false);
 
@@ -17,6 +22,7 @@ public sealed record AiOptions(string BaseUrl, string ApiKey, string Model, bool
     {
         string baseUrl = string.Empty, apiKey = string.Empty, model = "deepseek-chat";
         bool cloud = false;
+        var sanitization = SanitizationLevel.Strict;
 
         try
         {
@@ -28,6 +34,8 @@ public sealed record AiOptions(string BaseUrl, string ApiKey, string Model, bool
                 apiKey = Str(r, "apiKey") ?? apiKey;
                 model = Str(r, "model") ?? model;
                 cloud = r.TryGetProperty("cloudEnabled", out var c) && c.ValueKind == JsonValueKind.True;
+                if (Str(r, "sanitization") is { } s && Enum.TryParse<SanitizationLevel>(s, ignoreCase: true, out var lvl))
+                    sanitization = lvl;
             }
         }
         catch { /* 配置损坏 → 视为未配置, 走本地降级 */ }
@@ -37,7 +45,7 @@ public sealed record AiOptions(string BaseUrl, string ApiKey, string Model, bool
         model = Env("CLEANSCOPE_AI_MODEL") ?? model;
         if (Env("CLEANSCOPE_AI_CLOUD") is { } e) cloud = e is "1" or "true" or "True";
 
-        return new AiOptions(baseUrl, apiKey, model, cloud);
+        return new AiOptions(baseUrl, apiKey, model, cloud, sanitization);
     }
 
     private static string? Str(JsonElement e, string name) =>

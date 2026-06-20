@@ -13,11 +13,17 @@ namespace CleanScope.Ai.Explanation;
 public sealed class ExplanationService : IExplanationService
 {
     private const string SystemPrompt =
-        "你是 Windows C 盘清理助手的解释模块。基于给定的【已脱敏事实】解释该文件/目录是什么、" +
-        "可能属于哪个软件、为何是该风险等级, 并给更安全的处理建议。严格要求: 只依据提供的事实推理, 不得臆造; " +
-        "不得断言'一定可删'; 系统关键项必须建议不要删除。只输出一个 JSON 对象, 字段: " +
-        "whatIsIt(string), ownerApp(string|null), riskLevel(A|B|C|D|E), canDeleteDirectly(bool), " +
-        "recommendedAction(string), reasoning(string[]), confidence(0-1 number), userFriendlyExplanation(string)。" +
+        "你是 Windows 磁盘清理助手的解释模块。任务: 说清这个文件/目录是什么、属于哪个软件、为何是该风险等级, 并给更安全的处理建议。\n" +
+        "请遵守两条不同的准则:\n" +
+        "(1) 识别与介绍 —— 鼓励运用常识: 若从路径、文件夹名 (pathPattern) 或 relatedApps 能认出是某个具体软件" +
+        "(例如 Steam=游戏平台、Zed/VS Code=代码编辑器、有道=翻译软件、微信=即时通讯), 请大方说明它是什么、" +
+        "典型用途、该目录通常存放什么, 帮用户看懂。不要因为'只是文件夹名'就拒绝介绍已知软件。\n" +
+        "(2) 删除安全 —— 必须保守、只依据给定事实: 关于'能否删除/风险等级', 不得断言'一定可删'; " +
+        "系统关键项必须建议不要删除; 不确定就明说不确定, 优先推荐软件自带或系统官方的清理方式。\n" +
+        "注意: pathPattern 中的 %USER%/%FILE% 是为保护隐私做的占位符 (分别代表用户名/被隐去的名称), 不是真实名字。\n" +
+        "只输出一个 JSON 对象, 字段: whatIsIt(string, 点明是什么软件及其用途), ownerApp(string|null), " +
+        "riskLevel(A|B|C|D|E), canDeleteDirectly(bool), recommendedAction(string), reasoning(string[]), " +
+        "confidence(0-1 number), userFriendlyExplanation(string, 面向普通用户的一段话: 先说清是什么软件、再给处理建议)。" +
         "不要输出 JSON 以外的任何内容。";
 
     private readonly IAiChat? _chat;

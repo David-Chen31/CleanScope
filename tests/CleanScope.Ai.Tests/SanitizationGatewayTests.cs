@@ -59,6 +59,36 @@ public sealed class SanitizationGatewayTests
         Assert.Contains("Signature: signed by Google LLC", input.Facts); // 签名者 P0 原样
     }
 
+    [Fact] // 问题#3 均衡档: 保留文件夹/文件名 (让 AI 认出软件), 仍抹用户名
+    public void Balanced_keeps_leaf_name_but_strips_username()
+    {
+        var gw = new SanitizationGateway { Level = SanitizationLevel.Balanced };
+        var input = gw.Sanitize(Analysis(
+            @"C:\Users\张三\AppData\Local\Steam", "Steam", isDir: true,
+            Ev(@"C:\Users\张三\AppData\Local\Steam")));
+
+        Assert.Contains("Steam", input.PathPattern);              // 叶子名保留, AI 能识别
+        Assert.DoesNotContain("张三", input.PathPattern);          // 用户名仍脱敏
+        Assert.Contains("%USER%", input.PathPattern);
+        Assert.DoesNotContain("%FILE%", input.PathPattern);       // 不再抹叶子名
+    }
+
+    [Fact] // 问题#3 关闭档: 发送真实路径 (识别最准, 用户知情选择)
+    public void Off_sends_real_path()
+    {
+        var gw = new SanitizationGateway { Level = SanitizationLevel.Off };
+        var input = gw.Sanitize(Analysis(
+            @"C:\Users\张三\AppData\Local\Steam", "Steam", isDir: true,
+            Ev(@"C:\Users\张三\AppData\Local\Steam")));
+
+        Assert.Equal(@"C:\Users\张三\AppData\Local\Steam", input.PathPattern);
+        Assert.Contains("张三", input.PathPattern);
+    }
+
+    [Fact] // 默认仍是严格档 (隐私优先, 行为不变)
+    public void Default_is_strict()
+        => Assert.Equal(SanitizationLevel.Strict, new SanitizationGateway().Level);
+
     [Fact] // 只放事实证据, AI 推测不外发
     public void Only_fact_evidence_included()
     {

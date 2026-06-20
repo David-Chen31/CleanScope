@@ -14,6 +14,12 @@ public sealed class SanitizationGateway : ISanitizationGateway
     private static readonly Regex UserRx =
         new(@"(\\Users\\)[^\\]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    /// <summary>
+    /// 当前出云脱敏档位 (问题#3, 运行时可由设置页热更新)。默认 <see cref="SanitizationLevel.Strict"/> (最保守)。
+    /// 仅影响"路径/名称"如何脱敏; 三档都永不发送文件内容 (PR-1)。
+    /// </summary>
+    public SanitizationLevel Level { get; set; } = SanitizationLevel.Strict;
+
     public AiInput Sanitize(FileAnalysis analysis)
     {
         ArgumentNullException.ThrowIfNull(analysis);
@@ -37,20 +43,29 @@ public sealed class SanitizationGateway : ISanitizationGateway
             Confidence: analysis.Risk.Confidence);
     }
 
-    // 路径模式: 用户名脱敏 + 叶子名替换为 %FILE% (保留扩展名), 绝不泄露真实文件名/用户名。
-    private static string BuildPathPattern(FileNode node)
+    // 路径模式按档位:
+    //  Off      → 真实相对路径 (不脱敏, 识别最准)。
+    //  Balanced → 抹用户名, **保留叶子名** (AI 能认出 Steam/Zed 等具体软件)。
+    //  Strict   → 抹用户名 + 叶子名→%FILE% (名称绝不出本机, 默认)。
+    private string BuildPathPattern(FileNode node)
     {
+        if (Level == SanitizationLevel.Off)
+            return node.Path;
+
         var dir = Path.GetDirectoryName(node.Path) ?? string.Empty;
         var sdir = UserRx.Replace(dir, "$1%USER%");
-        var leaf = node.IsDirectory ? "%FILE%" : "%FILE%" + Ext(node.Name);
+        var leaf = Level == SanitizationLevel.Balanced
+            ? node.Name                                              // 保留真实文件夹/文件名
+            : node.IsDirectory ? "%FILE%" : "%FILE%" + Ext(node.Name);
         return sdir.Length == 0 ? leaf : sdir + "\\" + leaf;
     }
 
-    // 证据值脱敏: 用户名 → %USER%, 出现的真实叶子名 → %FILE%。
-    private static string SanitizeValue(string value, FileNode node)
+    // 证据值脱敏: Off 不脱敏; 其余抹用户名; Strict 再把真实叶子名替换为 %FILE%。
+    private string SanitizeValue(string value, FileNode node)
     {
+        if (Level == SanitizationLevel.Off) return value;
         var s = UserRx.Replace(value, "$1%USER%");
-        if (!string.IsNullOrEmpty(node.Name))
+        if (Level == SanitizationLevel.Strict && !string.IsNullOrEmpty(node.Name))
             s = s.Replace(node.Name, "%FILE%", StringComparison.OrdinalIgnoreCase);
         return s;
     }

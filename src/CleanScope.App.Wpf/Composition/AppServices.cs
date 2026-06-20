@@ -1,5 +1,6 @@
 using System.Net.Http;
 using CleanScope.Ai.Chat;
+using CleanScope.Ai.Sanitization;
 using CleanScope.Application;
 using CleanScope.Domain.Abstractions;
 using CleanScope.Domain.Entities;
@@ -28,6 +29,9 @@ public sealed class AppServices
     /// <summary>共享 HttpClient (检索模型 / 测试连通性 / 对话)。</summary>
     public required HttpClient Http { get; init; }
 
+    /// <summary>出云脱敏网关 (问题#3): 设置页改档位后即时生效 (与 AiChat 共享同一实例, 注解/解释两路都受其约束)。</summary>
+    public required SanitizationGateway Sanitizer { get; init; }
+
     /// <summary>AI 解释是否启用 (脱敏后出云); 随 <see cref="AiChat"/> 当前配置实时反映, 未配置则全程本地。</summary>
     public bool AiEnabled => AiChat.Enabled;
 
@@ -44,13 +48,18 @@ public sealed class AppServices
     public event Action? AiChanged;
 
     /// <summary>初始化当前配置 (组合根装配时调用一次)。</summary>
-    public void InitAiOptions(AiOptions options) => CurrentAiOptions = options;
+    public void InitAiOptions(AiOptions options)
+    {
+        CurrentAiOptions = options;
+        Sanitizer.Level = options.Sanitization;
+    }
 
-    /// <summary>D 运行时重组: 用新配置热替换对话客户端 + 持久化(DPAPI 加密 Key) + 广播。</summary>
+    /// <summary>D 运行时重组: 用新配置热替换对话客户端 + 更新脱敏档位 + 持久化(DPAPI 加密 Key) + 广播。</summary>
     public void ReconfigureAi(AiOptions options)
     {
         CurrentAiOptions = options;
         AiChat.Reconfigure(options);
+        Sanitizer.Level = options.Sanitization;
         AiConfigStore.Save(options);
         AiChanged?.Invoke();
     }

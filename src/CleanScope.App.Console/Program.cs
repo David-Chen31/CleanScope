@@ -61,11 +61,11 @@ try
         if (aiOptions.IsUsable)
         {
             var chat = new OpenAiChatClient(Http.Shared, aiOptions);
-            sanitizer = new SanitizationGateway();
+            sanitizer = new SanitizationGateway { Level = aiOptions.Sanitization };  // 问题#3: 脱敏档位
             explanation = new ExplanationService(chat);
             validator = new AiOutputValidator();
             advisor = new CleanupAdvisor(chat);   // S-H: 整盘参谋复用同一 chat
-            Console.WriteLine($"AI 解释: 已启用 (模型 {aiOptions.Model}, 脱敏后出云)");
+            Console.WriteLine($"AI 解释: 已启用 (模型 {aiOptions.Model}, 脱敏档位 {aiOptions.Sanitization})");
         }
         else
         {

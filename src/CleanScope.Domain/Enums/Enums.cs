@@ -24,6 +24,14 @@ public enum RiskLevel { A, B, C, D, E }
 /// <summary>证据种类 (evidence.kind)。AiInference 为 AI 推测, 其余为事实来源。</summary>
 public enum EvidenceKind { PathRule, Metadata, Signature, InstalledApp, Registry, Process, PackageMgr, Extension, AiInference }
 
+/// <summary>
+/// 出云脱敏档位 (问题#3: 隐私与 AI 识别力的取舍, 由用户在桌面端知情选择)。三档都**永不发送文件内容** (PR-1)。
+///  - <see cref="Strict"/>: 用户名→%USER%、文件夹/文件名→%FILE% (默认; 名称绝不出本机, 但 AI 难认出具体软件)。
+///  - <see cref="Balanced"/>: 发送文件夹/应用名, 仍抹掉用户名 (识别力大幅提升, 文件夹名会出云)。
+///  - <see cref="Off"/>: 发送真实相对路径 (识别最准, 路径/名称完整出云)。
+/// </summary>
+public enum SanitizationLevel { Strict, Balanced, Off }
+
 /// <summary>用户决策 (user_decision.decision)。</summary>
 public enum DecisionType { Processed, Ignored, RemindLater }
 
