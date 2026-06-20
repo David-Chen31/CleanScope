@@ -436,17 +436,24 @@
             </Style>
 
             <!-- 结果内"视图切换"分段控件项 (横向, 选中=白底浮起) -->
+            <!-- 视图切换项 = 原生 pivot tab: 扁平, 选中态 = 强调色文字 + 2px 底部指示线 (非浮起卡片) -->
             <Style x:Key="SegItem" TargetType="Button">
                 <Setter Property="Foreground" Value="{StaticResource Muted}"/>
                 <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="FontSize" Value="13.5"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="b" Background="Transparent" CornerRadius="8" Padding="18,7">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                            <Grid Background="{TemplateBinding Background}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="2"/>
+                                </Grid.RowDefinitions>
+                                <ContentPresenter Grid.Row="0" Margin="2,9,2,8" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                   TextElement.Foreground="{TemplateBinding Foreground}"/>
-                            </Border>
+                                <Border x:Name="ind" Grid.Row="1" Background="Transparent" CornerRadius="1"/>
+                            </Grid>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter Property="Foreground" Value="{StaticResource Ink}"/>
@@ -458,10 +465,9 @@
                                             <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="DataContext.ActivePage"/>
                                         </MultiBinding>
                                     </DataTrigger.Binding>
-                                    <Setter TargetName="b" Property="Background" Value="#FFFFFF"/>
-                                    <Setter TargetName="b" Property="Effect" Value="{StaticResource CardShadow}"/>
                                     <Setter Property="Foreground" Value="{StaticResource Accent}"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter TargetName="ind" Property="Background" Value="{StaticResource Accent}"/>
                                 </DataTrigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

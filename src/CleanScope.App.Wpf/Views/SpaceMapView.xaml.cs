@@ -56,6 +56,8 @@ public partial class SpaceMapView : UserControl
 
             // P2 双语义: "个人文件"用中性蓝灰, 不随风险染成一片红 (个人数据是珍贵≠危险)。
             var fill = child.IsPersonal ? PersonalFill : RiskPalette.Brush(child.Risk);
+            // P2: 悬停即解释 —— 名称/大小/风险等级人话 + 是否可清理。
+            var nav = child.HasChildren ? "\n(点击下钻)" : child.Row is not null ? "\n(点击查看详情)" : "";
             var border = new Border
             {
                 Width = tw,
@@ -66,23 +68,37 @@ public partial class SpaceMapView : UserControl
                 CornerRadius = new CornerRadius(2),
                 Cursor = child is { IsRemainder: false } && (child.HasChildren || child.Row is not null)
                     ? Cursors.Hand : Cursors.Arrow,
-                ToolTip = $"{child.Name}\n{child.SizeText}" + (child.HasChildren ? "\n(点击下钻)" : child.Row is not null ? "\n(点击查看详情)" : ""),
+                ToolTip = $"{child.Name}\n{child.SizeText}\n风险：{child.Grade.Label}"
+                    + (child.IsCleanable ? "\n✓ 可清理（可回收）" : "") + nav,
                 Tag = child,
             };
 
-            // 仅在足够大时绘制标签。
+            // 仅在足够大时绘制标签: 等级字母前缀 (与清单/详情同一套徽章) + 名称·大小; 可清理项加 ✓ 角标 (双编码)。
             if (tw > 56 && th > 26)
             {
-                border.Child = new TextBlock
+                var content = new Grid();
+                content.Children.Add(new TextBlock
                 {
-                    Text = child.Label,
+                    Text = (child.Grade.HasLetter ? child.Grade.Letter + "  " : "") + child.Label,
                     Margin = new Thickness(6, 4, 6, 4),
                     TextTrimming = TextTrimming.CharacterEllipsis,
                     TextWrapping = TextWrapping.NoWrap,
                     Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x29, 0x33)),
                     FontSize = 12,
                     VerticalAlignment = VerticalAlignment.Top,
-                };
+                });
+                if (child.IsCleanable)
+                    content.Children.Add(new TextBlock
+                    {
+                        Text = "✓",
+                        Margin = new Thickness(0, 3, 6, 0),
+                        Foreground = new SolidColorBrush(Color.FromRgb(0x1E, 0x7E, 0x34)),
+                        FontWeight = FontWeights.Bold,
+                        FontSize = 12,
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        VerticalAlignment = VerticalAlignment.Top,
+                    });
+                border.Child = content;
             }
 
             if (!child.IsRemainder)

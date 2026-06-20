@@ -29,6 +29,15 @@ public sealed class TreeNodeViewModel
     /// <summary>P2 双语义: 认不出归属的"个人文件" —— treemap 用中性蓝灰, 不染成危险红。</summary>
     public bool IsPersonal => Row?.Origin == Humanize.Personal;
 
+    /// <summary>P2 可清理性双编码: 该块是否为可回收项 (treemap 上加 ✓ 角标, 与"颜色=风险"叠加)。</summary>
+    public bool IsCleanable => Row?.CanRecycle == true;
+
+    /// <summary>P2: 统一 A–E 等级徽章 (与清单/详情同一套)。供 treemap 图例/角标/悬停说明用。</summary>
+    public Common.GradeBadge Grade =>
+        IsRemainder ? Common.GradeBadge.Other
+        : IsPersonal ? Common.GradeBadge.Personal
+        : Risk is { } r ? Common.GradeBadge.Of(r) : Common.GradeBadge.Container;
+
     public List<TreeNodeViewModel> Children { get; } = new();
     public bool HasChildren => Children.Count > 0;
     public bool IsRemainder { get; init; }

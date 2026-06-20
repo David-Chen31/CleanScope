@@ -18,25 +18,30 @@
                 </LinearGradientBrush>
             </Border.Background>
             <StackPanel>
-                <!-- #5: 不再是任何清理软件都能写的泛句 —— 标题 + 副标题表达本产品独有价值 (先分析、再清理、可还原) -->
-                <TextBlock Text="腾出磁盘空间，且每一步都可还原" FontSize="23" FontWeight="Bold"
-                           Foreground="{StaticResource Ink}"/>
-                <TextBlock FontSize="13.5" Foreground="{StaticResource Muted}" Margin="0,7,0,12" TextWrapping="Wrap"
-                           Text="先分析每个文件的来源与用途，帮你避开误删；删除只进回收站，随时找回。"/>
+                <!-- 价值主张 (产品独有定位) —— 仅扫描前(空状态)展示; 扫描后收起, 把首屏让给结果 (评审问题#4: 工作台不是宣传页) -->
+                <StackPanel Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                    <TextBlock Text="腾出磁盘空间，且每一步都可还原" FontSize="23" FontWeight="Bold"
+                               Foreground="{StaticResource Ink}"/>
+                    <TextBlock FontSize="13.5" Foreground="{StaticResource Muted}" Margin="0,7,0,12" TextWrapping="Wrap"
+                               Text="先分析每个文件的来源与用途，帮你避开误删；删除只进回收站，随时找回。"/>
 
-                <!-- 价值锚点 (差异化: 为什么选它) -->
-                <ItemsControl Margin="0,0,0,4">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <Border Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" Margin="0,0,8,0">
-                        <TextBlock Text="🔍 逐项分析来源" FontSize="12" Foreground="{StaticResource Accent}"/>
-                    </Border>
-                    <Border Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" Margin="0,0,8,0">
-                        <TextBlock Text="🛡 降低误删风险" FontSize="12" Foreground="{StaticResource Accent}"/>
-                    </Border>
-                    <Border Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" Margin="0,0,8,0">
-                        <TextBlock Text="↩ 删除全部可还原" FontSize="12" Foreground="{StaticResource Accent}"/>
-                    </Border>
-                </ItemsControl>
+                    <!-- 价值锚点 (差异化: 为什么选它) + 安全承诺 (从标题栏移来) -->
+                    <ItemsControl Margin="0,0,0,4">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <Border Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" Margin="0,0,8,8">
+                            <TextBlock Text="🔍 逐项分析来源" FontSize="12" Foreground="{StaticResource Accent}"/>
+                        </Border>
+                        <Border Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" Margin="0,0,8,8">
+                            <TextBlock Text="🛡 降低误删风险" FontSize="12" Foreground="{StaticResource Accent}"/>
+                        </Border>
+                        <Border Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" Margin="0,0,8,8">
+                            <TextBlock Text="↩ 删除全部可还原" FontSize="12" Foreground="{StaticResource Accent}"/>
+                        </Border>
+                        <Border Style="{StaticResource Chip}" Background="{StaticResource CleanSoft}" Margin="0,0,8,8">
+                            <TextBlock Text="🛡 只读分析 · 删除可还原" FontSize="12" Foreground="{StaticResource Clean}"/>
+                        </Border>
+                    </ItemsControl>
+                </StackPanel>
 
                 <TextBlock Text="{Binding DriveInfo}" FontSize="13.5" Foreground="{StaticResource Muted}"
                            Margin="0,14,0,12"/>
@@ -87,6 +92,74 @@
                              Foreground="{StaticResource Accent}" Background="#E7ECF3"
                              Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}"/>
                 <TextBlock Text="{Binding Status}" Style="{StaticResource Sub}" Margin="2,10,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 扫描后概览 (评审问题#4: 工作台首屏先给结果, 排在官方清理之上) -->
+        <Border Style="{StaticResource Cards}" Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <TextBlock Text="本次扫描概览" Style="{StaticResource H2}"/>
+
+                <UniformGrid Columns="3" Margin="0,4,0,12">
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="根聚合占用" Style="{StaticResource Sub}"/>
+                        <TextBlock Text="{Binding OverviewTotal}" FontSize="18" FontWeight="Bold"
+                                   Foreground="{StaticResource Ink}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="可清理估算（A+B，仍需确认）" Style="{StaticResource Sub}"/>
+                        <TextBlock Text="{Binding OverviewReclaimable}" FontSize="18" FontWeight="Bold"
+                                   Foreground="#1E7E34"/>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="高风险项（D/E，不建议删除）" Style="{StaticResource Sub}"/>
+                        <TextBlock Text="{Binding HighRiskCount}" FontSize="18" FontWeight="Bold"
+                                   Foreground="#C5221F"/>
+                    </StackPanel>
+                </UniformGrid>
+
+                <!-- S-H: 整盘 AI 清理参谋 —— 按需生成 (零默认 token); 未配置 AI 时按钮不显示 -->
+                <StackPanel Margin="0,0,0,12" Visibility="{Binding ShowAdviseButton, Converter={StaticResource BoolToVis}}">
+                    <Button Content="🧭 生成 AI 行动计划（结合本机官方手段，脱敏后请求一次，可选）" Command="{Binding AdviseCommand}"
+                            Style="{StaticResource Ghost}" HorizontalAlignment="Left"/>
+                    <TextBlock Text="{Binding AdviseStatus}" Style="{StaticResource Sub}" Margin="2,6,0,0"
+                               Visibility="{Binding AdviseStatus, Converter={StaticResource NotEmptyToVis}}"/>
+                </StackPanel>
+
+                <!-- 生成成功后展示参谋建议 -->
+                <Border Background="#F1F7FF" CornerRadius="6" Padding="12,10" Margin="0,0,0,12"
+                        Visibility="{Binding HasAiAdvice, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="🧭 AI 清理行动计划（跨项建议，仅供参考）" FontWeight="SemiBold" Foreground="#1F4E8C"/>
+                        <TextBlock Text="{Binding AiAdvice}" TextWrapping="Wrap" Margin="0,6,0,0" Foreground="#243B53"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 最划算的几步: 最大的"可清理"项 (取代旧 Top10 最大目录, 后者多为不可动容器) -->
+                <TextBlock Text="最划算的几步（最大的可清理项）" Style="{StaticResource H2}"
+                           Visibility="{Binding HasBestCleanable, Converter={StaticResource BoolToVis}}"/>
+                <ItemsControl ItemsSource="{Binding BestCleanable}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="3*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding SizeText}" FontWeight="Bold"
+                                           Foreground="#1E7E34" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                           Foreground="{StaticResource Ink}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Path}" TextTrimming="CharacterEllipsis"
+                                           Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button Content="去可清理清单批量处理 →" Command="{Binding ViewListCommand}"
+                        Style="{StaticResource Ghost}" HorizontalAlignment="Left" Margin="0,14,0,0"/>
             </StackPanel>
         </Border>
 
@@ -153,74 +226,6 @@
                              Visibility="{Binding IsOfficialRunning, Converter={StaticResource BoolToVis}}"/>
                 <TextBlock Text="{Binding OfficialStatus}" Style="{StaticResource Sub}" Margin="2,4,0,0"
                            Visibility="{Binding OfficialStatus, Converter={StaticResource NotEmptyToVis}}"/>
-            </StackPanel>
-        </Border>
-
-        <!-- 扫描后概览 -->
-        <Border Style="{StaticResource Cards}" Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
-            <StackPanel>
-                <TextBlock Text="本次扫描概览" Style="{StaticResource H2}"/>
-
-                <UniformGrid Columns="3" Margin="0,4,0,12">
-                    <StackPanel Margin="0,0,12,0">
-                        <TextBlock Text="根聚合占用" Style="{StaticResource Sub}"/>
-                        <TextBlock Text="{Binding OverviewTotal}" FontSize="18" FontWeight="Bold"
-                                   Foreground="{StaticResource Ink}"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,0,12,0">
-                        <TextBlock Text="可清理估算（A+B，仍需确认）" Style="{StaticResource Sub}"/>
-                        <TextBlock Text="{Binding OverviewReclaimable}" FontSize="18" FontWeight="Bold"
-                                   Foreground="#1E7E34"/>
-                    </StackPanel>
-                    <StackPanel>
-                        <TextBlock Text="高风险项（D/E，不建议删除）" Style="{StaticResource Sub}"/>
-                        <TextBlock Text="{Binding HighRiskCount}" FontSize="18" FontWeight="Bold"
-                                   Foreground="#C5221F"/>
-                    </StackPanel>
-                </UniformGrid>
-
-                <!-- S-H: 整盘 AI 清理参谋 —— 按需生成 (零默认 token); 未配置 AI 时按钮不显示 -->
-                <StackPanel Margin="0,0,0,12" Visibility="{Binding ShowAdviseButton, Converter={StaticResource BoolToVis}}">
-                    <Button Content="🧭 生成 AI 行动计划（结合本机官方手段，脱敏后请求一次，可选）" Command="{Binding AdviseCommand}"
-                            Style="{StaticResource Ghost}" HorizontalAlignment="Left"/>
-                    <TextBlock Text="{Binding AdviseStatus}" Style="{StaticResource Sub}" Margin="2,6,0,0"
-                               Visibility="{Binding AdviseStatus, Converter={StaticResource NotEmptyToVis}}"/>
-                </StackPanel>
-
-                <!-- 生成成功后展示参谋建议 -->
-                <Border Background="#F1F7FF" CornerRadius="6" Padding="12,10" Margin="0,0,0,12"
-                        Visibility="{Binding HasAiAdvice, Converter={StaticResource BoolToVis}}">
-                    <StackPanel>
-                        <TextBlock Text="🧭 AI 清理行动计划（跨项建议，仅供参考）" FontWeight="SemiBold" Foreground="#1F4E8C"/>
-                        <TextBlock Text="{Binding AiAdvice}" TextWrapping="Wrap" Margin="0,6,0,0" Foreground="#243B53"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- 最划算的几步: 最大的"可清理"项 (取代旧 Top10 最大目录, 后者多为不可动容器) -->
-                <TextBlock Text="最划算的几步（最大的可清理项）" Style="{StaticResource H2}"
-                           Visibility="{Binding HasBestCleanable, Converter={StaticResource BoolToVis}}"/>
-                <ItemsControl ItemsSource="{Binding BestCleanable}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="0,3">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="110"/>
-                                    <ColumnDefinition Width="2*"/>
-                                    <ColumnDefinition Width="3*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{Binding SizeText}" FontWeight="Bold"
-                                           Foreground="#1E7E34" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
-                                           Foreground="{StaticResource Ink}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                <TextBlock Grid.Column="2" Text="{Binding Path}" TextTrimming="CharacterEllipsis"
-                                           Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <Button Content="去可清理清单批量处理 →" Command="{Binding ViewListCommand}"
-                        Style="{StaticResource Ghost}" HorizontalAlignment="Left" Margin="0,14,0,0"/>
             </StackPanel>
         </Border>
 

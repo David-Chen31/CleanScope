@@ -38,9 +38,7 @@
                     </Border>
                     <TextBlock DockPanel.Dock="Left" Text="CleanScope" FontSize="15" FontWeight="SemiBold"
                                Foreground="{StaticResource Ink}" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                    <!-- #8: 安全承诺降为安静的内联文字 (保留信任锚, 不再用填色 chip 占据黄金区域) -->
-                    <TextBlock DockPanel.Dock="Left" Text="🛡 只读分析 · 删除可还原" FontSize="12"
-                               Foreground="{StaticResource Faint}" VerticalAlignment="Center" Margin="14,1,0,0"/>
+                    <!-- 标题栏只留品牌 + 窗口控制; 安全承诺移到首页空状态, AI 状态瘦成图标(评审问题#1: 顶部减负) -->
 
                     <!-- 窗口按钮 (right→left: 关闭/最大化/最小化) -->
                     <Button x:Name="CloseBtn" DockPanel.Dock="Right" Style="{StaticResource WinClose}"
@@ -50,36 +48,33 @@
                     <Button x:Name="MinBtn" DockPanel.Dock="Right" Style="{StaticResource WinBtn}"
                             Content="&#xE921;" Click="MinBtn_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
-                    <!-- #3/#4: AI 不再是隐藏的小齿轮 —— 标题栏常驻"带标签"的可点状态胶囊, 让用户始终知道 AI 状态、一眼可进配置 -->
+                    <!-- AI 状态: 瘦成 点+AI+齿轮 (二级信息), 完整文案进 tooltip; 仍可点进设置, 保留发现性 -->
                     <Button DockPanel.Dock="Right" Style="{StaticResource AiPill}" Margin="0,0,10,0"
-                            ToolTip="AI 状态 · 点击进入设置 / 调脱敏档位"
+                            ToolTip="{Binding AiBadge}"
                             Command="{Binding GoAiSettingsCommand}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Ellipse Width="7" Height="7" Margin="0,0,7,0" VerticalAlignment="Center"
+                            <Ellipse Width="7" Height="7" Margin="0,0,6,0" VerticalAlignment="Center"
                                      Fill="{Binding AiEnabled, Converter={StaticResource AiDotBrush}}"/>
-                            <TextBlock Text="{Binding AiBadge}" FontSize="12.5" VerticalAlignment="Center"/>
+                            <TextBlock Text="AI" FontSize="12.5" VerticalAlignment="Center"/>
                             <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13"
-                                       Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
+                                       Margin="6,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
                         </StackPanel>
                     </Button>
                 </DockPanel>
             </Border>
 
-            <!-- ===== 结果内"视图切换"分段控件 (仅扫描后出现; 把镜头切换收进结果工作区) =====
-                 #2 左对齐贴合 F 型阅读流; #6 用分隔线表达层级 (主: 概览/可清理清单 | 次: 三种镜头) -->
-            <Border Grid.Row="1" Padding="24,14,24,0"
+            <!-- ===== 视图切换 = 原生 pivot (扁平 + 底线指示, 非浮起药丸; 仅扫描后出现) =====
+                 评审 #2 左对齐贴合阅读流; #6 分隔线表达层级 (主: 概览/可清理清单 | 次: 三种镜头) -->
+            <Border Grid.Row="1" Padding="24,2,24,0" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1"
                     Visibility="{Binding ShowResultsBar, Converter={StaticResource BoolToVis}}">
-                <Border Background="{StaticResource Subtle}" CornerRadius="10" Padding="3"
-                        HorizontalAlignment="Left" BorderBrush="{StaticResource Line}" BorderThickness="1">
-                    <StackPanel Orientation="Horizontal">
-                        <Button Tag="home" Content="概览" Command="{Binding GoHomeCommand}" Style="{StaticResource SegItem}"/>
-                        <Button Tag="explorer" Content="可清理清单" Command="{Binding GoExplorerCommand}" Style="{StaticResource SegItem}"/>
-                        <Border Width="1" Background="{StaticResource Line}" Margin="5,7"/>
-                        <Button Tag="map" Content="空间地图" Command="{Binding GoMapCommand}" Style="{StaticResource SegItem}"/>
-                        <Button Tag="software" Content="按软件" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource SegItem}"/>
-                        <Button Tag="report" Content="报告" Command="{Binding GoReportCommand}" Style="{StaticResource SegItem}"/>
-                    </StackPanel>
-                </Border>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <Button Tag="home" Content="概览" Command="{Binding GoHomeCommand}" Style="{StaticResource SegItem}" Margin="0,0,22,0"/>
+                    <Button Tag="explorer" Content="可清理清单" Command="{Binding GoExplorerCommand}" Style="{StaticResource SegItem}" Margin="0,0,16,0"/>
+                    <Border Width="1" Background="{StaticResource Line}" Margin="0,9,18,9"/>
+                    <Button Tag="map" Content="空间地图" Command="{Binding GoMapCommand}" Style="{StaticResource SegItem}" Margin="0,0,22,0"/>
+                    <Button Tag="software" Content="按软件" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource SegItem}" Margin="0,0,22,0"/>
+                    <Button Tag="report" Content="报告" Command="{Binding GoReportCommand}" Style="{StaticResource SegItem}"/>
+                </StackPanel>
             </Border>
 
             <!-- ===== 内容区 (满宽, 结果即主角) ===== -->
