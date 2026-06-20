@@ -194,8 +194,12 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     public CleanupBucket Bucket =>
         EffectiveCleanable && !_node.IsContainer ? CleanupBucket.Cleanable
                                                  : Buckets.Of(_node.IsContainer, _node.RiskLevel);
-    public string BucketLabel => Buckets.Label(Bucket);
-    public Brush BucketBrush => Buckets.Brush(Bucket);
+    // P2 双语义: "个人文件"是珍贵≠危险 —— 用中性蓝灰, 不再用谨慎/勿动的红/橙, 避免"你的资料像有问题"。
+    private bool IsPersonal => Origin == Common.Humanize.Personal
+        && Bucket is not CleanupBucket.Cleanable and not CleanupBucket.Container;
+    public string BucketLabel => IsPersonal ? "个人文件" : Buckets.Label(Bucket);
+    public Brush BucketBrush => IsPersonal ? PersonalBrush : Buckets.Brush(Bucket);
+    private static readonly Brush PersonalBrush = new SolidColorBrush(Color.FromRgb(0x9D, 0xB4, 0xCE));
 
     /// <summary>占父目录百分比 (大小条宽度); 0–1。</summary>
     public double FractionOfParent => _parentSize > 0 ? Math.Min(1.0, (double)_node.Size / _parentSize) : 0;

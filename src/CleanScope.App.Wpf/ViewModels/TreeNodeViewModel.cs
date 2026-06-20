@@ -26,6 +26,9 @@ public sealed class TreeNodeViewModel
     /// <summary>对应的分析行 (合成根/“未细分”余量节点为 null)。</summary>
     public FileRowViewModel? Row { get; }
 
+    /// <summary>P2 双语义: 认不出归属的"个人文件" —— treemap 用中性蓝灰, 不染成危险红。</summary>
+    public bool IsPersonal => Row?.Origin == Humanize.Personal;
+
     public List<TreeNodeViewModel> Children { get; } = new();
     public bool HasChildren => Children.Count > 0;
     public bool IsRemainder { get; init; }

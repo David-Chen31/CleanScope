@@ -434,6 +434,40 @@
                 </Setter>
             </Style>
 
+            <!-- 结果内"视图切换"分段控件项 (横向, 选中=白底浮起) -->
+            <Style x:Key="SegItem" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FontSize" Value="13.5"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" Background="Transparent" CornerRadius="8" Padding="18,7">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  TextElement.Foreground="{TemplateBinding Foreground}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                                </Trigger>
+                                <DataTrigger Value="True">
+                                    <DataTrigger.Binding>
+                                        <MultiBinding Converter="{StaticResource Eq}">
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Tag"/>
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="DataContext.ActivePage"/>
+                                        </MultiBinding>
+                                    </DataTrigger.Binding>
+                                    <Setter TargetName="b" Property="Background" Value="#FFFFFF"/>
+                                    <Setter TargetName="b" Property="Effect" Value="{StaticResource CardShadow}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- 窗口按钮 (最小化/最大化/关闭) -->
             <Style x:Key="WinBtn" TargetType="Button">
                 <Setter Property="Width" Value="46"/>

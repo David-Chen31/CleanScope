@@ -36,19 +36,6 @@
                 <TextBlock Text="{Binding ActionStatus}" TextWrapping="Wrap"/>
             </Border>
 
-            <!-- 列标题: 让用户分清各列含义 (来源/归属、用途) -->
-            <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="320"/>
-                    <ColumnDefinition Width="120"/>
-                    <ColumnDefinition Width="150"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="名称（▸ 展开 / 文件为叶子）" FontWeight="Bold" Foreground="{StaticResource Muted}"/>
-                <TextBlock Grid.Column="1" Text="大小 / 占比" FontWeight="Bold" HorizontalAlignment="Right" Margin="6,0" Foreground="{StaticResource Muted}"/>
-                <TextBlock Grid.Column="2" Text="来源 / 归属" FontWeight="Bold" Margin="6,0" Foreground="{StaticResource Muted}"/>
-                <TextBlock Grid.Column="3" Text="用途 / 存在解释" FontWeight="Bold" Margin="6,0" Foreground="{StaticResource Muted}"/>
-            </Grid>
 
             <!-- C2 详情面板: 选中某项后, 在底部完整展示来源/用途/AI 解释/建议 (长文本自动换行, 不必复制) + 该项动作 -->
             <Border DockPanel.Dock="Bottom" Margin="0,8,0,0" Padding="12,10" CornerRadius="6"
@@ -152,10 +139,9 @@
                                 </ContextMenu>
                             </Grid.ContextMenu>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="320"/>
-                                <ColumnDefinition Width="120"/>
-                                <ColumnDefinition Width="150"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- 名称 + (批量勾选) + 四桶色点 + 文件/文件夹图标 -->
@@ -200,11 +186,12 @@
                                 </Border>
                             </StackPanel>
 
-                            <TextBlock Grid.Column="2" Text="{Binding Origin}" VerticalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Purpose}" Margin="6,0"/>
-                            <TextBlock Grid.Column="3" Text="{Binding Purpose}" VerticalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding RecommendedAction}"
-                                       Foreground="{StaticResource Muted}" Margin="6,0"/>
+                            <!-- 来源 = 安静的小 chip (用途/建议改由下方详情面板 + 悬停展示, 不再做常驻列, 去"表格感") -->
+                            <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{StaticResource Subtle}"
+                                    Margin="10,0,0,0" ToolTip="{Binding Purpose}" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Origin}" FontSize="12" Foreground="{StaticResource Muted}"
+                                           TextTrimming="CharacterEllipsis" MaxWidth="180"/>
+                            </Border>
                         </Grid>
                     </HierarchicalDataTemplate>
                 </TreeView.ItemTemplate>

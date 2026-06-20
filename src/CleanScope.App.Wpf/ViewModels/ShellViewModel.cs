@@ -63,14 +63,22 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public object CurrentView
     {
         get => _current;
-        private set => SetField(ref _current, value);
+        private set { if (SetField(ref _current, value)) OnPropertyChanged(nameof(ShowResultsBar)); }
     }
 
     public ScanSession? Session { get; private set; }
 
-    // 当前页 key (导航高亮: 与各 NavBtn 的 Tag 比对)。详情页不改高亮, 保留来处页。
+    // 两态外壳: 未扫描 = 纯 Hero (无视图切换条); 扫描后 = 结果工作区 (顶部分段切换镜头)。
+    public bool HasSession => Session is not null;
+    public bool ShowResultsBar => HasSession && _activePage != "ai" && !ReferenceEquals(_current, _detail);
+
+    // 当前页 key (分段控件高亮: 与各按钮 Tag 比对)。详情页不改高亮, 保留来处页。
     private string _activePage = "home";
-    public string ActivePage { get => _activePage; private set => SetField(ref _activePage, value); }
+    public string ActivePage
+    {
+        get => _activePage;
+        private set { if (SetField(ref _activePage, value)) OnPropertyChanged(nameof(ShowResultsBar)); }
+    }
 
     public RelayCommand GoHomeCommand { get; }
     public RelayCommand GoMapCommand { get; }
@@ -91,6 +99,8 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         _report.Load(session);
         _home.OnSessionLoaded(session);
         _shownRevision[_map] = _shownRevision[_software] = _shownRevision[_report] = session.Revision;
+        OnPropertyChanged(nameof(HasSession));
+        OnPropertyChanged(nameof(ShowResultsBar));
         GoMapCommand.RaiseCanExecuteChanged();
         GoExplorerCommand.RaiseCanExecuteChanged();
         GoBySoftwareCommand.RaiseCanExecuteChanged();

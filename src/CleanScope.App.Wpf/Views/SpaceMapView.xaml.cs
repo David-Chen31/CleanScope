@@ -15,6 +15,9 @@ public partial class SpaceMapView : UserControl
 {
     private SpaceMapViewModel? _vm;
 
+    // P2 双语义: 个人文件的中性蓝灰 (treemap 不再一片红)。
+    private static readonly Brush PersonalFill = new SolidColorBrush(Color.FromRgb(0xB9, 0xCC, 0xDE));
+
     public SpaceMapView()
     {
         InitializeComponent();
@@ -51,7 +54,8 @@ public partial class SpaceMapView : UserControl
             double tw = t.W - gap, th = t.H - gap;
             if (tw < 1 || th < 1) continue;
 
-            var fill = RiskPalette.Brush(child.Risk);
+            // P2 双语义: "个人文件"用中性蓝灰, 不随风险染成一片红 (个人数据是珍贵≠危险)。
+            var fill = child.IsPersonal ? PersonalFill : RiskPalette.Brush(child.Risk);
             var border = new Border
             {
                 Width = tw,
