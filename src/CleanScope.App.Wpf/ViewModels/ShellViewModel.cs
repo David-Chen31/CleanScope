@@ -44,18 +44,20 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
 
     private string _aiBadge;
     public string AiBadge { get => _aiBadge; private set => SetField(ref _aiBadge, value); }
+    // 减重: 徽章压成一行 (引导文案移进 AI 设置页内, 不常驻)。
     private string ComputeAiBadge() => Services.AiEnabled
-        ? $"AI: 已启用（按需出云）· 出云脱敏：{SanitizationLabel}\n识别力不理想？可在「AI 设置」调脱敏档位 / 换模型"
-        : "AI: 未配置（纯本地）· 可在「AI 设置」启用";
+        ? $"AI 已启用 · 脱敏：{SanitizationLabel}"
+        : "AI 未配置 · 全程本地";
 
-    // 让"三档位脱敏"在常驻徽章里可见 (问题#4: 用户常注意不到能调档而误以为 AI 弱)。
     private string SanitizationLabel => Services.SanitizationLevel switch
     {
-        Domain.Enums.SanitizationLevel.Strict => "严格（最隐私，识别力受限）",
-        Domain.Enums.SanitizationLevel.Balanced => "均衡（推荐）",
-        _ => "关闭（识别最准）",
+        Domain.Enums.SanitizationLevel.Strict => "严格",
+        Domain.Enums.SanitizationLevel.Balanced => "均衡",
+        _ => "关闭",
     };
-    public string Title => $"CleanScope {Services.AppVersion} — 分析为主；删除仅对可清理项、且只移入回收站（可还原）";
+
+    // 顶栏只留产品名; 安全承诺由顶栏 chip 单独承担 (不再重复长句)。
+    public string Title => "CleanScope";
 
     private object _current;
     public object CurrentView

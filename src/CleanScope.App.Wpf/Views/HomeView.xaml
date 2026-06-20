@@ -9,11 +9,11 @@
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel>
 
-        <!-- 磁盘容量 -->
+        <!-- 磁盘容量 (减重: 一行 + 状态色条) -->
         <Border Style="{StaticResource Cards}">
             <StackPanel>
-                <TextBlock Text="磁盘容量" Style="{StaticResource H2}"/>
-                <TextBlock Text="{Binding DriveInfo}" Style="{StaticResource Sub}" Margin="0,0,0,8"/>
+                <TextBlock Text="{Binding DriveInfo}" FontSize="16" FontWeight="SemiBold"
+                           Foreground="{StaticResource Ink}" Margin="0,0,0,10"/>
                 <ProgressBar Height="10" Minimum="0" Maximum="1" Value="{Binding DriveUsedRatio, Mode=OneWay}"
                              Foreground="{Binding DriveUsedRatio, Converter={StaticResource UsageToBrush}}"
                              Background="#EDF0F3" BorderThickness="0"/>
@@ -23,9 +23,7 @@
         <!-- 扫描入口 (盘符优先) -->
         <Border Style="{StaticResource Cards}">
             <StackPanel>
-                <TextBlock Text="清理哪个磁盘？" Style="{StaticResource H2}"/>
-                <TextBlock Text="CleanScope 仅读取文件元数据与系统信息，全程不删除、不修改任何文件。"
-                           Style="{StaticResource Sub}" Margin="0,0,0,10"/>
+                <TextBlock Text="扫描哪个磁盘？" Style="{StaticResource H2}" Margin="0,0,0,10"/>
 
                 <!-- 盘符芯片: 一键把目标设为某个磁盘根 -->
                 <ItemsControl ItemsSource="{Binding AvailableDrives}">
@@ -76,9 +74,8 @@
         <!-- 官方清理手段 (P0): 不依赖扫描, 始终可用; 启动 Windows 自带工具 -->
         <Border Style="{StaticResource Cards}" Visibility="{Binding HasOfficialActions, Converter={StaticResource BoolToVis}}">
             <StackPanel>
-                <TextBlock Text="一键官方清理手段" Style="{StaticResource H2}"/>
-                <TextBlock Text="这些是 Windows 自带的安全清理方式（关闭休眠、清空回收站、磁盘清理等）。CleanScope 不替你删文件，只启动官方工具，过程可见。"
-                           Style="{StaticResource Sub}" Margin="0,0,0,10"/>
+                <TextBlock Text="Windows 官方清理" Style="{StaticResource H2}"/>
+                <TextBlock Text="调用系统自带工具，过程你可控。" Style="{StaticResource Sub}" Margin="0,0,0,10"/>
                 <ItemsControl ItemsSource="{Binding OfficialActions}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -118,8 +115,6 @@
                                             </Border>
                                         </StackPanel>
                                         <TextBlock Text="{Binding Description}" Style="{StaticResource Sub}" TextWrapping="Wrap" Margin="0,3,0,0"/>
-                                        <TextBlock Text="{Binding Action.Consequence}" Style="{StaticResource Sub}" TextWrapping="Wrap" Margin="0,2,0,0"
-                                                   Foreground="{StaticResource Muted}"/>
                                     </StackPanel>
                                     <TextBlock Grid.Column="1" Text="{Binding SavingsText}" VerticalAlignment="Center" Margin="0,0,12,0"
                                                FontWeight="Bold" Foreground="#1E7E34"

@@ -69,8 +69,7 @@
         <Border Grid.Column="0" Background="#101826">
             <StackPanel Margin="18,24">
                 <TextBlock Text="CleanScope" Foreground="White" FontSize="22" FontWeight="Bold"/>
-                <TextBlock Text="C 盘 AI 清理助手" Foreground="#8FA0B5" Margin="0,2,0,2"/>
-                <TextBlock Text="删除仅移入回收站 · 可还原" Foreground="#5FC88F" FontSize="11" Margin="0,0,0,28"/>
+                <TextBlock Text="C 盘清理助手" Foreground="#8FA0B5" Margin="0,2,0,28"/>
 
                 <Button Content="①　概览 / 扫描" Tag="home" ToolTip="概览与扫描" Command="{Binding GoHomeCommand}" Style="{StaticResource NavBtn}"/>
                 <Button Content="②　可清理清单" Tag="explorer" ToolTip="资源管理器 / 可清理清单" Command="{Binding GoExplorerCommand}" Style="{StaticResource NavBtn}"/>
@@ -97,7 +96,13 @@
 
             <Border Grid.Row="0" Background="{StaticResource Card}" BorderBrush="{StaticResource Line}"
                     BorderThickness="0,0,0,1" Padding="24,14">
-                <TextBlock Text="{Binding Title}" Style="{StaticResource H2}" Margin="0"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" Style="{StaticResource H2}" Margin="0" VerticalAlignment="Center"/>
+                    <!-- 安全承诺只在此出现一次 -->
+                    <Border Style="{StaticResource Chip}" Background="{StaticResource CleanSoft}" Margin="12,0,0,0">
+                        <TextBlock Text="🛡 只读分析 · 删除可还原" FontSize="12" Foreground="{StaticResource Clean}"/>
+                    </Border>
+                </StackPanel>
             </Border>
 
             <!-- 不再用外层 ScrollViewer 包裹: 否则给内部 ListView 无限高度, 关闭 UI 虚拟化导致卡顿。

@@ -88,7 +88,7 @@ public sealed class HomeViewModel : ViewModelBase
 
     public bool CanScan => !_isScanning && !string.IsNullOrWhiteSpace(_targetPath);
 
-    private string _status = "选择要清理的磁盘后开始扫描。CleanScope 只读分析，不会删除任何文件。";
+    private string _status = "选择磁盘后开始扫描。";
     public string Status { get => _status; private set => SetField(ref _status, value); }
 
     // —— 磁盘容量 ——
@@ -436,8 +436,9 @@ public sealed class HomeViewModel : ViewModelBase
             if (!di.IsReady) { DriveInfo = $"{root} 未就绪"; return; }
             var used = di.TotalSize - di.AvailableFreeSpace;
             DriveUsedRatio = di.TotalSize > 0 ? (double)used / di.TotalSize : 0;
-            DriveInfo = $"{root}  已用 {Format.HumanSize(used)} / 共 {Format.HumanSize(di.TotalSize)}" +
-                        $"（可用 {Format.HumanSize(di.AvailableFreeSpace)}）";
+            // 减重: 一行说清 (盘 · 占比 · 仅剩 · 状态), 不再罗列已用/共/可用三个数。
+            var status = DriveUsedRatio >= 0.9 ? "空间紧张" : DriveUsedRatio >= 0.7 ? "建议清理" : "空间充足";
+            DriveInfo = $"{root.TrimEnd('\\')}　{DriveUsedRatio * 100:0}%　仅剩 {Format.HumanSize(di.AvailableFreeSpace)}　{status}";
         }
         catch
         {
@@ -483,9 +484,9 @@ public sealed class OfficialActionViewModel
     public bool OpensWindowsUi => Action.Surface == CleanupSurface.OpensWindowsUi;
     public string SurfaceTag => OpensWindowsUi ? "打开 Windows 界面" : "应用内执行";
     public string RunButtonText => OpensWindowsUi ? "打开（先确认）" : "执行（先确认）";
-    /// <summary>有预估收益则显示"约 X"，否则显示是否检测到机会。</summary>
+    /// <summary>有预估收益则显示"约 X" (减重: 去掉零信息的"检测到")。</summary>
     public string SavingsText => Action.EstimatedBytes > 0
         ? $"约 {Common.Format.HumanSize(Action.EstimatedBytes)}"
-        : (Action.Detected ? "检测到" : "");
+        : "";
     public bool HasSavings => !string.IsNullOrEmpty(SavingsText);
 }

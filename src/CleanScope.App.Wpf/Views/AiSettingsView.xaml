@@ -10,18 +10,17 @@
     <Border Style="{StaticResource Cards}">
         <StackPanel>
             <TextBlock Text="AI 设置" Style="{StaticResource H2}"/>
-            <TextBlock Text="填入兼容 OpenAI 接口的中转地址与 API Key，检索模型后选择并测试。AI 仅在你点击「AI 解释 / 识别 / 生成建议」时按需出云，默认零 token；不配置则全程本地。"
-                       Style="{StaticResource Sub}" Margin="0,0,0,4"/>
-            <TextBlock Text="Key 仅以 DPAPI（按当前 Windows 用户）加密保存在本机用户目录，绝不上传、不入库、不出现在报告/日志。"
+            <TextBlock Text="可选 · AI 仅在你点击 AI 功能时按需调用，不配置则全程本地。"
                        Style="{StaticResource Sub}" Margin="0,0,0,12"/>
 
-            <TextBlock Text="{Binding CurrentState}" FontWeight="SemiBold" Foreground="#1F4E8C" Margin="0,0,0,12"/>
+            <TextBlock Text="{Binding CurrentState}" FontWeight="SemiBold" Foreground="{StaticResource Accent}" Margin="0,0,0,14"/>
 
             <TextBlock Text="Base URL（如 https://your-relay/v1）" Foreground="{StaticResource Ink}" Margin="0,0,0,4"/>
             <TextBox Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Field}" Margin="0,0,0,12"/>
 
             <TextBlock Text="API Key" Foreground="{StaticResource Ink}" Margin="0,0,0,4"/>
-            <PasswordBox x:Name="KeyBox" Style="{StaticResource FieldPassword}" Margin="0,0,0,12" PasswordChanged="KeyBox_PasswordChanged"/>
+            <PasswordBox x:Name="KeyBox" Style="{StaticResource FieldPassword}" Margin="0,0,0,4" PasswordChanged="KeyBox_PasswordChanged"/>
+            <TextBlock Text="🔒 本机 DPAPI 加密保存，绝不上传" Style="{StaticResource Caption}" Margin="2,0,0,12"/>
 
             <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
                 <Button Content="🔍 检索模型" Command="{Binding ListModelsCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"/>
@@ -60,7 +59,7 @@
                 <Button Command="{Binding SaveCommand}" Style="{StaticResource Primary}" MinWidth="132">
                     <Grid>
                         <!-- 闲置 -->
-                        <TextBlock Text="保存并生效" VerticalAlignment="Center"
+                        <TextBlock Text="保存" VerticalAlignment="Center"
                                    Visibility="{Binding ShowSaveIdle, Converter={StaticResource BoolToVis}}"/>
                         <!-- 保存中: 旋转环 + 文案 -->
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
