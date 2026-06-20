@@ -5,6 +5,7 @@ using CleanScope.App.Wpf.Composition;
 using CleanScope.App.Wpf.Mvvm;
 using CleanScope.Application;
 using CleanScope.Core.Cleanup;
+using CleanScope.Domain.Entities;
 using CleanScope.Domain.Enums;
 using CleanScope.Domain.Models;
 using CleanScope.Reporting;
@@ -27,7 +28,7 @@ public sealed class HomeViewModel : ViewModelBase
         AvailableDrives = ReadyDriveRoots();
         _targetPath = OfficialCleanupCatalog.SystemDrive();        // 盘符优先: 默认整个系统盘 (通常 C:\)
         ScanCommand = new AsyncRelayCommand(_ => ScanAsync(), _ => CanScan);
-        QuickScanCommand = new AsyncRelayCommand(_ => QuickScanAsync(), _ => CanScan);
+        ScanAllDrivesCommand = new AsyncRelayCommand(_ => ScanAllDrivesAsync(), _ => !_isScanning && AvailableDrives.Count > 0);
         ScanDriveCommand = new RelayCommand(p => { if (p is string root) TargetPath = root; });
         ViewListCommand = new RelayCommand(_host.ShowList, () => Session is not null);
         AdviseCommand = new AsyncRelayCommand(_ => AdviseAsync(), _ => CanAdvise);
@@ -37,8 +38,11 @@ public sealed class HomeViewModel : ViewModelBase
     }
 
     public AsyncRelayCommand ScanCommand { get; }
-    public AsyncRelayCommand QuickScanCommand { get; }   // 仅高价值区 (AppData) 快速扫描
+    public AsyncRelayCommand ScanAllDrivesCommand { get; }   // #3: 一次扫描整台电脑 (所有固定磁盘)
     public RelayCommand ScanDriveCommand { get; }        // 盘符芯片: 把目标设为某盘根
+
+    // 深度分析的项数上限 (原"TopN"输入框已移除, 改用固定默认值, 普通用户不必关心)。
+    private const int DefaultTopN = 200;
     public RelayCommand ViewListCommand { get; }
     public AsyncRelayCommand AdviseCommand { get; }      // 按需生成 AI 清理参谋 (脱敏后请求一次), 非自动
     public AsyncRelayCommand RunOfficialActionCommand { get; }  // P0: 执行某条官方清理手段
@@ -60,11 +64,8 @@ public sealed class HomeViewModel : ViewModelBase
     public string TargetPath
     {
         get => _targetPath;
-        set { if (SetField(ref _targetPath, value)) { RefreshDrive(); ScanCommand.RaiseCanExecuteChanged(); QuickScanCommand.RaiseCanExecuteChanged(); } }
+        set { if (SetField(ref _targetPath, value)) { RefreshDrive(); ScanCommand.RaiseCanExecuteChanged(); } }
     }
-
-    private int _topN = 200;
-    public int TopN { get => _topN; set => SetField(ref _topN, value); }
 
     private bool _adminMode;
     public bool AdminMode { get => _adminMode; set => SetField(ref _adminMode, value); }
@@ -79,7 +80,7 @@ public sealed class HomeViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(CanScan));
                 ScanCommand.RaiseCanExecuteChanged();
-                QuickScanCommand.RaiseCanExecuteChanged();
+                ScanAllDrivesCommand.RaiseCanExecuteChanged();
                 RunOfficialActionCommand.RaiseCanExecuteChanged();
             }
         }
@@ -166,13 +167,6 @@ public sealed class HomeViewModel : ViewModelBase
 
     private Task ScanAsync() => RunScanAsync(TargetPath);
 
-    // 快速扫描: 仅扫高价值区 (用户 AppData\Local —— 缓存/临时的主场), 更快、零权限问题。
-    private Task QuickScanAsync()
-    {
-        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return RunScanAsync(Directory.Exists(local) ? local : TargetPath);
-    }
-
     private async Task RunScanAsync(string target)
     {
         IsScanning = true;
@@ -181,7 +175,7 @@ public sealed class HomeViewModel : ViewModelBase
         try
         {
             var mode = AdminMode ? ScanMode.Admin : ScanMode.Normal;
-            var options = new ScanOptions(target, Math.Max(1, TopN), mode);
+            var options = new ScanOptions(target, DefaultTopN, mode);
 
             var lastTick = DateTime.MinValue;
             var progress = new Progress<ScanProgress>(p =>
@@ -214,6 +208,80 @@ public sealed class HomeViewModel : ViewModelBase
         catch (Exception ex)
         {
             Status = $"扫描失败：{ex.GetType().Name} — {ex.Message}";
+        }
+        finally
+        {
+            IsScanning = false;
+        }
+    }
+
+    // #3 整台电脑扫描: 逐个固定磁盘跑同一套裁决链 + 目录树, 再合并成一个会话 (虚拟根「整台电脑」)。
+    // 与单盘扫描同口径; 某个盘不可访问则跳过, 不影响其它盘。
+    private async Task ScanAllDrivesAsync()
+    {
+        var drives = AvailableDrives;
+        if (drives.Count == 0) { Status = "未发现可扫描的固定磁盘。"; return; }
+
+        IsScanning = true;
+        HasResult = false;
+        var startedAt = DateTime.UtcNow;
+        var mode = AdminMode ? ScanMode.Admin : ScanMode.Normal;
+        try
+        {
+            var allRows = new List<FileRowViewModel>();
+            var allDecisions = new List<DecisionItem>();
+            var driveTrees = new List<ScanTreeNode>();
+            long totalSize = 0, fileCount = 0;
+            var index = 0;
+
+            foreach (var root in drives)
+            {
+                index++;
+                var which = index;
+                Status = $"正在扫描整台电脑（{which}/{drives.Count}）：{root} …";
+                var lastTick = DateTime.MinValue;
+                var progress = new Progress<ScanProgress>(p =>
+                {
+                    var now = DateTime.UtcNow;
+                    if ((now - lastTick).TotalMilliseconds < 120) return;
+                    lastTick = now;
+                    Status = $"扫描整台电脑（{which}/{drives.Count}）{root}… 已观察 {p.FilesScanned} 项　{p.CurrentPath}";
+                });
+
+                ScanAndAnalyzeResult result;
+                try
+                {
+                    var options = new ScanOptions(root, DefaultTopN, mode);
+                    result = await _services.UseCase.ExecuteAsync(options, progress, default, AiMode.OnDemand, buildTree: true);
+                }
+                catch
+                {
+                    continue;   // 某盘不可访问 (权限/未就绪) → 跳过, 继续其余盘
+                }
+
+                var byPath = result.Analyses.ToDictionary(a => a.Node.Path, a => a);
+                allRows.AddRange(result.Decisions.Select(d => new FileRowViewModel(d, byPath[d.Path])));
+                allDecisions.AddRange(result.Decisions);
+                if (result.Tree is not null) driveTrees.Add(result.Tree);
+                totalSize += result.Report.Task.TotalSize ?? 0;
+                fileCount += result.Report.Task.FileCount ?? 0;
+            }
+
+            // 虚拟根「整台电脑」, 各盘目录树作为其子节点 (Origin/Purpose 仅说明性, 不参与裁决)。
+            var computer = new ScanTreeNode("", "整台电脑", totalSize, RiskLevel.C,
+                isContainer: true, isCleanable: false, origin: "本机",
+                purpose: $"本次扫描的 {driveTrees.Count} 个磁盘", recommendedAction: "展开浏览各磁盘");
+            computer.Children.AddRange(driveTrees);
+
+            var task = new ScanTask(0, "整台电脑", mode, ScanStatus.Completed,
+                startedAt, DateTime.UtcNow, totalSize, fileCount, _services.AppVersion);
+            var session = new ScanSession("整台电脑", new ScanReport(task, allDecisions), allRows, computer);
+            _host.LoadSession(session);
+            Status = $"整台电脑扫描完成：{drives.Count} 个磁盘、{allRows.Count} 项。下方是最划算的几步与官方清理手段；点「去可清理清单」可批量处理。";
+        }
+        catch (Exception ex)
+        {
+            Status = $"整台电脑扫描失败：{ex.GetType().Name} — {ex.Message}";
         }
         finally
         {
@@ -264,7 +332,13 @@ public sealed class HomeViewModel : ViewModelBase
 
     public bool HasBestCleanable => BestCleanable.Count > 0;
 
+    // #1: 官方清理执行中的可观察标志 → 卡片显示不确定进度条 + 进度文案 (如"清空回收站"也有动态反馈)。
     private bool _officialBusy;
+    public bool IsOfficialRunning
+    {
+        get => _officialBusy;
+        private set { if (SetField(ref _officialBusy, value)) RunOfficialActionCommand.RaiseCanExecuteChanged(); }
+    }
 
     // —— P0: 执行一条官方清理手段 (启动系统自带工具 / 应用内隐藏执行官方命令; 我们不替它删文件) ——
     private async Task RunOfficialAsync(OfficialActionViewModel? vm)
@@ -293,8 +367,7 @@ public sealed class HomeViewModel : ViewModelBase
             MessageBoxResult.Cancel);
         if (confirm != MessageBoxResult.OK) { OfficialStatus = "已取消，未做任何改动。"; return; }
 
-        _officialBusy = true;
-        RunOfficialActionCommand.RaiseCanExecuteChanged();
+        IsOfficialRunning = true;
         try
         {
             if (a.Surface == CleanupSurface.OpensWindowsUi)
@@ -333,8 +406,7 @@ public sealed class HomeViewModel : ViewModelBase
         }
         finally
         {
-            _officialBusy = false;
-            RunOfficialActionCommand.RaiseCanExecuteChanged();
+            IsOfficialRunning = false;
             RefreshDrive();   // A3: 刷新磁盘条 (关休眠/清回收站等即时生效)
         }
     }

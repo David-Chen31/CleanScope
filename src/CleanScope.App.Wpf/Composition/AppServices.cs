@@ -47,6 +47,15 @@ public sealed class AppServices
     /// <summary>AI 配置变化 (设置页保存后) → UI 刷新徽章/菜单可见性。</summary>
     public event Action? AiChanged;
 
+    /// <summary>
+    /// AI 配置代次 (问题#5): 每次改模型/脱敏档位后 +1。已"AI 识别"过的项记下当时代次,
+    /// 与当前代次不一致即说明配置已变 → 允许在新档位下重新识别 (按钮重新可点)。
+    /// </summary>
+    public int AiConfigGeneration { get; private set; }
+
+    /// <summary>当前出云脱敏档位 (供 UI 提示用户"当前以何种脱敏出云", 让三档位功能可见)。</summary>
+    public Domain.Enums.SanitizationLevel SanitizationLevel => CurrentAiOptions.Sanitization;
+
     /// <summary>初始化当前配置 (组合根装配时调用一次)。</summary>
     public void InitAiOptions(AiOptions options)
     {
@@ -61,6 +70,7 @@ public sealed class AppServices
         AiChat.Reconfigure(options);
         Sanitizer.Level = options.Sanitization;
         AiConfigStore.Save(options);
+        AiConfigGeneration++;   // 问题#5: 配置变更 → 已识别项可在新档位下重新识别
         AiChanged?.Invoke();
     }
 

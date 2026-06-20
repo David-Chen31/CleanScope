@@ -33,15 +33,24 @@
             <CheckBox Content="启用 AI（脱敏后按需出云）" IsChecked="{Binding CloudEnabled}"
                       Foreground="{StaticResource Ink}" Margin="0,0,0,14"/>
 
-            <TextBlock Text="出云脱敏档位（隐私 vs 识别力）" Foreground="{StaticResource Ink}" Margin="0,0,0,4"/>
-            <ComboBox ItemsSource="{Binding SanitizationChoices}" SelectedItem="{Binding SelectedSanitization}"
-                      DisplayMemberPath="Label" MinWidth="240" Padding="8,6" Margin="0,0,0,6"
-                      HorizontalAlignment="Left" VerticalContentAlignment="Center"/>
-            <Border Background="#FFF7E6" CornerRadius="6" Padding="10,8" Margin="0,0,0,14">
+            <!-- 出云脱敏: 三档平铺单选, 醒目卡片 (问题#4: 让用户一眼看到能调档, 不致误以为 AI 识别力弱) -->
+            <Border Background="#FFF7E6" BorderBrush="#F0C36D" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,14">
                 <StackPanel>
-                    <TextBlock Text="{Binding SanitizationHint}" TextWrapping="Wrap" Foreground="{StaticResource Ink}"/>
+                    <TextBlock Text="🔧 出云脱敏档位（影响 AI 识别力 ←→ 隐私）" FontWeight="Bold" Foreground="#8A5A00" Margin="0,0,0,2"/>
+                    <TextBlock Text="觉得 AI「认不出软件」？多半是脱敏太严。下面三档可随时切换，越往下识别越准、发送的路径信息越多。"
+                               TextWrapping="Wrap" Style="{StaticResource Sub}" Margin="0,0,0,10"/>
+
+                    <RadioButton GroupName="San" IsChecked="{Binding IsStrict}" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Content="严格 — 最隐私，识别力受限"/>
+                    <TextBlock Text="{Binding StrictHint}" TextWrapping="Wrap" Style="{StaticResource Sub}" Margin="24,1,0,8"/>
+
+                    <RadioButton GroupName="San" IsChecked="{Binding IsBalanced}" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Content="均衡 — 默认 · 推荐"/>
+                    <TextBlock Text="{Binding BalancedHint}" TextWrapping="Wrap" Style="{StaticResource Sub}" Margin="24,1,0,8"/>
+
+                    <RadioButton GroupName="San" IsChecked="{Binding IsOff}" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Content="关闭 — 识别最准（发送真实相对路径）"/>
+                    <TextBlock Text="{Binding OffHint}" TextWrapping="Wrap" Style="{StaticResource Sub}" Margin="24,1,0,8"/>
+
                     <TextBlock Text="无论哪一档，CleanScope 都绝不发送文件内容，只发送路径/名称等元数据。"
-                               Style="{StaticResource Sub}" Margin="0,4,0,0"/>
+                               Style="{StaticResource Sub}" Margin="0,2,0,0"/>
                 </StackPanel>
             </Border>
 

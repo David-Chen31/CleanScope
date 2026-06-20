@@ -81,11 +81,25 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     private string? _aiOrigin;
     private string? _aiPurpose;
     private bool _aiResolved;
+    private int _resolvedGeneration = -1;   // 问题#5: 上次识别时的 AI 配置代次
     public bool IsAiResolved { get => _aiResolved; private set { if (SetField(ref _aiResolved, value)) OnPropertyChanged(nameof(CanInvestigate)); } }
 
-    // 仅 AI 已启用 + 真实项 + 尚未识别/识别中/已删 时可点; 未配置 AI 的用户菜单项不显示, 自然零开销。
+    private int CurrentAiGeneration => _actions?.AiConfigGeneration ?? 0;
+    // 问题#5: 已识别过, 但用户之后改了模型/脱敏档位 (代次变了) → 允许在新配置下重新识别。
+    private bool ConfigChangedSinceResolve => _aiResolved && _resolvedGeneration != CurrentAiGeneration;
+
+    // 仅 AI 已启用 + 真实项 + 识别中/已删 之外可点; 未配置 AI 的用户菜单项不显示, 自然零开销。
+    // 已识别后默认禁用, 除非配置已变 (换模型/换档位) → 可重新识别。
     public bool ShowAiMenu => _actions?.AiEnabled == true;
-    public bool CanInvestigate => ShowAiMenu && HasPath && !IsRemainder && !_aiResolved && !_isInvestigating && !_isDeleted;
+    public bool CanInvestigate => ShowAiMenu && HasPath && !IsRemainder && !_isInvestigating && !_isDeleted
+        && (!_aiResolved || ConfigChangedSinceResolve);
+
+    /// <summary>问题#5: AI 配置变更后, 让"重新识别"按钮/菜单即时恢复可点。</summary>
+    public void RefreshAiState()
+    {
+        OnPropertyChanged(nameof(CanInvestigate));
+        InvestigateCommand.RaiseCanExecuteChanged();
+    }
 
     // A4: AI 识别中的瞬时态 —— 行内显示"✨识别中…", 期间禁用该动作, 让用户明确知道在转。
     private bool _isInvestigating;
@@ -102,6 +116,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     {
         if (!string.IsNullOrWhiteSpace(origin)) _aiOrigin = origin;
         if (!string.IsNullOrWhiteSpace(purpose)) _aiPurpose = purpose;
+        _resolvedGeneration = CurrentAiGeneration;   // 问题#5: 记下本次识别所用的配置代次
         IsAiResolved = true;
         OnPropertyChanged(nameof(Origin));
         OnPropertyChanged(nameof(Purpose));

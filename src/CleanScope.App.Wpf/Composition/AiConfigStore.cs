@@ -39,8 +39,9 @@ public static class AiConfigStore
         string apiKey = DecryptKey(dto);
         string model = string.IsNullOrWhiteSpace(dto?.model) ? "deepseek-chat" : dto!.model!;
         bool cloud = dto?.cloudEnabled ?? false;
+        // 问题#4: 已保存过则用用户的选择; 从未配置过的新用户默认"均衡"(识别力更好, 仍隐去用户名)。
         var sanitization = Enum.TryParse<SanitizationLevel>(dto?.sanitization, ignoreCase: true, out var lvl)
-            ? lvl : SanitizationLevel.Strict;
+            ? lvl : SanitizationLevel.Balanced;
 
         // 环境变量优先级最高 (与既有约定一致)。
         baseUrl = Env("CLEANSCOPE_AI_BASEURL") ?? baseUrl;

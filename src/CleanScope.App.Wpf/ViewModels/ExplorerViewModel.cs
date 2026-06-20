@@ -16,6 +16,7 @@ namespace CleanScope.App.Wpf.ViewModels;
 public interface IExplorerActions
 {
     bool AiEnabled { get; }
+    int AiConfigGeneration { get; }   // 问题#5: 改模型/脱敏档位后 +1, 已识别项据此可重新识别
     void CopyToClipboard(string text, string okStatus);
     Task OpenLocationAsync(string path);
     Task RecycleAsync(ExplorerNodeViewModel node);
@@ -44,6 +45,23 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         RecycleSelectedCommand = new AsyncRelayCommand(_ => RecycleSelectedAsync(), _ => _showCleanableOnly && !_busy);
         SortBySizeCommand = new RelayCommand(() => SortFlat(bySize: true), () => _showCleanableOnly);
         SortByNameCommand = new RelayCommand(() => SortFlat(bySize: false), () => _showCleanableOnly);
+        services.AiChanged += OnAiConfigChanged;   // 问题#5: 改模型/脱敏后, 已识别项恢复"可重新识别"
+    }
+
+    // 问题#5: AI 配置变更 → 遍历已物化节点, 让"重新识别"按钮/菜单即时恢复可点。
+    private void OnAiConfigChanged()
+    {
+        foreach (var n in _flatNodes) n.RefreshAiState();
+        RefreshAiStateRecursive(Roots);
+    }
+
+    private static void RefreshAiStateRecursive(IEnumerable<ExplorerNodeViewModel> nodes)
+    {
+        foreach (var n in nodes)
+        {
+            n.RefreshAiState();
+            if (n.Children.Count > 0) RefreshAiStateRecursive(n.Children);
+        }
     }
 
     public ObservableCollection<ExplorerNodeViewModel> Roots { get; } = new();
@@ -279,6 +297,20 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     // —— IExplorerActions ——
 
     public bool AiEnabled => _services.AiEnabled;
+    public int AiConfigGeneration => _services.AiConfigGeneration;
+
+    // 问题#4: 当前脱敏档位的简短中文标签 (展示给用户, 让"三档位"可见)。
+    private string SanitizationLabel => _services.SanitizationLevel switch
+    {
+        SanitizationLevel.Strict => "严格",
+        SanitizationLevel.Balanced => "均衡",
+        _ => "关闭",
+    };
+
+    // 严格档下 AI 常认不出具体软件; 提示用户"可在 AI 设置降档重试", 避免误以为 AI 能力弱。
+    private string IdentifyFailedHint(string name) => _services.SanitizationLevel == SanitizationLevel.Strict
+        ? $"AI 未能识别「{name}」。当前出云脱敏为「严格」(不发送文件夹名)，可在「AI 设置」改为「均衡」后重新识别以提升识别力。"
+        : $"AI 未能识别「{name}」（以现有结论为准）。";
 
     // E5+ 按需 AI 识别 (最小用量): 只在用户点了右键"用 AI 识别"时, 对这一个目录发一次脱敏请求。
     // 确定性目录名启发(NameHeuristics)已先免费兜底; AI 仅消化它认不出的残余未知。未配置 AI 的用户菜单项不显示, 零开销。
@@ -286,7 +318,8 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     {
         if (node is null || !node.CanInvestigate) return;
         node.BeginInvestigating();   // A4: 行内"✨识别中…"+ 禁用再点, 让用户明确知道在转
-        ActionStatus = $"正在用 AI 识别「{node.Name}」（脱敏后请求，仅供参考）…";
+        // 问题#4: 把当前脱敏档位摆到用户眼前, 让"可调三档位"被看见 (Strict 时尤其要让人知道可降档提升识别力)。
+        ActionStatus = $"正在用 AI 识别「{node.Name}」（当前出云脱敏：{SanitizationLabel}；脱敏后请求，仅供参考）…";
 
         // 构造轻量分析 (空证据、无逐项 I/O) 交注解器: 脱敏 → 解释 → 校验。AI 永不进入风险/删除判定。
         var fileNode = new FileNode(0, 0, null, node.Path, null, node.Name, node.RawIsDirectory, false,
@@ -299,7 +332,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             var ai = await _services.Annotator.AnnotateAsync(analysis);
             if (ai is not { Validated: true })
             {
-                ActionStatus = $"AI 未能识别「{node.Name}」（以现有结论为准）。";
+                ActionStatus = IdentifyFailedHint(node.Name);
                 return;
             }
 
@@ -311,7 +344,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
 
             if (origin is null && string.IsNullOrWhiteSpace(purpose))
             {
-                ActionStatus = $"AI 未能识别「{node.Name}」（以现有结论为准）。";
+                ActionStatus = IdentifyFailedHint(node.Name);
                 return;
             }
             node.ApplyAiInvestigation(origin, purpose);

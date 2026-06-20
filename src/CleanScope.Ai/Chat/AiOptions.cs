@@ -8,7 +8,9 @@ namespace CleanScope.Ai.Chat;
 /// </summary>
 public sealed record AiOptions(
     string BaseUrl, string ApiKey, string Model, bool CloudEnabled,
-    SanitizationLevel Sanitization = SanitizationLevel.Strict)
+    // 默认"均衡"(问题#4): 发送文件夹/应用名 (隐去用户名) 让 AI 真正认得出软件, 兼顾隐私与识别力。
+    // 想最大化隐私可改"严格", 想最准可改"关闭"。
+    SanitizationLevel Sanitization = SanitizationLevel.Balanced)
 {
     public static AiOptions Disabled { get; } = new(string.Empty, string.Empty, string.Empty, false);
 
@@ -22,7 +24,7 @@ public sealed record AiOptions(
     {
         string baseUrl = string.Empty, apiKey = string.Empty, model = "deepseek-chat";
         bool cloud = false;
-        var sanitization = SanitizationLevel.Strict;
+        var sanitization = SanitizationLevel.Balanced;   // 问题#4: 新用户默认"均衡"(识别力更好, 仍隐去用户名)
 
         try
         {

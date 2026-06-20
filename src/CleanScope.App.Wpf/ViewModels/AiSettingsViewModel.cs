@@ -65,9 +65,9 @@ public sealed class AiSettingsViewModel : ViewModelBase
     // 问题#3: 出云脱敏档位 (隐私 vs 识别力, 用户知情选择)。
     public IReadOnlyList<SanitizationChoice> SanitizationChoices { get; } = new[]
     {
-        new SanitizationChoice(SanitizationLevel.Strict, "严格（默认 · 最隐私）",
+        new SanitizationChoice(SanitizationLevel.Strict, "严格（最隐私，识别力受限）",
             "用户名和文件夹/文件名都不发送（替换为占位符）。最大化隐私，但 AI 往往认不出具体是哪个软件。"),
-        new SanitizationChoice(SanitizationLevel.Balanced, "均衡（推荐）",
+        new SanitizationChoice(SanitizationLevel.Balanced, "均衡（默认 · 推荐）",
             "发送文件夹/应用名以便 AI 识别（如 Steam、Zed），仍隐去用户名。识别力大幅提升；注意文件夹名会发送到云端。"),
         new SanitizationChoice(SanitizationLevel.Off, "关闭（识别最准）",
             "发送真实相对路径，AI 识别最准；完整路径与名称会发送到所配置的云端服务。请仅在信任该服务时使用。"),
@@ -77,8 +77,36 @@ public sealed class AiSettingsViewModel : ViewModelBase
     public SanitizationChoice SelectedSanitization
     {
         get => _selectedSanitization;
-        set { if (SetField(ref _selectedSanitization, value)) OnPropertyChanged(nameof(SanitizationHint)); }
+        set
+        {
+            if (!SetField(ref _selectedSanitization, value)) return;
+            OnPropertyChanged(nameof(SanitizationHint));
+            OnPropertyChanged(nameof(IsStrict));
+            OnPropertyChanged(nameof(IsBalanced));
+            OnPropertyChanged(nameof(IsOff));
+        }
     }
+
+    // 三档位单选 (问题#4: 用 RadioButton 平铺三档, 让"可调脱敏"一眼可见, 不藏在下拉里)。
+    public bool IsStrict
+    {
+        get => _selectedSanitization.Level == SanitizationLevel.Strict;
+        set { if (value) SelectedSanitization = SanitizationChoices.First(c => c.Level == SanitizationLevel.Strict); }
+    }
+    public bool IsBalanced
+    {
+        get => _selectedSanitization.Level == SanitizationLevel.Balanced;
+        set { if (value) SelectedSanitization = SanitizationChoices.First(c => c.Level == SanitizationLevel.Balanced); }
+    }
+    public bool IsOff
+    {
+        get => _selectedSanitization.Level == SanitizationLevel.Off;
+        set { if (value) SelectedSanitization = SanitizationChoices.First(c => c.Level == SanitizationLevel.Off); }
+    }
+
+    public string StrictHint => SanitizationChoices.First(c => c.Level == SanitizationLevel.Strict).Hint;
+    public string BalancedHint => SanitizationChoices.First(c => c.Level == SanitizationLevel.Balanced).Hint;
+    public string OffHint => SanitizationChoices.First(c => c.Level == SanitizationLevel.Off).Hint;
 
     public string SanitizationHint => _selectedSanitization?.Hint ?? "";
 

@@ -45,24 +45,21 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0" Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}"
                              VerticalContentAlignment="Center" Padding="8,6" FontSize="13"
                              ToolTip="可填磁盘根 (如 C:\) 或任意文件夹路径"/>
-                    <Button Grid.Column="1" Content="完整扫描" Command="{Binding ScanCommand}"
+                    <Button Grid.Column="1" Content="扫描此磁盘" Command="{Binding ScanCommand}"
                             Style="{StaticResource Primary}" Margin="10,0,0,0" MinWidth="96"/>
+                    <Button Grid.Column="2" Content="🖥 扫描整台电脑" Command="{Binding ScanAllDrivesCommand}"
+                            Style="{StaticResource Ghost}" Margin="8,0,0,0" MinWidth="120"
+                            ToolTip="一次扫描本机所有固定磁盘，合并成一份总览"/>
                 </Grid>
 
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                    <Button Content="⚡ 快速扫描（仅高价值区 AppData，更快）" Command="{Binding QuickScanCommand}"
-                            Style="{StaticResource Ghost}"/>
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                    <TextBlock Text="TopN：" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
-                    <TextBox Text="{Binding TopN}" Width="70" Padding="6,4" VerticalContentAlignment="Center"/>
                     <CheckBox Content="管理员模式（更全的扫描覆盖）" IsChecked="{Binding AdminMode}"
-                              VerticalAlignment="Center" Margin="18,0,0,0" Foreground="{StaticResource Ink}"/>
+                              VerticalAlignment="Center" Foreground="{StaticResource Ink}"/>
                 </StackPanel>
 
                 <Border Margin="0,12,0,0" Padding="10" CornerRadius="6" Background="#F3F6FB">
@@ -131,6 +128,10 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <!-- #1: 执行中显示不确定进度条, 让"清空回收站"等命令也有明确的"正在进行"反馈 -->
+                <ProgressBar Height="6" IsIndeterminate="True" Margin="2,8,2,0" BorderThickness="0"
+                             Foreground="{StaticResource Accent}" Background="#EDF0F3"
+                             Visibility="{Binding IsOfficialRunning, Converter={StaticResource BoolToVis}}"/>
                 <TextBlock Text="{Binding OfficialStatus}" Style="{StaticResource Sub}" Margin="2,4,0,0"
                            Visibility="{Binding OfficialStatus, Converter={StaticResource NotEmptyToVis}}"/>
             </StackPanel>
