@@ -80,6 +80,19 @@ public sealed class OfficialCleanupCatalogTests
         Assert.False(list.Single(a => a.Id == "empty-recyclebin").Reversible);
     }
 
+    [Fact] // 回归: 空回收站会让 powershell 退出码=1 (即便 -ErrorAction 抑制了报错); 清空命令须吞错并 exit 0,
+           // 否则回收站本就为空时被误判为"命令未成功执行(退出码1)"。
+    public void Empty_recyclebin_command_swallows_empty_bin_error_and_exits_zero()
+    {
+        var payload = OfficialCleanupCatalog.Build(@"C:\", Probe(0, false))
+            .Single(a => a.Id == "empty-recyclebin").Payload;
+
+        Assert.Contains("Clear-RecycleBin", payload);
+        Assert.Contains("catch", payload);     // 吞掉"回收站为空"等错误
+        Assert.Contains("exit 0", payload);    // 显式成功退出码, 不再被退出码 1 误判
+        Assert.DoesNotContain("SilentlyContinue", payload); // 抑制报错并不能避免退出码 1
+    }
+
     [Fact] // 执行表面: GUI 工具拉起 Windows 界面; 静默命令应用内执行 (避免 cmd 黑框)。
     public void Execution_surface_is_assigned_correctly()
     {

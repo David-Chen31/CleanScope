@@ -51,12 +51,14 @@ public static class OfficialCleanupCatalog
                 Undo: "以管理员运行 powercfg /h on 即可重新开启休眠（hiberfil.sys 会重新生成）。",
                 Consequence: "删除休眠文件 hiberfil.sys 并停用“休眠/快速启动”功能（不影响关机、睡眠、你的任何数据）。"),
 
-            // 清空回收站: 用 PowerShell 官方 cmdlet, 终端可见; 仍是"移走"到永久删除由系统完成, 用户主动确认。
+            // 清空回收站: PowerShell 官方 cmdlet, 隐藏执行。注意 powershell.exe 只要有错误记录 (含已被
+            // -ErrorAction 抑制的) 进程退出码就是 1——回收站本就为空时 Clear-RecycleBin 会报"回收站为空", 据此
+            // 误判失败。空回收站正是期望的结果, 故 try/catch 吞掉并显式 exit 0; 实际释放量由前后可用空间差如实反映。
             new("empty-recyclebin",
                 "清空回收站",
                 "永久删除回收站中的项以释放空间（此操作不可还原, 请先确认无误删）。",
                 CleanupActionKind.RunCommand, ActionType.RunCleanupCommand,
-                "powershell -NoProfile -Command \"Clear-RecycleBin -Force -ErrorAction SilentlyContinue\"",
+                "powershell -NoProfile -Command \"try { Clear-RecycleBin -Force -ErrorAction Stop } catch { }; exit 0\"",
                 EstimatedBytes: 0, Detected: true, NeedsAdmin: false,
                 Note: "清空后无法从回收站还原, 请确认其中没有需要的文件。",
                 Reversible: false,
