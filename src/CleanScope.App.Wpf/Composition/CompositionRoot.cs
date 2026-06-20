@@ -31,7 +31,7 @@ namespace CleanScope.App.Wpf.Composition;
 /// </summary>
 public static class CompositionRoot
 {
-    public const string AppVersion = "0.4.0";
+    public const string AppVersion = "0.4.1";
 
     public static async Task<AppServices> BuildAsync(CancellationToken ct = default)
     {

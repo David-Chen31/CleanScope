@@ -23,7 +23,7 @@ using CleanScope.Reporting;
 // 用法: cleanscope scan <path> [--report out.md] [--top N] [--admin] [--sanitize] [--rules <dir>]
 // 只读扫描, 绝不删除任何文件 (MVP 零删除)。
 
-const string AppVersion = "0.4.0";
+const string AppVersion = "0.4.1";
 
 if (args.Length < 2 || !string.Equals(args[0], "scan", StringComparison.OrdinalIgnoreCase))
 {
