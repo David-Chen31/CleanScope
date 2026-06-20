@@ -3,115 +3,125 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:CleanScope.App.Wpf.ViewModels"
         xmlns:ctrl="clr-namespace:CleanScope.App.Wpf.Controls"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         d:DataContext="{d:DesignInstance vm:ShellViewModel}"
         mc:Ignorable="d"
         Title="CleanScope" Height="760" Width="1180" MinHeight="560" MinWidth="900"
         Icon="pack://application:,,,/icon.ico"
-        Background="{StaticResource Bg}"
+        WindowStyle="None" ResizeMode="CanResize"
+        Background="{StaticResource Card}"
         WindowStartupLocation="CenterScreen">
 
-    <Window.Resources>
-        <Style x:Key="NavBtn" TargetType="Button">
-            <Setter Property="Foreground" Value="#D6DEE8"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Padding" Value="12,10"/>
-            <Setter Property="Margin" Value="0,2"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Grid>
-                            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="6"
-                                    Padding="{TemplateBinding Padding}">
-                                <ContentPresenter VerticalAlignment="Center"/>
-                            </Border>
-                            <Border x:Name="bar" Width="3" HorizontalAlignment="Left" CornerRadius="2"
-                                    Margin="0,6" Background="#5B9DFF" Visibility="Collapsed"/>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="b" Property="Background" Value="#1C2A3D"/>
-                            </Trigger>
-                            <!-- 当前页高亮: 按钮 Tag == ShellViewModel.ActivePage -->
-                            <DataTrigger Value="True">
-                                <DataTrigger.Binding>
-                                    <MultiBinding Converter="{StaticResource Eq}">
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Tag"/>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="DataContext.ActivePage"/>
-                                    </MultiBinding>
-                                </DataTrigger.Binding>
-                                <Setter TargetName="b" Property="Background" Value="#18283C"/>
-                                <Setter TargetName="bar" Property="Visibility" Value="Visible"/>
-                                <Setter Property="Foreground" Value="White"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
-                            </DataTrigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="#4A5666"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="46" ResizeBorderThickness="6"
+                            CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="220"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
-        <!-- 侧栏导航 -->
-        <Border Grid.Column="0" Background="#101826">
-            <StackPanel Margin="18,24">
-                <TextBlock Text="CleanScope" Foreground="White" FontSize="22" FontWeight="Bold"/>
-                <TextBlock Text="C 盘清理助手" Foreground="#8FA0B5" Margin="0,2,0,28"/>
-
-                <Button Content="①　概览 / 扫描" Tag="home" ToolTip="概览与扫描" Command="{Binding GoHomeCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="②　可清理清单" Tag="explorer" ToolTip="资源管理器 / 可清理清单" Command="{Binding GoExplorerCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="③　空间地图" Tag="map" Command="{Binding GoMapCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="④　按软件占用" Tag="software" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="⑤　报告 / 忽略" Tag="report" ToolTip="报告 / 忽略名单" Command="{Binding GoReportCommand}" Style="{StaticResource NavBtn}"/>
-
-                <!-- AI 设置不属于①–⑤主流程, 移作底部独立"配置"入口 -->
-                <Border Height="1" Background="#22304258" Margin="2,18,2,10"/>
-                <Button Content="⚙　AI 设置 / 配置" Tag="ai" Command="{Binding GoAiSettingsCommand}" Style="{StaticResource NavBtn}"/>
-
-                <Border Margin="0,18,0,0" Padding="10" CornerRadius="6" Background="#16202E">
-                    <TextBlock Text="{Binding AiBadge}" Foreground="#8FA0B5" FontSize="11" TextWrapping="Wrap"/>
-                </Border>
-            </StackPanel>
-        </Border>
-
-        <!-- 内容区 -->
-        <Grid Grid.Column="1">
+    <Border x:Name="RootBorder" Background="{StaticResource Card}">
+        <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="46"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
+            <!-- ===== 自绘标题栏 (品牌 + 安全锚 + 窗口按钮) ===== -->
             <Border Grid.Row="0" Background="{StaticResource Card}" BorderBrush="{StaticResource Line}"
-                    BorderThickness="0,0,0,1" Padding="24,14">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Title}" Style="{StaticResource H2}" Margin="0" VerticalAlignment="Center"/>
-                    <!-- 安全承诺只在此出现一次 -->
-                    <Border Style="{StaticResource Chip}" Background="{StaticResource CleanSoft}" Margin="12,0,0,0">
+                    BorderThickness="0,0,0,1">
+                <DockPanel LastChildFill="False">
+                    <!-- 品牌 -->
+                    <Border DockPanel.Dock="Left" Width="26" Height="26" CornerRadius="7" Margin="16,0,0,0"
+                            Background="{StaticResource Accent}" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock DockPanel.Dock="Left" Text="CleanScope" FontSize="15" FontWeight="SemiBold"
+                               Foreground="{StaticResource Ink}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <Border DockPanel.Dock="Left" Style="{StaticResource Chip}" Background="{StaticResource CleanSoft}" Margin="12,0,0,0">
                         <TextBlock Text="🛡 只读分析 · 删除可还原" FontSize="12" Foreground="{StaticResource Clean}"/>
                     </Border>
-                </StackPanel>
+
+                    <!-- 窗口按钮 -->
+                    <Button x:Name="CloseBtn" DockPanel.Dock="Right" Style="{StaticResource WinClose}"
+                            Content="&#xE8BB;" Click="CloseBtn_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button x:Name="MaxBtn" DockPanel.Dock="Right" Style="{StaticResource WinBtn}"
+                            Content="&#xE922;" Click="MaxBtn_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button x:Name="MinBtn" DockPanel.Dock="Right" Style="{StaticResource WinBtn}"
+                            Content="&#xE921;" Click="MinBtn_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                </DockPanel>
             </Border>
 
-            <!-- 不再用外层 ScrollViewer 包裹: 否则给内部 ListView 无限高度, 关闭 UI 虚拟化导致卡顿。
-                 各页自行管理滚动 (列表/空间地图自带滚动并虚拟化; 其余页内置 ScrollViewer)。 -->
-            <ContentControl Grid.Row="1" Content="{Binding CurrentView}" Margin="24,18"
-                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
-        </Grid>
+            <!-- ===== 主体: 侧栏 + 内容 ===== -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="216"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-        <!-- 全局 Toast 反馈层 (覆盖两栏, 右下角) -->
-        <ctrl:ToastHost Grid.Column="0" Grid.ColumnSpan="2" Panel.ZIndex="100"/>
-    </Grid>
+                <!-- 浅色一体导航 -->
+                <Border Grid.Column="0" Background="{StaticResource SidebarBg}" BorderBrush="{StaticResource Line}"
+                        BorderThickness="0,0,1,0">
+                    <DockPanel Margin="14,16,14,16">
+                        <!-- 底部: 设置 + AI 状态 -->
+                        <StackPanel DockPanel.Dock="Bottom">
+                            <Button Tag="ai" Command="{Binding GoAiSettingsCommand}" Style="{StaticResource NavItem}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Width="26" VerticalAlignment="Center"/>
+                                    <TextBlock Text="AI 设置" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Border Background="{StaticResource Subtle}" CornerRadius="8" Padding="12,9" Margin="0,10,0,0">
+                                <TextBlock Text="{Binding AiBadge}" Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap"/>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- 主导航 -->
+                        <StackPanel DockPanel.Dock="Top">
+                            <Button Tag="home" Command="{Binding GoHomeCommand}" Style="{StaticResource NavItem}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Width="26" VerticalAlignment="Center"/>
+                                    <TextBlock Text="概览 / 扫描" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Tag="explorer" Command="{Binding GoExplorerCommand}" Style="{StaticResource NavItem}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Width="26" VerticalAlignment="Center"/>
+                                    <TextBlock Text="可清理清单" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Tag="map" Command="{Binding GoMapCommand}" Style="{StaticResource NavItem}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE80A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Width="26" VerticalAlignment="Center"/>
+                                    <TextBlock Text="空间地图" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Tag="software" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource NavItem}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE71D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Width="26" VerticalAlignment="Center"/>
+                                    <TextBlock Text="按软件占用" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Tag="report" Command="{Binding GoReportCommand}" Style="{StaticResource NavItem}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8A5;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Width="26" VerticalAlignment="Center"/>
+                                    <TextBlock Text="报告 / 忽略" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- 内容区 -->
+                <ContentControl Grid.Column="1" Content="{Binding CurrentView}" Margin="24,18"
+                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+            </Grid>
+
+            <!-- 全局 Toast 反馈层 -->
+            <ctrl:ToastHost Grid.Row="1" Panel.ZIndex="100"/>
+        </Grid>
+    </Border>
 </Window>
