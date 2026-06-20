@@ -18,20 +18,21 @@
             <TextBlock Text="{Binding CurrentState}" FontWeight="SemiBold" Foreground="#1F4E8C" Margin="0,0,0,12"/>
 
             <TextBlock Text="Base URL（如 https://your-relay/v1）" Foreground="{StaticResource Ink}" Margin="0,0,0,4"/>
-            <TextBox Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" Margin="0,0,0,12"
-                     VerticalContentAlignment="Center"/>
+            <TextBox Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Field}" Margin="0,0,0,12"/>
 
             <TextBlock Text="API Key" Foreground="{StaticResource Ink}" Margin="0,0,0,4"/>
-            <PasswordBox x:Name="KeyBox" Padding="8,6" Margin="0,0,0,12" PasswordChanged="KeyBox_PasswordChanged"/>
+            <PasswordBox x:Name="KeyBox" Style="{StaticResource FieldPassword}" Margin="0,0,0,12" PasswordChanged="KeyBox_PasswordChanged"/>
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
                 <Button Content="🔍 检索模型" Command="{Binding ListModelsCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"/>
                 <ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}"
                           MinWidth="240" Padding="8,6" VerticalContentAlignment="Center"/>
             </StackPanel>
 
-            <CheckBox Content="启用 AI（脱敏后按需出云）" IsChecked="{Binding CloudEnabled}"
-                      Foreground="{StaticResource Ink}" Margin="0,0,0,14"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                <ToggleButton IsChecked="{Binding CloudEnabled}" Style="{StaticResource Toggle}" VerticalAlignment="Center"/>
+                <TextBlock Text="启用 AI（脱敏后按需出云）" Foreground="{StaticResource Ink}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
 
             <!-- 出云脱敏: 三档平铺单选, 醒目卡片 (问题#4: 让用户一眼看到能调档, 不致误以为 AI 识别力弱) -->
             <Border Background="#FFF7E6" BorderBrush="#F0C36D" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,14">
@@ -56,7 +57,37 @@
 
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                 <Button Content="测试连接" Command="{Binding TestCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"/>
-                <Button Content="保存并生效" Command="{Binding SaveCommand}" Style="{StaticResource Primary}"/>
+                <Button Command="{Binding SaveCommand}" Style="{StaticResource Primary}" MinWidth="132">
+                    <Grid>
+                        <!-- 闲置 -->
+                        <TextBlock Text="保存并生效" VerticalAlignment="Center"
+                                   Visibility="{Binding ShowSaveIdle, Converter={StaticResource BoolToVis}}"/>
+                        <!-- 保存中: 旋转环 + 文案 -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding IsSaving, Converter={StaticResource BoolToVis}}">
+                            <Ellipse Width="14" Height="14" Stroke="White" StrokeThickness="2" StrokeDashArray="3 2"
+                                     RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.RenderTransform>
+                                    <RotateTransform x:Name="spin"/>
+                                </Ellipse.RenderTransform>
+                                <Ellipse.Triggers>
+                                    <EventTrigger RoutedEvent="Ellipse.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetName="spin" Storyboard.TargetProperty="Angle"
+                                                                 From="0" To="360" Duration="0:0:0.8"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Ellipse.Triggers>
+                            </Ellipse>
+                            <TextBlock Text="保存中…" Foreground="White" Margin="8,0,0,0"/>
+                        </StackPanel>
+                        <!-- 已生效 -->
+                        <TextBlock Text="✓ 已生效" Foreground="White" VerticalAlignment="Center"
+                                   Visibility="{Binding JustSaved, Converter={StaticResource BoolToVis}}"/>
+                    </Grid>
+                </Button>
             </StackPanel>
 
             <Border Background="#F3F6FB" CornerRadius="6" Padding="10,8"

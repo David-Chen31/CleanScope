@@ -239,6 +239,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
 
         ActionStatus = $"已移入回收站 {ok} 项（可还原）"
             + (skipped > 0 ? $"；{skipped} 项被安全闸门拦下或失败，已保留。" : "。");
+        if (ok > 0) Toast.Show($"已移入回收站 {ok} 项（可还原）", ToastKind.Success, "打开回收站", () => _ = OpenRecycleBinAsync());
         UpdateSelectionSummary();
     }
 
@@ -447,10 +448,12 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             node.MarkDeleted();
             _session?.NotifyRemoved(node.Path, node.RawSize, node.IsCleanable);   // A1: 广播给其它页 + 概览扣减
             ActionStatus = $"已移入回收站（可还原）：{node.Name}";
+            Toast.Show($"已移入回收站（可还原）：{node.Name}", ToastKind.Success, "打开回收站", () => _ = OpenRecycleBinAsync());
         }
         else
         {
             ActionStatus = $"操作未完成：{log.RejectReason}";
+            Toast.Error($"未能移入回收站：{log.RejectReason}");
         }
     }
 
@@ -485,10 +488,12 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             node.MarkDeleted();
             _session?.NotifyRemoved(node.Path, node.RawSize, node.IsCleanable);
             ActionStatus = $"已移入回收站（可还原）：{node.Name}";
+            Toast.Show($"已移入回收站（可还原）：{node.Name}", ToastKind.Success, "打开回收站", () => _ = OpenRecycleBinAsync());
         }
         else
         {
             ActionStatus = $"操作未完成：{log.RejectReason}";
+            Toast.Error($"未能移入回收站：{log.RejectReason}");
         }
     }
 
@@ -501,6 +506,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             await _services.IgnoreRepository.AddAsync(
                 new IgnoreEntry(0, node.Path, MatchType.Exact, "在资源管理器忽略", DateTime.UtcNow));
             ActionStatus = $"已加入忽略名单：{node.Name}（可在「报告 / 忽略名单」页管理）。";
+            Toast.Show($"已加入忽略名单：{node.Name}", ToastKind.Success);
         }
         catch (Exception ex)
         {

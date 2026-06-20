@@ -14,6 +14,8 @@
             <conv:FactToBrushConverter x:Key="FactToBrush"/>
             <conv:BucketToBrushConverter x:Key="BucketToBrush"/>
             <conv:FractionToWidthConverter x:Key="FractionToWidth"/>
+            <conv:EqualsMultiConverter x:Key="Eq"/>
+            <conv:UsageToBrushConverter x:Key="UsageToBrush"/>
 
             <!-- VM → View 映射 (Shell 的 ContentControl 依此渲染) -->
             <DataTemplate DataType="{x:Type vm:HomeViewModel}"><views:HomeView/></DataTemplate>
@@ -24,70 +26,220 @@
             <DataTemplate DataType="{x:Type vm:ReportViewModel}"><views:ReportView/></DataTemplate>
             <DataTemplate DataType="{x:Type vm:AiSettingsViewModel}"><views:AiSettingsView/></DataTemplate>
 
-            <!-- 基础配色 -->
-            <SolidColorBrush x:Key="Bg" Color="#F4F6F8"/>
-            <SolidColorBrush x:Key="Card" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="Ink" Color="#1F2933"/>
-            <SolidColorBrush x:Key="Muted" Color="#6B7785"/>
-            <SolidColorBrush x:Key="Accent" Color="#1A56C4"/>
-            <SolidColorBrush x:Key="Line" Color="#E2E6EA"/>
+            <!-- ============ 视觉系统 v2 ============ -->
+            <!-- 底层 -->
+            <SolidColorBrush x:Key="Bg"       Color="#F3F5F9"/>
+            <SolidColorBrush x:Key="Card"     Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="Subtle"   Color="#F4F6FA"/>
+            <SolidColorBrush x:Key="Line"     Color="#E5E9F0"/>
+            <SolidColorBrush x:Key="LineSoft" Color="#EEF1F6"/>
+            <!-- 文字 -->
+            <SolidColorBrush x:Key="Ink"      Color="#1A2230"/>
+            <SolidColorBrush x:Key="Muted"    Color="#5C6877"/>
+            <SolidColorBrush x:Key="Faint"    Color="#8A94A3"/>
+            <!-- 强调 -->
+            <SolidColorBrush x:Key="Accent"      Color="#2563EB"/>
+            <SolidColorBrush x:Key="AccentHover" Color="#1D4FD7"/>
+            <SolidColorBrush x:Key="AccentPress" Color="#1A45BC"/>
+            <SolidColorBrush x:Key="AccentSoft"  Color="#E8F0FE"/>
+            <!-- 语义 (危险≠珍贵) -->
+            <SolidColorBrush x:Key="Clean"        Color="#157347"/>
+            <SolidColorBrush x:Key="CleanSoft"    Color="#E6F4EC"/>
+            <SolidColorBrush x:Key="Personal"     Color="#3A6EA5"/>
+            <SolidColorBrush x:Key="PersonalSoft" Color="#E8F0FA"/>
+            <SolidColorBrush x:Key="Warn"         Color="#B7791F"/>
+            <SolidColorBrush x:Key="WarnSoft"     Color="#FBF3E2"/>
+            <SolidColorBrush x:Key="Critical"     Color="#C5221F"/>
+            <SolidColorBrush x:Key="CriticalSoft" Color="#FBEAE9"/>
+
+            <!-- 阴影 (卡片分层, 去扁平) -->
+            <DropShadowEffect x:Key="CardShadow" BlurRadius="14" ShadowDepth="2"
+                              Direction="270" Opacity="0.10" Color="#27324A"/>
+            <DropShadowEffect x:Key="PopShadow" BlurRadius="24" ShadowDepth="6"
+                              Direction="270" Opacity="0.22" Color="#1A2230"/>
 
             <!-- 卡片 -->
             <Style x:Key="Cards" TargetType="Border">
                 <Setter Property="Background" Value="{StaticResource Card}"/>
                 <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
                 <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="8"/>
-                <Setter Property="Padding" Value="16"/>
-                <Setter Property="Margin" Value="0,0,0,12"/>
+                <Setter Property="CornerRadius" Value="10"/>
+                <Setter Property="Padding" Value="20"/>
+                <Setter Property="Margin" Value="0,0,0,14"/>
+                <Setter Property="Effect" Value="{StaticResource CardShadow}"/>
             </Style>
 
-            <!-- 主按钮 -->
+            <!-- 主按钮 (hover/press/focus/disabled) -->
             <Style x:Key="Primary" TargetType="Button">
                 <Setter Property="Background" Value="{StaticResource Accent}"/>
                 <Setter Property="Foreground" Value="White"/>
                 <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="Padding" Value="14,8"/>
+                <Setter Property="Padding" Value="16,9"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border Background="{TemplateBinding Background}" CornerRadius="6"
-                                    Padding="{TemplateBinding Padding}">
+                            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}" BorderThickness="0"
+                                    RenderTransformOrigin="0.5,0.5">
                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="{StaticResource AccentHover}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="{StaticResource AccentPress}"/>
+                                    <Setter TargetName="b" Property="RenderTransform">
+                                        <Setter.Value><ScaleTransform ScaleX="0.98" ScaleY="0.98"/></Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="b" Property="BorderThickness" Value="2"/>
+                                    <Setter TargetName="b" Property="BorderBrush" Value="#99FFFFFF"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="b" Property="Background" Value="#A9BBD8"/>
+                                    <Setter TargetName="b" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
-                <Style.Triggers>
-                    <Trigger Property="IsEnabled" Value="False">
-                        <Setter Property="Background" Value="#A9BBD8"/>
-                    </Trigger>
-                </Style.Triggers>
             </Style>
 
-            <!-- 次要按钮 -->
+            <!-- 次要按钮 (hover 浅强调底 + 蓝边) -->
             <Style x:Key="Ghost" TargetType="Button">
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Foreground" Value="{StaticResource Accent}"/>
-                <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
                 <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Padding" Value="12,6"/>
+                <Setter Property="Padding" Value="14,8"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6"
+                            <Border x:Name="b" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8"
                                     Padding="{TemplateBinding Padding}">
                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}"/>
+                                    <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="#D8E6FE"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="b" Property="Opacity" Value="0.5"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
             </Style>
 
+            <!-- 现代输入框 (焦点蓝边 + 辉光) -->
+            <Style x:Key="Field" TargetType="TextBox">
+                <Setter Property="Padding" Value="10,8"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                <Setter Property="CaretBrush" Value="{StaticResource Accent}"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TextBox">
+                            <Border x:Name="b" Background="White" BorderBrush="{StaticResource Line}"
+                                    BorderThickness="1.5" CornerRadius="8">
+                                <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="BorderBrush" Value="#C2CCDA"/>
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                    <Setter TargetName="b" Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#2563EB" Opacity="0.25"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 密码框 (同款外观) -->
+            <Style x:Key="FieldPassword" TargetType="PasswordBox">
+                <Setter Property="Padding" Value="10,8"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                <Setter Property="CaretBrush" Value="{StaticResource Accent}"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="PasswordBox">
+                            <Border x:Name="b" Background="White" BorderBrush="{StaticResource Line}"
+                                    BorderThickness="1.5" CornerRadius="8">
+                                <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="BorderBrush" Value="#C2CCDA"/>
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                    <Setter TargetName="b" Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#2563EB" Opacity="0.25"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ToggleSwitch (滑块开关, 替代"启用"复选框) -->
+            <Style x:Key="Toggle" TargetType="ToggleButton">
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="track" Width="42" Height="24" CornerRadius="12" Background="#CBD5E1">
+                                <Ellipse x:Name="thumb" Width="18" Height="18" Fill="White"
+                                         HorizontalAlignment="Left" Margin="3,0,0,0">
+                                    <Ellipse.Effect><DropShadowEffect BlurRadius="3" ShadowDepth="1" Opacity="0.3"/></Ellipse.Effect>
+                                </Ellipse>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="track" Property="Background" Value="{StaticResource Accent}"/>
+                                    <Setter TargetName="thumb" Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter TargetName="thumb" Property="Margin" Value="0,0,3,0"/>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="track" Property="Opacity" Value="0.88"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 文字层级 -->
+            <Style x:Key="Display" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="28"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+            </Style>
             <Style x:Key="H1" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="20"/>
                 <Setter Property="FontWeight" Value="Bold"/>
@@ -101,8 +253,20 @@
                 <Setter Property="Margin" Value="0,0,0,6"/>
             </Style>
             <Style x:Key="Sub" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="13"/>
                 <Setter Property="Foreground" Value="{StaticResource Muted}"/>
                 <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+            <Style x:Key="Caption" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Foreground" Value="{StaticResource Faint}"/>
+            </Style>
+
+            <!-- 通用 chip 容器 (圆角标签) -->
+            <Style x:Key="Chip" TargetType="Border">
+                <Setter Property="CornerRadius" Value="6"/>
+                <Setter Property="Padding" Value="7,2"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
             </Style>
 
         </ResourceDictionary>

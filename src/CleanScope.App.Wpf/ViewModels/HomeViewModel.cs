@@ -397,10 +397,12 @@ public sealed class HomeViewModel : ViewModelBase
                     OfficialStatus = freed > 0
                         ? $"✓ 已完成「{a.Title}」，释放约 {Format.HumanSize(freed)}。"
                         : $"✓ 已完成「{a.Title}」。";
+                    Toast.Show(freed > 0 ? $"已完成「{a.Title}」，释放约 {Format.HumanSize(freed)}" : $"已完成「{a.Title}」", ToastKind.Success);
                 }
                 else
                 {
                     OfficialStatus = $"✗ 未能完成「{a.Title}」：{log.RejectReason}";
+                    Toast.Error($"未能完成「{a.Title}」：{log.RejectReason}");
                 }
             }
         }

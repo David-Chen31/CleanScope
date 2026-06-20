@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CleanScope.Ai.Chat;
+using CleanScope.App.Wpf.Common;
 using CleanScope.App.Wpf.Composition;
 using CleanScope.App.Wpf.Mvvm;
 using CleanScope.Domain.Enums;
@@ -117,6 +118,18 @@ public sealed class AiSettingsViewModel : ViewModelBase
         private set { if (SetField(ref _busy, value)) RaiseAll(); }
     }
 
+    // 保存按钮三态: 闲置 → 保存中(转圈) → 已生效(✓), 让"保存并生效"就近可见地有反馈。
+    public enum SavePhase { Idle, Saving, Saved }
+    private SavePhase _phase = SavePhase.Idle;
+    public SavePhase Phase
+    {
+        get => _phase;
+        private set { if (SetField(ref _phase, value)) { OnPropertyChanged(nameof(IsSaving)); OnPropertyChanged(nameof(JustSaved)); OnPropertyChanged(nameof(ShowSaveIdle)); } }
+    }
+    public bool IsSaving => _phase == SavePhase.Saving;
+    public bool JustSaved => _phase == SavePhase.Saved;
+    public bool ShowSaveIdle => _phase == SavePhase.Idle;
+
     private string _status = "";
     public string Status { get => _status; private set => SetField(ref _status, value); }
 
@@ -156,27 +169,31 @@ public sealed class AiSettingsViewModel : ViewModelBase
             var (ok, msg) = await AiProvisioning.TestAsync(_services.Http,
                 new AiOptions(_baseUrl, _apiKey, _selectedModel ?? "", CloudEnabled: true));
             Status = (ok ? "✅ " : "❌ ") + msg;
+            Toast.Show(ok ? "连接正常" : "连接失败：" + msg, ok ? ToastKind.Success : ToastKind.Error);
         }
-        catch (Exception ex) { Status = "❌ 测试失败：" + ex.Message; }
+        catch (Exception ex) { Status = "❌ 测试失败：" + ex.Message; Toast.Error("测试失败：" + ex.Message); }
         finally { IsBusy = false; }
     }
 
-    private Task SaveAsync()
+    private async Task SaveAsync()
     {
         IsBusy = true;
+        Phase = SavePhase.Saving;
         try
         {
             var opts = new AiOptions(_baseUrl?.Trim() ?? "", _apiKey?.Trim() ?? "", _selectedModel ?? "", CloudEnabled,
                 _selectedSanitization?.Level ?? SanitizationLevel.Strict);
             _services.ReconfigureAi(opts);   // 热替换 + 更新脱敏档位 + 持久化(加密) + 广播
+            OnPropertyChanged(nameof(CurrentState));
             Status = _services.AiEnabled
                 ? "已保存并启用。AI 解释 / 识别 / 建议现在可用（按需触发，仍只在你点击时出云）。"
                 : "已保存。未启用云端（勾选「启用」并填全 Base URL/Key/模型 即可启用）。";
-            OnPropertyChanged(nameof(CurrentState));
+            Toast.Show(_services.AiEnabled ? $"已保存并生效 · 模型 {opts.Model}" : "已保存（未启用云端）", ToastKind.Success);
+            Phase = SavePhase.Saved;
+            await Task.Delay(1600);   // "✓ 已生效"停留片刻
         }
-        catch (Exception ex) { Status = "保存失败：" + ex.Message; }
-        finally { IsBusy = false; }
-        return Task.CompletedTask;
+        catch (Exception ex) { Status = "保存失败：" + ex.Message; Toast.Error("保存失败：" + ex.Message); }
+        finally { if (Phase == SavePhase.Saved) Phase = SavePhase.Idle; IsBusy = false; }
     }
 
     private void RaiseAll()

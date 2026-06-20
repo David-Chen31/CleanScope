@@ -62,6 +62,30 @@ public sealed class NotEmptyToVisibilityConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>两值相等 → true (导航高亮: 当前页 key == 按钮 Tag)。</summary>
+public sealed class EqualsMultiConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object? parameter, CultureInfo culture) =>
+        values is { Length: 2 } && Equals(values[0]?.ToString(), values[1]?.ToString());
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>磁盘占用比 (0–1) → 三档色: &lt;0.7 绿, 0.7–0.9 琥珀, &gt;0.9 红 (濒满警示)。</summary>
+public sealed class UsageToBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var r = value is double d ? d : 0;
+        var hex = r >= 0.9 ? "#C5221F" : r >= 0.7 ? "#B7791F" : "#157347";
+        return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+    }
+
+    public object ConvertBack(object value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>占比 (0–1) × 参数(最大像素宽) → 大小条宽度 (P1 资源管理器)。</summary>
 public sealed class FractionToWidthConverter : IValueConverter
 {

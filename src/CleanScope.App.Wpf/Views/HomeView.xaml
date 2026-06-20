@@ -15,7 +15,8 @@
                 <TextBlock Text="磁盘容量" Style="{StaticResource H2}"/>
                 <TextBlock Text="{Binding DriveInfo}" Style="{StaticResource Sub}" Margin="0,0,0,8"/>
                 <ProgressBar Height="10" Minimum="0" Maximum="1" Value="{Binding DriveUsedRatio, Mode=OneWay}"
-                             Foreground="{StaticResource Accent}" Background="#EDF0F3" BorderThickness="0"/>
+                             Foreground="{Binding DriveUsedRatio, Converter={StaticResource UsageToBrush}}"
+                             Background="#EDF0F3" BorderThickness="0"/>
             </StackPanel>
         </Border>
 
@@ -48,7 +49,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0" Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}"
-                             VerticalContentAlignment="Center" Padding="8,6" FontSize="13"
+                             Style="{StaticResource Field}"
                              ToolTip="可填磁盘根 (如 C:\) 或任意文件夹路径"/>
                     <Button Grid.Column="1" Content="扫描此磁盘" Command="{Binding ScanCommand}"
                             Style="{StaticResource Primary}" Margin="10,0,0,0" MinWidth="96"/>
@@ -62,7 +63,11 @@
                               VerticalAlignment="Center" Foreground="{StaticResource Ink}"/>
                 </StackPanel>
 
-                <Border Margin="0,12,0,0" Padding="10" CornerRadius="6" Background="#F3F6FB">
+                <!-- 扫描进行中的不确定进度条 (就近反馈, 不必盯底部状态行) -->
+                <ProgressBar Height="4" IsIndeterminate="True" Margin="0,12,0,0" BorderThickness="0"
+                             Foreground="{StaticResource Accent}" Background="#EDF0F3"
+                             Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}"/>
+                <Border Margin="0,12,0,0" Padding="10" CornerRadius="6" Background="{StaticResource Subtle}">
                     <TextBlock Text="{Binding Status}" Style="{StaticResource Sub}"/>
                 </Border>
             </StackPanel>

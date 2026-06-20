@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:CleanScope.App.Wpf.ViewModels"
+        xmlns:ctrl="clr-namespace:CleanScope.App.Wpf.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         d:DataContext="{d:DesignInstance vm:ShellViewModel}"
@@ -23,14 +24,31 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="6"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter VerticalAlignment="Center"/>
-                        </Border>
+                        <Grid>
+                            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </Border>
+                            <Border x:Name="bar" Width="3" HorizontalAlignment="Left" CornerRadius="2"
+                                    Margin="0,6" Background="#5B9DFF" Visibility="Collapsed"/>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="b" Property="Background" Value="#1C2A3D"/>
                             </Trigger>
+                            <!-- 当前页高亮: 按钮 Tag == ShellViewModel.ActivePage -->
+                            <DataTrigger Value="True">
+                                <DataTrigger.Binding>
+                                    <MultiBinding Converter="{StaticResource Eq}">
+                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Tag"/>
+                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="DataContext.ActivePage"/>
+                                    </MultiBinding>
+                                </DataTrigger.Binding>
+                                <Setter TargetName="b" Property="Background" Value="#18283C"/>
+                                <Setter TargetName="bar" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </DataTrigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="#4A5666"/>
                             </Trigger>
@@ -54,15 +72,15 @@
                 <TextBlock Text="C 盘 AI 清理助手" Foreground="#8FA0B5" Margin="0,2,0,2"/>
                 <TextBlock Text="删除仅移入回收站 · 可还原" Foreground="#5FC88F" FontSize="11" Margin="0,0,0,28"/>
 
-                <Button Content="① 概览 / 扫描" Command="{Binding GoHomeCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="② 资源管理器 / 可清理清单" Command="{Binding GoExplorerCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="③ 空间地图" Command="{Binding GoMapCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="④ 按软件" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource NavBtn}"/>
-                <Button Content="⑤ 报告 / 忽略名单" Command="{Binding GoReportCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="①　概览 / 扫描" Tag="home" ToolTip="概览与扫描" Command="{Binding GoHomeCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="②　可清理清单" Tag="explorer" ToolTip="资源管理器 / 可清理清单" Command="{Binding GoExplorerCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="③　空间地图" Tag="map" Command="{Binding GoMapCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="④　按软件占用" Tag="software" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="⑤　报告 / 忽略" Tag="report" ToolTip="报告 / 忽略名单" Command="{Binding GoReportCommand}" Style="{StaticResource NavBtn}"/>
 
                 <!-- AI 设置不属于①–⑤主流程, 移作底部独立"配置"入口 -->
                 <Border Height="1" Background="#22304258" Margin="2,18,2,10"/>
-                <Button Content="⚙ AI 设置 / 配置" Command="{Binding GoAiSettingsCommand}" Style="{StaticResource NavBtn}"/>
+                <Button Content="⚙　AI 设置 / 配置" Tag="ai" Command="{Binding GoAiSettingsCommand}" Style="{StaticResource NavBtn}"/>
 
                 <Border Margin="0,18,0,0" Padding="10" CornerRadius="6" Background="#16202E">
                     <TextBlock Text="{Binding AiBadge}" Foreground="#8FA0B5" FontSize="11" TextWrapping="Wrap"/>
@@ -87,5 +105,8 @@
             <ContentControl Grid.Row="1" Content="{Binding CurrentView}" Margin="24,18"
                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
         </Grid>
+
+        <!-- 全局 Toast 反馈层 (覆盖两栏, 右下角) -->
+        <ctrl:ToastHost Grid.Column="0" Grid.ColumnSpan="2" Panel.ZIndex="100"/>
     </Grid>
 </Window>

@@ -66,6 +66,10 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
 
     public ScanSession? Session { get; private set; }
 
+    // 当前页 key (导航高亮: 与各 NavBtn 的 Tag 比对)。详情页不改高亮, 保留来处页。
+    private string _activePage = "home";
+    public string ActivePage { get => _activePage; private set => SetField(ref _activePage, value); }
+
     public RelayCommand GoHomeCommand { get; }
     public RelayCommand GoMapCommand { get; }
     public RelayCommand GoExplorerCommand { get; }
@@ -100,14 +104,14 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         _shownRevision[page] = Session.Revision;
     }
 
-    public void ShowHome() { _home.OnActivated(); CurrentView = _home; }
+    public void ShowHome() { _home.OnActivated(); ActivePage = "home"; CurrentView = _home; }
     // C1: 文件清单已并入资源管理器 —— "可清理清单"即资源管理器的"只看可清理"模式。
-    public void ShowList() { _explorer.ShowCleanableOnly = true; CurrentView = _explorer; }
-    public void ShowMap() { EnsureFresh(_map, () => _map.Load(Session!)); CurrentView = _map; }
-    public void ShowExplorer() => CurrentView = _explorer;
-    public void ShowBySoftware() { EnsureFresh(_software, () => _software.Load(Session!)); CurrentView = _software; }
-    public void ShowReport() { EnsureFresh(_report, () => _report.Load(Session!)); _report.RefreshOnShow(); CurrentView = _report; }
-    public void ShowAiSettings() => CurrentView = _aiSettings;
+    public void ShowList() { _explorer.ShowCleanableOnly = true; ActivePage = "explorer"; CurrentView = _explorer; }
+    public void ShowMap() { EnsureFresh(_map, () => _map.Load(Session!)); ActivePage = "map"; CurrentView = _map; }
+    public void ShowExplorer() { ActivePage = "explorer"; CurrentView = _explorer; }
+    public void ShowBySoftware() { EnsureFresh(_software, () => _software.Load(Session!)); ActivePage = "software"; CurrentView = _software; }
+    public void ShowReport() { EnsureFresh(_report, () => _report.Load(Session!)); _report.RefreshOnShow(); ActivePage = "report"; CurrentView = _report; }
+    public void ShowAiSettings() { ActivePage = "ai"; CurrentView = _aiSettings; }
 
     // 进入详情前所在的页, 供详情"返回"原路返回 (修复: 从"按软件"点进详情后返回却跳到资源管理器)。
     private object? _detailReturn;
