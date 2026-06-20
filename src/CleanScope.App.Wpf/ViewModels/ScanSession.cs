@@ -16,9 +16,33 @@ public sealed class ScanSession
         Rows = rows;
         Tree = tree;
         CleanupCategories = CleanupAggregator.Aggregate(report.Items);
+        Disk = TryReadDisk(targetPath);
     }
 
     public string TargetPath { get; }
+
+    /// <summary>
+    /// 所在磁盘的真实容量/占用 (System.IO.DriveInfo)。扫描"逻辑大小"求和会因**硬链接/稀疏文件**重复计,
+    /// 可能高于磁盘实际占用 (问题#2: D 盘 756G 却显示 825G) —— 故凡展示磁盘占用一律以此真实数为准。
+    /// </summary>
+    public DiskUsage? Disk { get; }
+
+    /// <summary>磁盘真实容量信息 (字节)。</summary>
+    public readonly record struct DiskUsage(string Root, long Total, long Free, long Used);
+
+    private static DiskUsage? TryReadDisk(string path)
+    {
+        try
+        {
+            var root = System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(path));
+            if (string.IsNullOrEmpty(root)) return null;
+            var di = new System.IO.DriveInfo(root);
+            if (!di.IsReady) return null;
+            var used = di.TotalSize - di.TotalFreeSpace;
+            return new DiskUsage(root, di.TotalSize, di.TotalFreeSpace, Math.Max(0, used));
+        }
+        catch { return null; }
+    }
     public ScanReport Report { get; private set; }
     public IReadOnlyList<FileRowViewModel> Rows { get; }
 
@@ -121,4 +145,5 @@ public interface INavigationHost
     void ShowReport();
     void ShowBySoftware();
     void ShowExplorer();
+    void BackFromDetail();   // 详情页"返回": 回到进入详情前的那一页 (按软件/空间地图/可清理清单)
 }

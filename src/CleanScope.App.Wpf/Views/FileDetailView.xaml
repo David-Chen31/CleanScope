@@ -8,7 +8,7 @@
              mc:Ignorable="d" d:DesignWidth="860">
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel>
-        <Button Content="← 返回清单" Command="{Binding BackCommand}" Style="{StaticResource Ghost}"
+        <Button Content="← 返回" Command="{Binding BackCommand}" Style="{StaticResource Ghost}"
                 HorizontalAlignment="Left" Margin="0,0,0,12"/>
 
         <StackPanel DataContext="{Binding Row}">

@@ -94,13 +94,31 @@
                                                     Visibility="{Binding NeedsAdmin, Converter={StaticResource BoolToVis}}">
                                                 <TextBlock Text="管理员" FontSize="11" Foreground="#C5221F"/>
                                             </Border>
+                                            <!-- 问题#3: 可恢复/不可恢复一眼可见 -->
+                                            <Border CornerRadius="3" Padding="5,1" Margin="6,0,0,0" Background="#EEF1F5">
+                                                <TextBlock FontSize="11">
+                                                    <Run Text="{Binding ReversibleBadge, Mode=OneWay}"/>
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#1E7E34"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsIrreversible}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#C5221F"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Border>
                                         </StackPanel>
                                         <TextBlock Text="{Binding Description}" Style="{StaticResource Sub}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                        <TextBlock Text="{Binding Action.Consequence}" Style="{StaticResource Sub}" TextWrapping="Wrap" Margin="0,2,0,0"
+                                                   Foreground="{StaticResource Muted}"/>
                                     </StackPanel>
                                     <TextBlock Grid.Column="1" Text="{Binding SavingsText}" VerticalAlignment="Center" Margin="0,0,12,0"
                                                FontWeight="Bold" Foreground="#1E7E34"
                                                Visibility="{Binding HasSavings, Converter={StaticResource BoolToVis}}"/>
-                                    <Button Grid.Column="2" Content="执行" VerticalAlignment="Center" MinWidth="72"
+                                    <Button Grid.Column="2" Content="{Binding RunButtonText}" VerticalAlignment="Center" MinWidth="110"
                                             Style="{StaticResource Ghost}"
                                             Command="{Binding DataContext.RunOfficialActionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                             CommandParameter="{Binding}"/>

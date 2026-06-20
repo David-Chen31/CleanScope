@@ -226,6 +226,20 @@ Architecture: Clean Architecture + "AI sidecar + single safety gate". AI is advi
 
 ---
 
+## Disclaimer
+
+CleanScope is free, open-source software provided **"as is", without warranty of any kind**, express or implied. By using it you agree that:
+
+- **You are responsible for your own data.** Although CleanScope is designed to be safe (recycle-bin only, never permanent delete, system-critical blacklist), disk cleanup is inherently risky. Always make sure you have backups of anything important before deleting.
+- **Attribution, risk levels, size estimates and AI explanations are best-effort, not guarantees.** They can be wrong or incomplete. The final decision to delete, migrate, or run any official cleanup command is always yours.
+- **"Official cleanup" actions launch Windows' own tools** (powercfg / DISM / cleanmgr / Storage Sense, etc.). Their effects and any irreversibility are determined by Windows, not by CleanScope; read each action's description and confirm before running.
+- **The authors and contributors accept no liability** for any data loss, system issues, or other damages arising from use of this software, to the maximum extent permitted by law. See the LICENSE for the full terms.
+- The optional AI feature sends **desensitized metadata only** (never file contents) to the third-party endpoint **you** configure; you are responsible for that endpoint's privacy and terms. With AI off, everything stays local.
+
+If you do not agree, do not use the software.
+
+---
+
 # 中文
 
 [English](#cleanscope) | **中文**
@@ -452,3 +466,17 @@ rules/                       声明式规则包（*.json）
 - AI 不能绕过规则引擎、不能调低风险、不触发删除；无法判断时输出“无法判断，不建议删除”。
 - 不上传文件内容；脱敏后才出云；关闭云端则全程本地。
 - 所有操作先写审计后执行；审计写失败即中止。
+
+---
+
+## 免责声明
+
+CleanScope 是免费开源软件，**按“现状”提供，不附带任何明示或默示的担保**。使用本软件即表示你同意：
+
+- **你对自己的数据负责。** 尽管 CleanScope 在设计上力求安全（只移入回收站、绝不永久删除、系统关键黑名单保护），磁盘清理本身存在固有风险。删除任何重要内容前，请务必先做好备份。
+- **归属、风险分级、空间估算与 AI 解释都是“尽力而为”，不是保证。** 它们可能出错或不完整。是否删除、迁移、或执行任何官方清理命令，**最终决定权始终在你**。
+- **“官方清理”手段启动的是 Windows 自带工具**（powercfg / DISM / cleanmgr / 存储感知 等）。其效果与是否可逆由 Windows 决定，与 CleanScope 无关；执行前请阅读每条说明并确认。
+- **在法律允许的最大范围内，作者与贡献者对因使用本软件导致的任何数据丢失、系统问题或其他损失不承担责任。** 完整条款见 LICENSE。
+- 可选的 AI 功能只会把**脱敏后的元数据**（绝不含文件内容）发送到**你自己配置**的第三方接口；该接口的隐私与条款由你自行负责。关闭 AI 则全程本地。
+
+如果你不同意以上条款，请勿使用本软件。

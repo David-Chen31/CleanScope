@@ -23,7 +23,7 @@ public sealed class FileDetailViewModel : ViewModelBase
     {
         _services = services;
         _host = host;
-        BackCommand = new RelayCommand(_host.ShowList);
+        BackCommand = new RelayCommand(_host.BackFromDetail);   // 返回进入详情前的那一页 (按软件/空间地图/清单)
         OpenFolderCommand = new AsyncRelayCommand(_ => DoActionAsync(ActionType.OpenDir));
         CopyPathCommand = new AsyncRelayCommand(_ => CopyPathAsync());
         AddIgnoreCommand = new AsyncRelayCommand(_ => DoActionAsync(ActionType.AddIgnore));

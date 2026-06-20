@@ -270,11 +270,23 @@ public sealed class HomeViewModel : ViewModelBase
         if (vm is null) return;
         var a = vm.Action;
         var admin = a.NeedsAdmin ? "\n\n⚠ 需要管理员权限：若本程序非管理员启动，命令可能失败，请以管理员身份重开后再试。" : "";
+        var recover = a.Reversible
+            ? $"能否恢复：可以。{a.Undo}"
+            : $"能否恢复：❌ 不可恢复。{a.Undo}";
+        // 问题#3: 弹窗讲清"做什么/为什么/后果/能否恢复/如何恢复", 让用户明白这一步到底干什么、有何后果。
         var confirm = MessageBox.Show(
-            $"将执行官方清理手段：\n\n【{a.Title}】\n{a.Description}\n\n执行内容：{a.Payload}\n\n说明：{a.Note}{admin}\n\nCleanScope 不替你删除文件，只启动 Windows 自带工具，过程对你可见。确定继续吗？",
-            "执行官方清理 — CleanScope",
-            MessageBoxButton.OKCancel, MessageBoxImage.Information, MessageBoxResult.Cancel);
-        if (confirm != MessageBoxResult.OK) { OfficialStatus = "已取消。"; return; }
+            $"【{a.Title}】\n\n" +
+            $"做什么：{a.Description}\n\n" +
+            $"执行后果：{(string.IsNullOrWhiteSpace(a.Consequence) ? a.Description : a.Consequence)}\n\n" +
+            $"{recover}\n\n" +
+            $"实际执行的命令：{a.Payload}\n\n" +
+            $"提示：{a.Note}{admin}\n\n" +
+            "CleanScope 不替你删除文件，只启动 Windows 自带工具，过程对你可见。确定继续吗？",
+            $"确认执行：{a.Title} — CleanScope",
+            MessageBoxButton.OKCancel,
+            a.Reversible ? MessageBoxImage.Information : MessageBoxImage.Warning,
+            MessageBoxResult.Cancel);
+        if (confirm != MessageBoxResult.OK) { OfficialStatus = "已取消，未做任何改动。"; return; }
 
         // OpenSettings 经 TargetPath 携带 ms-settings: URI; RunCleanupCommand 经 Payload 携带命令。
         var isSettings = a.ExecAction == ActionType.OpenSettings;
@@ -335,6 +347,12 @@ public sealed class OfficialActionViewModel
     public bool NeedsAdmin => Action.NeedsAdmin;
     public string AdminBadge => Action.NeedsAdmin ? "管理员" : "";
     public bool Detected => Action.Detected;
+
+    // 问题#3: 卡片上直接标"可恢复 / 不可恢复", 让用户点之前心里有数。
+    public string ReversibleBadge => Action.Reversible ? "可恢复" : "不可恢复";
+    public bool IsIrreversible => !Action.Reversible;
+    // 按钮文案明确"会先弹确认", 打消"一点就删"的顾虑。
+    public string RunButtonText => "执行（会先确认）";
     /// <summary>有预估收益则显示"约 X"，否则显示是否检测到机会。</summary>
     public string SavingsText => Action.EstimatedBytes > 0
         ? $"约 {Common.Format.HumanSize(Action.EstimatedBytes)}"

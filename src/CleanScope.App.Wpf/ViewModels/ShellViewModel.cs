@@ -101,9 +101,15 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public void ShowReport() { EnsureFresh(_report, () => _report.Load(Session!)); _report.RefreshOnShow(); CurrentView = _report; }
     public void ShowAiSettings() => CurrentView = _aiSettings;
 
+    // 进入详情前所在的页, 供详情"返回"原路返回 (修复: 从"按软件"点进详情后返回却跳到资源管理器)。
+    private object? _detailReturn;
+
     public void ShowDetail(FileRowViewModel row)
     {
+        if (!ReferenceEquals(_current, _detail)) _detailReturn = _current;   // 记住来处 (避免详情→详情时丢失)
         _detail.Show(row);
         CurrentView = _detail;
     }
+
+    public void BackFromDetail() => CurrentView = _detailReturn ?? _explorer;
 }

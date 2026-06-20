@@ -63,4 +63,19 @@ public sealed class OfficialCleanupCatalogTests
     public void All_payloads_are_nonempty_literals()
         => Assert.All(OfficialCleanupCatalog.Build(@"C:\", Probe(0, true)),
             a => Assert.False(string.IsNullOrWhiteSpace(a.Payload)));
+
+    [Fact] // 问题#3: 每条都标清"后果"且不可逆项给出说明 (让用户点之前心里有数)。
+    public void Every_action_explains_consequence_and_irreversible_ones_warn()
+    {
+        var list = OfficialCleanupCatalog.Build(@"C:\", Probe(8L * 1024 * 1024 * 1024, hasWinOld: true));
+        Assert.All(list, a => Assert.False(string.IsNullOrWhiteSpace(a.Consequence)));
+        Assert.All(list, a => Assert.False(string.IsNullOrWhiteSpace(a.Undo)));
+
+        // 关闭休眠可逆且给出 powercfg /h on 恢复方式; 清空回收站不可逆。
+        var hiber = list.Single(a => a.Id == "disable-hibernation");
+        Assert.True(hiber.Reversible);
+        Assert.Contains("powercfg /h on", hiber.Undo);
+
+        Assert.False(list.Single(a => a.Id == "empty-recyclebin").Reversible);
+    }
 }

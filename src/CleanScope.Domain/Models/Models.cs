@@ -253,4 +253,7 @@ public record OfficialCleanupAction(
     long EstimatedBytes,           // 预估可释放字节 (能检测则给, 0=未知)
     bool Detected,                 // 本机是否确实检测到该机会 (如 hiberfil.sys 存在)
     bool NeedsAdmin,               // 是否需要管理员权限
-    string Note);                  // 可逆性/风险提示
+    string Note,                   // 可逆性/风险提示
+    bool Reversible = true,        // 问题#3: 操作是否可恢复 (false=删除后无法还原, UI 红色警示)
+    string Undo = "",              // 如何恢复/撤销 (如 "powercfg /h on 重新开启休眠"); 空=无需或无法撤销
+    string Consequence = "");      // 执行后会发生什么 / 影响 (一句话, 供确认弹窗与卡片展示)

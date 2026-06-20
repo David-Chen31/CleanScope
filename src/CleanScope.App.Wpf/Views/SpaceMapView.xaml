@@ -10,6 +10,12 @@
         <DockPanel>
             <TextBlock DockPanel.Dock="Top" Text="空间地图（矩形树图）" Style="{StaticResource H2}"/>
 
+            <!-- 问题#2: 真实磁盘占用为准, 说明逻辑合计为何可能更大 (硬链接/稀疏文件) -->
+            <Border DockPanel.Dock="Top" Background="#F3F6FB" CornerRadius="6" Padding="10,7" Margin="0,0,0,8"
+                    Visibility="{Binding HasDiskHint, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding DiskHint}" TextWrapping="Wrap" Foreground="{StaticResource Ink}"/>
+            </Border>
+
             <!-- 面包屑 + 返回上层 -->
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                 <Button DockPanel.Dock="Left" Content="↑ 上一层" Command="{Binding UpCommand}"

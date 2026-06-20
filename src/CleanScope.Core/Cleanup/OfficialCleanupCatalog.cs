@@ -46,7 +46,10 @@ public static class OfficialCleanupCatalog
                 "休眠文件约等于物理内存大小, 常占数 GB。关闭后立即释放。",
                 CleanupActionKind.RunCommand, ActionType.RunCleanupCommand, "powercfg /h off",
                 EstimatedBytes: hiberSize, Detected: hiberSize > 0, NeedsAdmin: true,
-                Note: "需要管理员。关闭后休眠与快速启动将不可用; 需要时可用 powercfg /h on 恢复。"),
+                Note: "需要管理员。关闭后休眠与快速启动将不可用。",
+                Reversible: true,
+                Undo: "以管理员运行 powercfg /h on 即可重新开启休眠（hiberfil.sys 会重新生成）。",
+                Consequence: "删除休眠文件 hiberfil.sys 并停用“休眠/快速启动”功能（不影响关机、睡眠、你的任何数据）。"),
 
             // 清空回收站: 用 PowerShell 官方 cmdlet, 终端可见; 仍是"移走"到永久删除由系统完成, 用户主动确认。
             new("empty-recyclebin",
@@ -55,7 +58,10 @@ public static class OfficialCleanupCatalog
                 CleanupActionKind.RunCommand, ActionType.RunCleanupCommand,
                 "powershell -NoProfile -Command \"Clear-RecycleBin -Force -ErrorAction SilentlyContinue\"",
                 EstimatedBytes: 0, Detected: true, NeedsAdmin: false,
-                Note: "清空后无法从回收站还原, 请确认其中没有需要的文件。"),
+                Note: "清空后无法从回收站还原, 请确认其中没有需要的文件。",
+                Reversible: false,
+                Undo: "无法撤销。如担心误删, 建议先打开回收站逐项确认后再清空。",
+                Consequence: "永久删除回收站里的全部文件（不再可还原）。不影响回收站以外的任何文件。"),
 
             // WinSxS 组件清理: 黑名单严禁手删, 唯一安全方式是 DISM 官方命令。
             new("dism-component-cleanup",
@@ -64,7 +70,10 @@ public static class OfficialCleanupCatalog
                 CleanupActionKind.RunCommand, ActionType.RunCleanupCommand,
                 "Dism.exe /Online /Cleanup-Image /StartComponentCleanup",
                 EstimatedBytes: 0, Detected: true, NeedsAdmin: true,
-                Note: "需要管理员, 过程可能较久。这是清理 WinSxS 的唯一官方安全方式。"),
+                Note: "需要管理员, 过程可能较久。这是清理 WinSxS 的唯一官方安全方式。",
+                Reversible: false,
+                Undo: "无法逐项撤销, 但只清理“已被更新取代、不再需要”的旧组件, 不影响系统正常运行与现有功能。",
+                Consequence: "删除 WinSxS 里被新版本取代的旧组件副本；清理后已安装的更新将无法卸载回退。系统功能不受影响。"),
 
             // 磁盘清理 cleanmgr: 经典官方工具, 覆盖更新缓存/缩略图/旧系统等。
             new("disk-cleanup",
@@ -72,7 +81,10 @@ public static class OfficialCleanupCatalog
                 "Windows 自带磁盘清理, 可勾选更新缓存、缩略图、传递优化文件等安全项。",
                 CleanupActionKind.RunCommand, ActionType.RunCleanupCommand, "cleanmgr",
                 EstimatedBytes: 0, Detected: true, NeedsAdmin: false,
-                Note: "在弹出的界面中勾选要清理的类别后确认。"),
+                Note: "在弹出的界面中勾选要清理的类别后确认。",
+                Reversible: false,
+                Undo: "由你在磁盘清理界面勾选要删的类别, 删除的临时/缓存文件无法还原 (但多可由系统重新生成)。",
+                Consequence: "仅“打开”Windows 磁盘清理工具，不会自动删除任何东西——删什么由你在它界面里勾选后确认。"),
 
             // 存储感知: 现代设置页, 可一劳永逸自动清理临时/回收站。
             new("storage-sense",
@@ -80,7 +92,10 @@ public static class OfficialCleanupCatalog
                 "开启后 Windows 会自动清理临时文件与回收站, 长期省心。",
                 CleanupActionKind.OpenFolder, ActionType.OpenSettings, "ms-settings:storagesense",
                 EstimatedBytes: 0, Detected: true, NeedsAdmin: false,
-                Note: "建议开启自动清理, 之后无需手动维护。"),
+                Note: "建议开启自动清理, 之后无需手动维护。",
+                Reversible: true,
+                Undo: "随时可在同一设置页关闭“存储感知”。",
+                Consequence: "仅“打开”系统设置页面，不删除任何东西——是否开启自动清理由你决定。"),
         };
 
         // 仅在检测到 Windows.old 时提供 (旧系统备份, 经磁盘清理删除, 不可手删)。
@@ -91,7 +106,10 @@ public static class OfficialCleanupCatalog
                 "升级后遗留的旧系统备份常占数 GB, 经磁盘清理「以前的 Windows 安装」安全删除。",
                 CleanupActionKind.RunCommand, ActionType.RunCleanupCommand, "cleanmgr",
                 EstimatedBytes: 0, Detected: true, NeedsAdmin: false,
-                Note: "在磁盘清理中勾选「以前的 Windows 安装」。删除后无法回退到旧版本。"));
+                Note: "在磁盘清理中勾选「以前的 Windows 安装」。删除后无法回退到旧版本。",
+                Reversible: false,
+                Undo: "删除后无法再回退到升级前的旧 Windows 版本。10 天回退期内若想保留请勿删。",
+                Consequence: "删除升级遗留的旧系统备份 Windows.old（常数 GB）。删后无法用它回退到旧版本，但不影响当前系统。"));
 
         // 检测到的、预估收益大的排前 (休眠优先), 其余按目录原序。
         return list
