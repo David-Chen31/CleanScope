@@ -10,6 +10,7 @@ namespace CleanScope.Safety.Tests;
 public sealed class SafetyGuardDeleteEnabledTests
 {
     private static ActionRequest Delete(string path) => new(1, path, ActionType.MoveToRecycleBin);
+    private static ActionRequest Manual(string path) => new(1, path, ActionType.MoveToRecycleBin, UserOverride: true);
 
     private static RiskAssessment Risk(RiskLevel level, bool isContainer = false) =>
         new(0, 0, level, 50, new[] { "f" }, new[] { 1L }, level == RiskLevel.A, 0.8, default, isContainer);
@@ -97,6 +98,52 @@ public sealed class SafetyGuardDeleteEnabledTests
     {
         var guard = new SafetyGuard(new FakeWindowsAccess(), deleteEnabled: false);
         var d = guard.Evaluate(Delete(@"C:\Users\me\AppData\Local\App\Cache"), null, Risk(RiskLevel.A));
+        Assert.Equal(GuardOutcome.Rejected, d.Outcome);
+    }
+
+    // —— 问题#4: UserOverride 仅放宽风险等级闸门 (C4), 其余红线不动 ——
+
+    [Theory] // 用户强确认 → C/D/E 也放行 (识别不出但属用户自己的数据)
+    [InlineData(RiskLevel.C)]
+    [InlineData(RiskLevel.D)]
+    [InlineData(RiskLevel.E)]
+    public void Override_allows_high_risk(RiskLevel level)
+    {
+        var d = Enabled().Evaluate(Manual(@"D:\我下载的资料"), null, Risk(level));
+        Assert.Equal(GuardOutcome.Allowed, d.Outcome);
+        Assert.Contains("回收站", d.Reason);
+    }
+
+    [Fact] // 强确认也救不了系统关键黑名单 (红线不受 override 影响)
+    public void Override_still_rejects_blacklist()
+    {
+        var d = Enabled().Evaluate(Manual(@"C:\Windows\System32\drivers\x.sys"), null, Risk(RiskLevel.E));
+        Assert.Equal(GuardOutcome.Rejected, d.Outcome);
+        Assert.Contains("黑名单", d.Reason);
+    }
+
+    [Fact] // 强确认也不能整体删容器
+    public void Override_still_rejects_container()
+    {
+        var d = Enabled().Evaluate(Manual(@"C:\Users\me\AppData\Local"), null, Risk(RiskLevel.E, isContainer: true));
+        Assert.Equal(GuardOutcome.Rejected, d.Outcome);
+        Assert.Contains("容器", d.Reason);
+    }
+
+    [Fact] // 强确认也不能删被占用项
+    public void Override_still_rejects_occupied()
+    {
+        var win = new FakeWindowsAccess { Occupier = "chrome" };
+        var d = Enabled(win).Evaluate(Manual(@"D:\我下载的资料"), null, Risk(RiskLevel.C));
+        Assert.Equal(GuardOutcome.Rejected, d.Outcome);
+        Assert.Contains("占用", d.Reason);
+    }
+
+    [Fact] // 能力位关闭时, 强确认仍拒 (零删除回退不被 override 突破)
+    public void Override_still_rejected_when_capability_off()
+    {
+        var guard = new SafetyGuard(new FakeWindowsAccess(), deleteEnabled: false);
+        var d = guard.Evaluate(Manual(@"D:\我下载的资料"), null, Risk(RiskLevel.C));
         Assert.Equal(GuardOutcome.Rejected, d.Outcome);
     }
 }

@@ -52,7 +52,9 @@ public sealed class SafetyGuard : ISafetyGuard
                 "请展开按子目录分别判断, 不要对容器整体操作。");
 
         // C4: 仅"可清理"桶 (A/B: 缓存/包/临时, 可重建) 可移入回收站; C/D/E 一律不放行。
-        if (risk is null || (risk.Level != RiskLevel.A && risk.Level != RiskLevel.B))
+        //   问题#4 例外: 用户经强确认手动处置"自己的、识别不出的"高风险项时放宽本条 (仅本条);
+        //   黑名单(C2/C3)/容器(C3.5)/占用(C5)/仅回收站等红线在前后仍然生效, 不受 UserOverride 影响。
+        if (!request.UserOverride && (risk is null || (risk.Level != RiskLevel.A && risk.Level != RiskLevel.B)))
             return Reject(
                 $"风险等级为 {risk?.Level.ToString() ?? "未知"}, 不允许删除 (仅 A/B 可清理项可移入回收站)。",
                 ruleMatch?.RecommendedAction ?? "请参考更安全的官方清理方式, 或先备份确认。");
@@ -70,9 +72,11 @@ public sealed class SafetyGuard : ISafetyGuard
                 "当前版本不提供删除功能, 仅作解释与建议 (MVP 零删除)。",
                 "请参考建议的官方清理方式, 或在充分了解后自行确认处理。");
 
-        // 全部安全门通过 (非黑名单/非容器/A 或 B/未占用) + 能力位开启 → 放行。
+        // 全部安全门通过 (非黑名单/非容器/未占用; A/B 或经用户强确认覆盖) + 能力位开启 → 放行。
         // C7 忽略名单 / C8 两步确认由上层保证; C9 仅移入回收站 (可恢复) / C10 先写审计由执行器保证。
-        return Allow("准入通过: 仅移入回收站 (可恢复), 已排除系统关键/容器/占用/高风险。");
+        return Allow(request.UserOverride
+            ? "准入通过 (用户强确认手动处置): 仅移入回收站 (可恢复); 系统关键/容器/占用红线仍已排除。"
+            : "准入通过: 仅移入回收站 (可恢复), 已排除系统关键/容器/占用/高风险。");
     }
 
     private static GuardDecision Allow(string reason) => new(GuardOutcome.Allowed, reason, null);

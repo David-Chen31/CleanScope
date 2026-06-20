@@ -4,6 +4,7 @@ using System.Windows;
 using CleanScope.App.Wpf.Common;
 using CleanScope.App.Wpf.Composition;
 using CleanScope.App.Wpf.Mvvm;
+using CleanScope.App.Wpf.Views;
 using CleanScope.Application;
 using CleanScope.Domain.Entities;
 using CleanScope.Domain.Enums;
@@ -18,6 +19,7 @@ public interface IExplorerActions
     void CopyToClipboard(string text, string okStatus);
     Task OpenLocationAsync(string path);
     Task RecycleAsync(ExplorerNodeViewModel node);
+    Task ManualRecycleAsync(ExplorerNodeViewModel node);   // 问题#4: 强确认手动处置高风险项 (仍仅回收站)
     Task InvestigateAsync(ExplorerNodeViewModel node);
     Task MigrateAsync(ExplorerNodeViewModel node);
     Task OpenRecycleBinAsync();
@@ -411,6 +413,44 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         {
             node.MarkDeleted();
             _session?.NotifyRemoved(node.Path, node.RawSize, node.IsCleanable);   // A1: 广播给其它页 + 概览扣减
+            ActionStatus = $"已移入回收站（可还原）：{node.Name}";
+        }
+        else
+        {
+            ActionStatus = $"操作未完成：{log.RejectReason}";
+        }
+    }
+
+    // 问题#4: 手动处置高风险/识别不出的项 (如用户自己下载的文件夹)。强确认 (复选框勾选) → UserOverride 放行,
+    // 仅放宽风险等级闸门; 系统关键黑名单/容器/占用红线照旧, 且仍仅移入回收站 (可恢复, 永不永久删除)。
+    public async Task ManualRecycleAsync(ExplorerNodeViewModel node)
+    {
+        if (node is null || !node.CanManualRecycle) return;
+
+        var riskHint = $"风险桶：{node.BucketLabel}";
+        var confirmed = ManualDeleteDialog.Confirm(
+            System.Windows.Application.Current?.MainWindow, node.Name, node.Path, node.SizeText, node.Origin, riskHint);
+        if (!confirmed) { ActionStatus = "已取消，未做任何改动。"; return; }
+
+        var request = new ActionRequest(null, node.Path, ActionType.MoveToRecycleBin, UserOverride: true);
+
+        ActionStatus = $"正在检查「{node.Name}」…";
+        var verdict = await Task.Run(() => _services.SafetyGuard.Evaluate(request, null, node.ToRiskAssessment()));
+        if (verdict.Outcome != GuardOutcome.Allowed)
+        {
+            // 即便用户强确认, 黑名单/容器/占用仍会拒 —— 如实告知红线。
+            ActionStatus = string.IsNullOrWhiteSpace(verdict.RecommendedAlternative)
+                ? $"仍不可删除：{verdict.Reason}"
+                : $"仍不可删除：{verdict.Reason}　建议：{verdict.RecommendedAlternative}";
+            return;
+        }
+
+        ActionStatus = $"正在移入回收站「{node.Name}」…";
+        var log = await Task.Run(() => _services.ActionExecutor.ExecuteAsync(request, verdict));
+        if (log.Result == ActionResult.Success)
+        {
+            node.MarkDeleted();
+            _session?.NotifyRemoved(node.Path, node.RawSize, node.IsCleanable);
             ActionStatus = $"已移入回收站（可还原）：{node.Name}";
         }
         else

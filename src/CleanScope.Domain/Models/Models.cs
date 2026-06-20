@@ -160,12 +160,17 @@ public record AiInput(
     IReadOnlyList<AttributionCandidate> RelatedApps,
     double? Confidence);
 
-/// <summary>操作请求 (辅助操作或删除意图)。<paramref name="Payload"/> 携带命令/URI 等 (如清理命令)。</summary>
+/// <summary>
+/// 操作请求 (辅助操作或删除意图)。<paramref name="Payload"/> 携带命令/URI 等 (如清理命令)。
+/// <paramref name="UserOverride"/> (问题#4): 用户经强确认手动处置"自己的、无法识别的"高风险项 ——
+/// 仅放宽风险等级闸门 (C4), **绝不**放宽系统关键黑名单/容器/占用/仅回收站等红线; 永久删除依旧不存在。
+/// </summary>
 public record ActionRequest(
     long? FileId,
     string TargetPath,
     ActionType Action,
-    string? Payload = null);
+    string? Payload = null,
+    bool UserOverride = false);
 
 /// <summary>安全闸门判定结果 (架构§安全闸门)。</summary>
 public enum GuardOutcome { Allowed, Rejected }
