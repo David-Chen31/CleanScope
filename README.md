@@ -66,6 +66,27 @@ dotnet build CleanScope.sln -c Release
 
 ---
 
+## First run: the Windows SmartScreen warning
+
+CleanScope is an open-source app and is **not code-signed** (a trusted certificate costs money). So the first time you run a downloaded `.exe`, Windows may show **"Windows protected your PC" (SmartScreen)** with an *Unknown publisher* note. This is expected for any unsigned app — it is **not** a virus warning about CleanScope specifically.
+
+To run it:
+
+1. On the SmartScreen dialog, click **More info**.
+2. Then click **Run anyway**.
+
+If you prefer to verify integrity first, check the SHA-256 hash against the value published in the [release notes](https://github.com/David-Chen31/CleanScope/releases/latest):
+
+```powershell
+Get-FileHash .\CleanScope.exe -Algorithm SHA256
+```
+
+Compare the printed hash with the one in the release. If they match, the file is exactly what was published. You can also **build it yourself from source** (see above) to avoid the download entirely — the source is fully open.
+
+> Why not just sign it? A signing certificate (or Azure Trusted Signing) has a recurring cost; this is on the roadmap but not done yet. Until then, the steps above are the safe, free way to run it.
+
+---
+
 ## Usage 1: Command Line (CLI)
 
 The fastest way to see the core value: scan a path, output graded risk and a Markdown report. **Read-only throughout — deletes nothing.**
@@ -263,6 +284,27 @@ git clone https://github.com/David-Chen31/CleanScope.git
 cd CleanScope
 dotnet build CleanScope.sln -c Release
 ```
+
+---
+
+## 首次运行：Windows 的 SmartScreen 提示
+
+CleanScope 是开源应用、**未做代码签名**（受信任的证书需要付费），所以你第一次运行下载来的 `.exe` 时，Windows 可能弹出 **“Windows 已保护你的电脑”（SmartScreen）**，并标注*未知发布者*。这是**所有未签名应用**的通用提示，**并不是**说 CleanScope 是病毒。
+
+运行方法：
+
+1. 在 SmartScreen 弹窗里点 **更多信息（More info）**。
+2. 再点 **仍要运行（Run anyway）**。
+
+如果想先校验文件完整性，把 SHA-256 哈希和 [release 发布说明](https://github.com/David-Chen31/CleanScope/releases/latest)里公布的值对一下：
+
+```powershell
+Get-FileHash .\CleanScope.exe -Algorithm SHA256
+```
+
+打印出的哈希与发布说明里的一致，就说明文件与发布的完全相同。你也可以**自行从源码构建**（见上文）来彻底避免下载——源码完全开放。
+
+> 为什么不直接签名？签名证书（或 Azure Trusted Signing）有持续费用，已在规划中但尚未落地。在此之前，上面的步骤就是安全、免费的运行方式。
 
 ---
 
