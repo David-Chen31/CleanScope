@@ -31,7 +31,7 @@ public sealed class HomeViewModel : ViewModelBase
         ScanDriveCommand = new RelayCommand(p => { if (p is string root) TargetPath = root; });
         ViewListCommand = new RelayCommand(_host.ShowList, () => Session is not null);
         AdviseCommand = new AsyncRelayCommand(_ => AdviseAsync(), _ => CanAdvise);
-        RunOfficialActionCommand = new AsyncRelayCommand(p => RunOfficialAsync(p as OfficialActionViewModel), _ => !_isScanning);
+        RunOfficialActionCommand = new AsyncRelayCommand(p => RunOfficialAsync(p as OfficialActionViewModel), _ => !_isScanning && !_officialBusy);
         OfficialActions = _services.OfficialActions.Select(a => new OfficialActionViewModel(a)).ToList();
         RefreshDrive();
     }
@@ -264,39 +264,92 @@ public sealed class HomeViewModel : ViewModelBase
 
     public bool HasBestCleanable => BestCleanable.Count > 0;
 
-    // —— P0: 执行一条官方清理手段 (启动 Windows 自带工具; 我们不替它删文件) ——
+    private bool _officialBusy;
+
+    // —— P0: 执行一条官方清理手段 (启动系统自带工具 / 应用内隐藏执行官方命令; 我们不替它删文件) ——
     private async Task RunOfficialAsync(OfficialActionViewModel? vm)
     {
-        if (vm is null) return;
+        if (vm is null || _officialBusy) return;
         var a = vm.Action;
-        var admin = a.NeedsAdmin ? "\n\n⚠ 需要管理员权限：若本程序非管理员启动，命令可能失败，请以管理员身份重开后再试。" : "";
-        var recover = a.Reversible
-            ? $"能否恢复：可以。{a.Undo}"
-            : $"能否恢复：❌ 不可恢复。{a.Undo}";
-        // 问题#3: 弹窗讲清"做什么/为什么/后果/能否恢复/如何恢复", 让用户明白这一步到底干什么、有何后果。
+        // 执行前预告: 拉起界面 vs 应用内执行 + (需提权时) UAC 会弹窗, 让用户知道接下来会发生什么、不必慌。
+        var surfaceLine = a.Surface == CleanupSurface.OpensWindowsUi
+            ? "执行方式：会打开 Windows 自带的界面，由你在其中操作（CleanScope 不替你删东西）。"
+            : a.NeedsAdmin
+                ? "执行方式：CleanScope 在后台执行官方命令（无黑窗）；接下来 Windows 会弹一个授权(UAC)窗口，点「是」即可。"
+                : "执行方式：CleanScope 在后台执行官方命令（无黑窗），完成后显示结果。";
+        var recover = a.Reversible ? $"能否恢复：可以。{a.Undo}" : $"能否恢复：❌ 不可恢复。{a.Undo}";
+        // 问题#3: 弹窗讲清"做什么/后果/能否恢复/如何恢复/怎么执行", 让用户明白这一步到底干什么。
         var confirm = MessageBox.Show(
             $"【{a.Title}】\n\n" +
             $"做什么：{a.Description}\n\n" +
             $"执行后果：{(string.IsNullOrWhiteSpace(a.Consequence) ? a.Description : a.Consequence)}\n\n" +
             $"{recover}\n\n" +
+            $"{surfaceLine}\n\n" +
             $"实际执行的命令：{a.Payload}\n\n" +
-            $"提示：{a.Note}{admin}\n\n" +
-            "CleanScope 不替你删除文件，只启动 Windows 自带工具，过程对你可见。确定继续吗？",
+            $"提示：{a.Note}\n\n确定继续吗？",
             $"确认执行：{a.Title} — CleanScope",
             MessageBoxButton.OKCancel,
             a.Reversible ? MessageBoxImage.Information : MessageBoxImage.Warning,
             MessageBoxResult.Cancel);
         if (confirm != MessageBoxResult.OK) { OfficialStatus = "已取消，未做任何改动。"; return; }
 
-        // OpenSettings 经 TargetPath 携带 ms-settings: URI; RunCleanupCommand 经 Payload 携带命令。
-        var isSettings = a.ExecAction == ActionType.OpenSettings;
-        var request = new ActionRequest(null, isSettings ? a.Payload : "", a.ExecAction, isSettings ? null : a.Payload);
-        var approval = _services.SafetyGuard.Evaluate(request, null, null);   // 非破坏性辅助操作 → 放行
-        var log = await _services.ActionExecutor.ExecuteAsync(request, approval);
-        OfficialStatus = log.Result == ActionResult.Success
-            ? $"已启动「{a.Title}」（请在弹出的工具/终端中完成操作）。完成后磁盘容量会在回到本页时刷新。"
-            : $"未能执行「{a.Title}」：{log.RejectReason}";
-        RefreshDrive();   // A3: 尽力刷新磁盘条 (清空回收站等即时生效的能立刻反映)
+        _officialBusy = true;
+        RunOfficialActionCommand.RaiseCanExecuteChanged();
+        try
+        {
+            if (a.Surface == CleanupSurface.OpensWindowsUi)
+            {
+                // 直接拉起 Windows 自带 GUI / 设置页 (cleanmgr / ms-settings:) —— 无控制台, 即时返回。
+                var request = new ActionRequest(null, a.Payload, ActionType.OpenSettings);
+                var approval = _services.SafetyGuard.Evaluate(request, null, null);
+                var log = await Task.Run(() => _services.ActionExecutor.ExecuteAsync(request, approval));
+                OfficialStatus = log.Result == ActionResult.Success
+                    ? $"已打开「{a.Title}」，请在弹出的 Windows 界面中勾选/确认完成操作。"
+                    : $"未能打开「{a.Title}」：{log.RejectReason}";
+            }
+            else
+            {
+                // 应用内隐藏执行官方命令 (无 cmd 黑框); 显示进度 + 前后磁盘空间差 = 释放量。
+                var beforeFree = FreeBytesOfSystemDrive();
+                OfficialStatus = a.NeedsAdmin
+                    ? $"正在执行「{a.Title}」… 若弹出 Windows 授权(UAC)窗口，请点「是」。"
+                    : $"正在执行「{a.Title}」…（请稍候）";
+
+                var request = new ActionRequest(null, "", ActionType.RunCleanupCommand, a.Payload, Elevate: a.NeedsAdmin);
+                var approval = _services.SafetyGuard.Evaluate(request, null, null);
+                var log = await Task.Run(() => _services.ActionExecutor.ExecuteAsync(request, approval));
+                if (log.Result == ActionResult.Success)
+                {
+                    var freed = Math.Max(0, FreeBytesOfSystemDrive() - beforeFree);
+                    OfficialStatus = freed > 0
+                        ? $"✓ 已完成「{a.Title}」，释放约 {Format.HumanSize(freed)}。"
+                        : $"✓ 已完成「{a.Title}」。";
+                }
+                else
+                {
+                    OfficialStatus = $"✗ 未能完成「{a.Title}」：{log.RejectReason}";
+                }
+            }
+        }
+        finally
+        {
+            _officialBusy = false;
+            RunOfficialActionCommand.RaiseCanExecuteChanged();
+            RefreshDrive();   // A3: 刷新磁盘条 (关休眠/清回收站等即时生效)
+        }
+    }
+
+    // 系统盘可用空间 (字节), 用于"执行前后差 = 释放量"。失败返回 0 (则不显示释放量)。
+    private static long FreeBytesOfSystemDrive()
+    {
+        try
+        {
+            var root = Path.GetPathRoot(OfficialCleanupCatalog.SystemDrive());
+            if (string.IsNullOrEmpty(root)) return 0;
+            var di = new DriveInfo(root);
+            return di.IsReady ? di.AvailableFreeSpace : 0;
+        }
+        catch { return 0; }
     }
 
     private void RefreshDrive()
@@ -351,8 +404,11 @@ public sealed class OfficialActionViewModel
     // 问题#3: 卡片上直接标"可恢复 / 不可恢复", 让用户点之前心里有数。
     public string ReversibleBadge => Action.Reversible ? "可恢复" : "不可恢复";
     public bool IsIrreversible => !Action.Reversible;
-    // 按钮文案明确"会先弹确认", 打消"一点就删"的顾虑。
-    public string RunButtonText => "执行（会先确认）";
+
+    // 执行表面提示 (避免黑框疑虑): 拉起 Windows 界面 vs 应用内执行; 按钮文案也随之区分, 且都"会先确认"。
+    public bool OpensWindowsUi => Action.Surface == CleanupSurface.OpensWindowsUi;
+    public string SurfaceTag => OpensWindowsUi ? "打开 Windows 界面" : "应用内执行";
+    public string RunButtonText => OpensWindowsUi ? "打开（先确认）" : "执行（先确认）";
     /// <summary>有预估收益则显示"约 X"，否则显示是否检测到机会。</summary>
     public string SavingsText => Action.EstimatedBytes > 0
         ? $"约 {Common.Format.HumanSize(Action.EstimatedBytes)}"

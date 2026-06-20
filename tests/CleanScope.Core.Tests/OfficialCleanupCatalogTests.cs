@@ -1,5 +1,6 @@
 using CleanScope.Core.Cleanup;
 using CleanScope.Domain.Enums;
+using CleanScope.Domain.Models;
 
 namespace CleanScope.Core.Tests;
 
@@ -77,5 +78,22 @@ public sealed class OfficialCleanupCatalogTests
         Assert.Contains("powercfg /h on", hiber.Undo);
 
         Assert.False(list.Single(a => a.Id == "empty-recyclebin").Reversible);
+    }
+
+    [Fact] // 执行表面: GUI 工具拉起 Windows 界面; 静默命令应用内执行 (避免 cmd 黑框)。
+    public void Execution_surface_is_assigned_correctly()
+    {
+        var list = OfficialCleanupCatalog.Build(@"C:\", Probe(8L * 1024 * 1024 * 1024, hasWinOld: true));
+        OfficialCleanupAction A(string id) => list.Single(a => a.Id == id);
+
+        // 自带 GUI / 设置页 → 打开 Windows 界面
+        Assert.Equal(CleanupSurface.OpensWindowsUi, A("disk-cleanup").Surface);
+        Assert.Equal(CleanupSurface.OpensWindowsUi, A("storage-sense").Surface);
+        Assert.Equal(CleanupSurface.OpensWindowsUi, A("remove-windows-old").Surface);
+
+        // 无界面命令 → 应用内隐藏执行
+        Assert.Equal(CleanupSurface.ManagedRun, A("disable-hibernation").Surface);
+        Assert.Equal(CleanupSurface.ManagedRun, A("empty-recyclebin").Surface);
+        Assert.Equal(CleanupSurface.ManagedRun, A("dism-component-cleanup").Surface);
     }
 }

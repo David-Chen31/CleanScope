@@ -32,6 +32,13 @@ public enum EvidenceKind { PathRule, Metadata, Signature, InstalledApp, Registry
 /// </summary>
 public enum SanitizationLevel { Strict, Balanced, Off }
 
+/// <summary>
+/// 官方清理手段的执行表面 (问题: 弹原始 cmd 黑框吓到小白)。决定 UI 如何执行与设预期:
+///  - <see cref="OpensWindowsUi"/>: 直接拉起 Windows 自带的友好界面 (磁盘清理 cleanmgr / 设置页), 由用户在其中操作, 无控制台。
+///  - <see cref="ManagedRun"/>: 由 CleanScope 隐藏执行官方命令 (powercfg / DISM / 清空回收站), 应用内显示进度与结果, 无黑框。
+/// </summary>
+public enum CleanupSurface { ManagedRun, OpensWindowsUi }
+
 /// <summary>用户决策 (user_decision.decision)。</summary>
 public enum DecisionType { Processed, Ignored, RemindLater }
 

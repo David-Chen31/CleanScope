@@ -29,18 +29,35 @@ public sealed class ActionExecutorTests
         Assert.Single(audit.Added);                       // 先写审计
     }
 
-    // S-D: 运行官方清理命令 → 启动终端 (Payload) + 先写审计; 我们不删文件。
+    // S-D: 运行官方清理命令 → 隐藏执行 (无黑框, Payload) + 先写审计; 我们不删文件。
     [Fact]
-    public async Task RunCleanupCommand_runs_in_terminal_and_audits_first()
+    public async Task RunCleanupCommand_runs_managed_and_audits_first()
     {
         var (exec, shell, audit, _) = New();
-        var req = new ActionRequest(1, @"C:\Users\me\.nuget\packages", ActionType.RunCleanupCommand,
+        var req = new ActionRequest(1, "", ActionType.RunCleanupCommand,
             Payload: "dotnet nuget locals all --clear");
         var log = await exec.ExecuteAsync(req, Allowed);
 
         Assert.Equal(ActionResult.Success, log.Result);
         Assert.Contains("dotnet nuget locals all --clear", shell.RanCommands);
         Assert.Single(audit.Added);                       // 先写审计 (SR-9)
+    }
+
+    [Fact] // 提权标志透传给执行器 (powercfg/DISM 需 UAC)
+    public async Task RunCleanupCommand_passes_elevate_flag()
+    {
+        var (exec, shell, _, _) = New();
+        await exec.ExecuteAsync(new ActionRequest(1, "", ActionType.RunCleanupCommand, "powercfg /h off", Elevate: true), Allowed);
+        Assert.Contains(true, shell.RanElevations);
+    }
+
+    [Fact] // 命令非 0 退出 (失败/UAC 取消) → 记 Failed, 不谎报成功
+    public async Task RunCleanupCommand_nonzero_exit_is_failure()
+    {
+        var (exec, shell, _, _) = New();
+        shell.ExitCode = -1;   // 模拟 UAC 取消 / 启动失败
+        var log = await exec.ExecuteAsync(new ActionRequest(1, "", ActionType.RunCleanupCommand, "powercfg /h off", Elevate: true), Allowed);
+        Assert.Equal(ActionResult.Failed, log.Result);
     }
 
     [Fact]

@@ -94,6 +94,10 @@
                                                     Visibility="{Binding NeedsAdmin, Converter={StaticResource BoolToVis}}">
                                                 <TextBlock Text="管理员" FontSize="11" Foreground="#C5221F"/>
                                             </Border>
+                                            <!-- 执行方式: 打开 Windows 界面 / 应用内执行 (打消黑框疑虑) -->
+                                            <Border CornerRadius="3" Padding="5,1" Margin="6,0,0,0" Background="#E8F0FE">
+                                                <TextBlock Text="{Binding SurfaceTag}" FontSize="11" Foreground="#1F4E8C"/>
+                                            </Border>
                                             <!-- 问题#3: 可恢复/不可恢复一眼可见 -->
                                             <Border CornerRadius="3" Padding="5,1" Margin="6,0,0,0" Background="#EEF1F5">
                                                 <TextBlock FontSize="11">

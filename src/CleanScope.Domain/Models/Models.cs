@@ -170,7 +170,8 @@ public record ActionRequest(
     string TargetPath,
     ActionType Action,
     string? Payload = null,
-    bool UserOverride = false);
+    bool UserOverride = false,
+    bool Elevate = false);   // 官方清理命令需管理员时, 经标准 UAC 提权隐藏执行 (powercfg/DISM)
 
 /// <summary>安全闸门判定结果 (架构§安全闸门)。</summary>
 public enum GuardOutcome { Allowed, Rejected }
@@ -256,4 +257,5 @@ public record OfficialCleanupAction(
     string Note,                   // 可逆性/风险提示
     bool Reversible = true,        // 问题#3: 操作是否可恢复 (false=删除后无法还原, UI 红色警示)
     string Undo = "",              // 如何恢复/撤销 (如 "powercfg /h on 重新开启休眠"); 空=无需或无法撤销
-    string Consequence = "");      // 执行后会发生什么 / 影响 (一句话, 供确认弹窗与卡片展示)
+    string Consequence = "",       // 执行后会发生什么 / 影响 (一句话, 供确认弹窗与卡片展示)
+    CleanupSurface Surface = CleanupSurface.ManagedRun);  // 执行表面: 拉起 Windows 界面 / 应用内隐藏执行 (避免 cmd 黑框)

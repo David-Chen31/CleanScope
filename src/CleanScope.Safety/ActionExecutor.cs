@@ -79,9 +79,17 @@ public sealed class ActionExecutor : IActionExecutor
                 _shell.OpenUri(request.TargetPath);   // TargetPath 携带 ms-settings: URI
                 break;
             case ActionType.RunCleanupCommand:
-                // S-D: 运行官方清理命令 (Payload)。我们不删文件, 仅启动厂商工具; 已先写审计 (SR-9)。
+                // S-D: 运行官方清理命令 (Payload)。我们不删文件, 仅启动系统/厂商工具; 已先写审计 (SR-9)。
+                // 隐藏执行 (无 cmd 黑框), 非 0 退出码 (失败/UAC 取消) → 抛出 → 记 Failed, 由上层提示重试。
                 if (!string.IsNullOrWhiteSpace(request.Payload))
-                    _shell.RunInTerminal(request.Payload);
+                {
+                    var code = _shell.RunManaged(request.Payload!, request.Elevate);
+                    if (code != 0)
+                        throw new InvalidOperationException(
+                            request.Elevate
+                                ? $"命令未成功执行 (退出码 {code})。可能需要在 UAC 弹窗点「是」授权, 请重试。"
+                                : $"命令未成功执行 (退出码 {code})。");
+                }
                 break;
             case ActionType.AddIgnore:
                 if (_ignore is not null)

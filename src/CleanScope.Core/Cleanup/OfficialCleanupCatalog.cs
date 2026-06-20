@@ -84,7 +84,8 @@ public static class OfficialCleanupCatalog
                 Note: "在弹出的界面中勾选要清理的类别后确认。",
                 Reversible: false,
                 Undo: "由你在磁盘清理界面勾选要删的类别, 删除的临时/缓存文件无法还原 (但多可由系统重新生成)。",
-                Consequence: "仅“打开”Windows 磁盘清理工具，不会自动删除任何东西——删什么由你在它界面里勾选后确认。"),
+                Consequence: "仅“打开”Windows 磁盘清理工具，不会自动删除任何东西——删什么由你在它界面里勾选后确认。",
+                Surface: CleanupSurface.OpensWindowsUi),
 
             // 存储感知: 现代设置页, 可一劳永逸自动清理临时/回收站。
             new("storage-sense",
@@ -95,7 +96,8 @@ public static class OfficialCleanupCatalog
                 Note: "建议开启自动清理, 之后无需手动维护。",
                 Reversible: true,
                 Undo: "随时可在同一设置页关闭“存储感知”。",
-                Consequence: "仅“打开”系统设置页面，不删除任何东西——是否开启自动清理由你决定。"),
+                Consequence: "仅“打开”系统设置页面，不删除任何东西——是否开启自动清理由你决定。",
+                Surface: CleanupSurface.OpensWindowsUi),
         };
 
         // 仅在检测到 Windows.old 时提供 (旧系统备份, 经磁盘清理删除, 不可手删)。
@@ -109,7 +111,8 @@ public static class OfficialCleanupCatalog
                 Note: "在磁盘清理中勾选「以前的 Windows 安装」。删除后无法回退到旧版本。",
                 Reversible: false,
                 Undo: "删除后无法再回退到升级前的旧 Windows 版本。10 天回退期内若想保留请勿删。",
-                Consequence: "删除升级遗留的旧系统备份 Windows.old（常数 GB）。删后无法用它回退到旧版本，但不影响当前系统。"));
+                Consequence: "删除升级遗留的旧系统备份 Windows.old（常数 GB）。删后无法用它回退到旧版本，但不影响当前系统。",
+                Surface: CleanupSurface.OpensWindowsUi));
 
         // 检测到的、预估收益大的排前 (休眠优先), 其余按目录原序。
         return list

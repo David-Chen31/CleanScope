@@ -9,9 +9,16 @@ internal sealed class FakeShellLauncher : IShellLauncher
     public List<string> OpenedFolders { get; } = new();
     public List<string> OpenedUris { get; } = new();
     public List<string> RanCommands { get; } = new();
+    public List<bool> RanElevations { get; } = new();
+    public int ExitCode { get; set; }            // 模拟命令退出码 (0=成功)
     public void OpenFolder(string path) => OpenedFolders.Add(path);
     public void OpenUri(string uri) => OpenedUris.Add(uri);
-    public void RunInTerminal(string command) => RanCommands.Add(command);
+    public int RunManaged(string command, bool elevate)
+    {
+        RanCommands.Add(command);
+        RanElevations.Add(elevate);
+        return ExitCode;
+    }
 }
 
 internal sealed class FakeAudit : IAuditLogRepository
