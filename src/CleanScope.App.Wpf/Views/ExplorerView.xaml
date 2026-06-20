@@ -157,7 +157,7 @@
                 </TreeView>
 
                 <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch"
-                              Background="Transparent" ResizeBehavior="PreviousAndNext"/>
+                              Background="Transparent" ResizeBehavior="PreviousAndNext" FocusVisualStyle="{x:Null}"/>
 
                 <!-- ───── detail: 常驻解释面板 (解释优先 —— 永不离场) ───── -->
                 <Border Grid.Column="2" CornerRadius="8" Background="{StaticResource Subtle}"

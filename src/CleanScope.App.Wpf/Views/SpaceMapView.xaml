@@ -67,10 +67,6 @@
                             <Border Background="#C98B88" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
                             <TextBlock Text="E 系统关键 · 勿动" Style="{StaticResource Sub}"/>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,18,4">
-                            <Border Background="#B9CCDE" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
-                            <TextBlock Text="个人文件 · 珍贵≠危险" Style="{StaticResource Sub}"/>
-                        </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <TextBlock Text="✓" Foreground="#1E7E34" FontWeight="Bold" Margin="0,0,4,0" VerticalAlignment="Center"/>
                             <TextBlock Text="角标 = 可清理（可勾选批量回收）" Style="{StaticResource Sub}"/>

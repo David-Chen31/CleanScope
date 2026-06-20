@@ -137,7 +137,7 @@ public sealed class HomeViewModel : ViewModelBase
         if (Session is null || _services.CleanupAdvisor is not { Enabled: true }) return;
         _advising = true;
         AdviseCommand.RaiseCanExecuteChanged();
-        AdviseStatus = "正在生成 AI 清理建议（脱敏后请求一次，仅供参考）…";
+        AdviseStatus = "正在生成 AI 清理建议（基于占用汇总，不含具体路径，仅供参考）…";
         try
         {
             var summary = CleanupSummaryBuilder.From(Session.Report.Items);

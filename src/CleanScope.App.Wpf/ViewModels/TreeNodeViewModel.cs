@@ -26,16 +26,16 @@ public sealed class TreeNodeViewModel
     /// <summary>对应的分析行 (合成根/“未细分”余量节点为 null)。</summary>
     public FileRowViewModel? Row { get; }
 
-    /// <summary>P2 双语义: 认不出归属的"个人文件" —— treemap 用中性蓝灰, 不染成危险红。</summary>
-    public bool IsPersonal => Row?.Origin == Humanize.Personal;
-
     /// <summary>P2 可清理性双编码: 该块是否为可回收项 (treemap 上加 ✓ 角标, 与"颜色=风险"叠加)。</summary>
     public bool IsCleanable => Row?.CanRecycle == true;
 
-    /// <summary>P2: 统一 A–E 等级徽章 (与清单/详情同一套)。供 treemap 图例/角标/悬停说明用。</summary>
+    /// <summary>
+    /// 空间地图按 A–E 风险等级着色 (地图的本职是风险可视化)。直接取风险等级, 不做"个人文件中性化"——
+    /// 否则认不出来源的项 (库/缓存/个人文件) 会全被刷成一片蓝灰, 失去风险区分。个人文件的"珍贵≠危险"
+    /// 语义保留在清单徽章 (那里有文字标签解释), 地图则忠实呈现风险。
+    /// </summary>
     public Common.GradeBadge Grade =>
         IsRemainder ? Common.GradeBadge.Other
-        : IsPersonal ? Common.GradeBadge.Personal
         : Risk is { } r ? Common.GradeBadge.Of(r) : Common.GradeBadge.Container;
 
     public List<TreeNodeViewModel> Children { get; } = new();

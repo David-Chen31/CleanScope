@@ -53,11 +53,73 @@
             <SolidColorBrush x:Key="Critical"     Color="#C5221F"/>
             <SolidColorBrush x:Key="CriticalSoft" Color="#FBEAE9"/>
 
-            <!-- 阴影 (卡片分层, 去扁平) -->
-            <DropShadowEffect x:Key="CardShadow" BlurRadius="14" ShadowDepth="2"
-                              Direction="270" Opacity="0.10" Color="#27324A"/>
+            <!-- 阴影 (卡片分层, 去扁平; 收敛强度让卡片更"嵌在同一面板"而非浮起的子窗口) -->
+            <DropShadowEffect x:Key="CardShadow" BlurRadius="10" ShadowDepth="1"
+                              Direction="270" Opacity="0.06" Color="#27324A"/>
             <DropShadowEffect x:Key="PopShadow" BlurRadius="24" ShadowDepth="6"
                               Direction="270" Opacity="0.22" Color="#1A2230"/>
+
+            <!-- ===== 现代细滚动条 (统一观感; 替换 Win 默认粗灰条, 消除"窗口里套窗口") ===== -->
+            <Style x:Key="ScrollThumb" TargetType="Thumb">
+                <Setter Property="OverridesDefaultStyle" Value="True"/>
+                <Setter Property="IsTabStop" Value="False"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Thumb">
+                            <Border x:Name="t" CornerRadius="4" Background="#C7CFDB" Margin="2"/>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="t" Property="Background" Value="#A7B2C2"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="ScrollPageButton" TargetType="RepeatButton">
+                <Setter Property="OverridesDefaultStyle" Value="True"/>
+                <Setter Property="IsTabStop" Value="False"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style TargetType="ScrollBar">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Width" Value="11"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid Background="Transparent">
+                                <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                    <Track.Thumb><Thumb Style="{StaticResource ScrollThumb}"/></Track.Thumb>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageDownCommand" Style="{StaticResource ScrollPageButton}"/>
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageUpCommand" Style="{StaticResource ScrollPageButton}"/>
+                                    </Track.DecreaseRepeatButton>
+                                </Track>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="Orientation" Value="Horizontal">
+                                    <Setter Property="Width" Value="Auto"/>
+                                    <Setter Property="Height" Value="11"/>
+                                    <Setter TargetName="PART_Track" Property="Orientation" Value="Horizontal"/>
+                                    <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <!-- 大容器获得键盘焦点时不再显示虚线焦点框 (消除"点首页周围出现虚线"的怪异感) -->
+            <Style TargetType="ScrollViewer">
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            </Style>
 
             <!-- 卡片 -->
             <Style x:Key="Cards" TargetType="Border">
@@ -436,28 +498,32 @@
             </Style>
 
             <!-- 结果内"视图切换"分段控件项 (横向, 选中=白底浮起) -->
-            <!-- 视图切换项 = 原生 pivot tab: 扁平, 选中态 = 强调色文字 + 2px 底部指示线 (非浮起卡片) -->
+            <!-- 视图切换项 = 原生 pivot tab: 扁平, 选中态 = 深色文字 + 强调色底部指示条 (非浮起卡片) -->
             <Style x:Key="SegItem" TargetType="Button">
                 <Setter Property="Foreground" Value="{StaticResource Muted}"/>
                 <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontSize" Value="13.5"/>
+                <Setter Property="FontWeight" Value="Medium"/>
                 <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
                             <Grid Background="{TemplateBinding Background}">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="*"/>
-                                    <RowDefinition Height="2"/>
+                                    <RowDefinition Height="3"/>
                                 </Grid.RowDefinitions>
-                                <ContentPresenter Grid.Row="0" Margin="2,9,2,8" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                <ContentPresenter Grid.Row="0" Margin="1,10,1,9" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                   TextElement.Foreground="{TemplateBinding Foreground}"/>
-                                <Border x:Name="ind" Grid.Row="1" Background="Transparent" CornerRadius="1"/>
+                                <Border x:Name="ind" Grid.Row="1" Height="3" Background="Transparent" CornerRadius="1.5"/>
                             </Grid>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                                    <Setter TargetName="ind" Property="Background" Value="{StaticResource Line}"/>
                                 </Trigger>
+                                <!-- 选中: 深色文字(不抢眼的蓝) + 强调色指示条; 用 Medium→SemiBold 极小字重变化避免跳动 -->
                                 <DataTrigger Value="True">
                                     <DataTrigger.Binding>
                                         <MultiBinding Converter="{StaticResource Eq}">
@@ -465,7 +531,7 @@
                                             <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="DataContext.ActivePage"/>
                                         </MultiBinding>
                                     </DataTrigger.Binding>
-                                    <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                     <Setter TargetName="ind" Property="Background" Value="{StaticResource Accent}"/>
                                 </DataTrigger>
