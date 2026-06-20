@@ -1,3 +1,4 @@
+using CleanScope.Core.Attribution;
 using CleanScope.Core.Decisions;
 using CleanScope.Domain.Entities;
 using CleanScope.Domain.Enums;
@@ -47,6 +48,38 @@ public sealed class DecisionServiceTests
         Assert.Equal("展开按子目录查看，勿整体处理", item.RecommendedAction); // 贴切动作
         Assert.False(string.IsNullOrWhiteSpace(item.Explanation));         // 说明非空
         Assert.Contains("漫游", item.Explanation!);
+    }
+
+    [Fact] // 问题#1: 已识别归属应用的目录 → 用途升级为特征库语义"它是干嘛的", 不再泛泛"应用数据/配置"。
+    public void Identified_app_gets_semantic_purpose_from_catalog()
+    {
+        var catalog = new KnownSoftwareCatalog(
+            Array.Empty<VendorAlias>(), Array.Empty<DirectoryAlias>(),
+            new[] { new AppDescription("Zed", "代码编辑器/IDE") });
+        var svc = new DecisionService(catalog);
+
+        var node = new FileNode(0, 0, null, @"C:\Users\me\AppData\Local\Zed", null, "Zed", true, false, 1000,
+            null, null, null, AccessState.Accessible, null, default);
+        var attr = new[] { new AttributionCandidate(0, 0, "Zed", 0.7, 1, Array.Empty<long>()) };
+        var analysis = new FileAnalysis(node, new EvidenceBundle(0, null, Array.Empty<Evidence>()), null, attr,
+            Risk(RiskLevel.C, new[] { 1L }, "应用数据/配置 (删后软件重置或丢登录态)"), null);
+
+        var item = svc.Summarize(new[] { analysis }).Single();
+        Assert.Contains("代码编辑器", item.Explanation!);
+    }
+
+    [Fact] // 问题#1: 无特征库时, 用 T3 采样二进制的 FileDescription 作用途兜底。
+    public void Binary_file_description_used_as_purpose_fallback()
+    {
+        var node = new FileNode(0, 0, null, @"D:\SomeTool", null, "SomeTool", true, false, 1000,
+            null, null, null, AccessState.Accessible, null, default);
+        var meta = new FileMetadata(0, ".exe", "Acme 录屏大师", "SomeTool", "Acme", "1.0", null, null, null, null, null);
+        var attr = new[] { new AttributionCandidate(0, 0, "SomeTool", 0.7, 1, Array.Empty<long>()) };
+        var analysis = new FileAnalysis(node, new EvidenceBundle(0, meta, Array.Empty<Evidence>()), null, attr,
+            Risk(RiskLevel.C, new[] { 1L }, "应用数据/配置"), null);
+
+        var item = new DecisionService().Summarize(new[] { analysis }).Single();
+        Assert.Contains("录屏大师", item.Explanation!);
     }
 
     [Fact] // 不变式: 每个项的 Origin 与 Explanation 都非空 (没有"无解释"的文件)。

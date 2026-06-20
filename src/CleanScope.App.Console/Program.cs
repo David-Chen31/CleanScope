@@ -79,7 +79,7 @@ try
         new RuleEngine(rules),
         new AttributionEngine(catalog),
         new RiskEngine(),
-        new DecisionService(),
+        new DecisionService(catalog),
         AppVersion,
         sanitizer, explanation, validator);
 

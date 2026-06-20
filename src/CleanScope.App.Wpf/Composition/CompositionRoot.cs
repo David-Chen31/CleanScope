@@ -69,7 +69,7 @@ public static class CompositionRoot
 
         var useCase = new ScanAndAnalyzeUseCase(
             new ScanEngine(), new EvidenceCollector(windows), new RuleEngine(rules),
-            new AttributionEngine(catalog), new RiskEngine(), new DecisionService(), AppVersion,
+            new AttributionEngine(catalog), new RiskEngine(), new DecisionService(catalog), AppVersion,
             sanitizer, explanation, validator);
 
         var services = new AppServices

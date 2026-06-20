@@ -18,20 +18,45 @@ public sealed class KnownSoftwareCatalog
 
     private readonly IReadOnlyList<VendorAlias> _vendors;
     private readonly IReadOnlyList<DirectoryAlias> _directories;
+    private readonly IReadOnlyList<AppDescription> _descriptions;
 
     public KnownSoftwareCatalog(KnownSoftwareData data)
-        : this(data?.Vendors ?? Array.Empty<VendorAlias>(), data?.Directories ?? Array.Empty<DirectoryAlias>()) { }
+        : this(data?.Vendors ?? Array.Empty<VendorAlias>(),
+               data?.Directories ?? Array.Empty<DirectoryAlias>(),
+               data?.Apps ?? Array.Empty<AppDescription>()) { }
 
-    public KnownSoftwareCatalog(IEnumerable<VendorAlias> vendors, IEnumerable<DirectoryAlias> directories)
+    public KnownSoftwareCatalog(
+        IEnumerable<VendorAlias> vendors,
+        IEnumerable<DirectoryAlias> directories,
+        IEnumerable<AppDescription>? apps = null)
     {
         _vendors = vendors?.Where(v => !string.IsNullOrWhiteSpace(v.Contains) && !string.IsNullOrWhiteSpace(v.Name))
             .ToList() ?? new List<VendorAlias>();
         _directories = directories?.Where(d => !string.IsNullOrWhiteSpace(d.Name) && !string.IsNullOrWhiteSpace(d.App))
             .ToList() ?? new List<DirectoryAlias>();
+        _descriptions = apps?.Where(a => !string.IsNullOrWhiteSpace(a.App) && !string.IsNullOrWhiteSpace(a.Description))
+            .ToList() ?? new List<AppDescription>();
     }
 
     public int VendorCount => _vendors.Count;
     public int DirectoryCount => _directories.Count;
+    public int DescriptionCount => _descriptions.Count;
+
+    /// <summary>按应用名匹配语义描述 (它是什么/干嘛的)。无匹配返回 null。供"知道是哪个软件却说不清用途"补语义 (问题#1)。</summary>
+    public string? DescribeApp(string? appName)
+    {
+        var seg = Normalize(appName);
+        if (seg.Length < 2) return null;
+
+        string? best = null;
+        var bestScore = 0;
+        foreach (var a in _descriptions)
+        {
+            var score = NameMatchScore(seg, Normalize(a.App));
+            if (score > bestScore) { bestScore = score; best = a.Description; }
+        }
+        return best;
+    }
 
     /// <summary>把原始公司/签名者字符串归一为友好名 (子串匹配)。无匹配返回 null (调用方保留原值)。</summary>
     public string? FriendlyVendor(string? companyOrSigner)

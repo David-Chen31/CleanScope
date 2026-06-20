@@ -26,7 +26,8 @@ public sealed class KnownSoftwareLoaderTests : IDisposable
     {
         await File.WriteAllTextAsync(Path.Combine(_dir, "a.json"),
             "{ \"vendors\": [ { \"contains\": \"Valve\", \"name\": \"Steam\" } ], " +
-            "\"directories\": [ { \"name\": \"wechat\", \"app\": \"微信\", \"purpose\": \"数据\" } ] }");
+            "\"directories\": [ { \"name\": \"wechat\", \"app\": \"微信\", \"purpose\": \"数据\" } ], " +
+            "\"apps\": [ { \"name\": \"Steam\", \"description\": \"游戏平台\" } ] }");
         await File.WriteAllTextAsync(Path.Combine(_dir, "b.json"),
             "{ \"vendors\": [ { \"contains\": \"Tencent\", \"name\": \"腾讯\" } ] }");
 
@@ -34,9 +35,11 @@ public sealed class KnownSoftwareLoaderTests : IDisposable
 
         Assert.Equal(2, data.Vendors.Count);
         Assert.Single(data.Directories);
+        Assert.Single(data.Apps);
         Assert.Contains(data.Vendors, v => v.Name == "Steam");
         Assert.Contains(data.Vendors, v => v.Name == "腾讯");
         Assert.Equal("微信", data.Directories[0].App);
+        Assert.Equal("游戏平台", data.Apps[0].Description);
     }
 
     [Fact] // 坏文件被跳过, 不影响其余 (不抛)

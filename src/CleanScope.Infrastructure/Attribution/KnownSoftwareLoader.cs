@@ -33,6 +33,7 @@ public sealed class KnownSoftwareLoader
 
         var vendors = new List<VendorAlias>();
         var directories = new List<DirectoryAlias>();
+        var apps = new List<AppDescription>();
 
         foreach (var file in Directory.EnumerateFiles(_dir, "*.json")
                      .OrderBy(static p => p, StringComparer.OrdinalIgnoreCase))
@@ -58,15 +59,26 @@ public sealed class KnownSoftwareLoader
                 if (!string.IsNullOrWhiteSpace(d.Name) && !string.IsNullOrWhiteSpace(d.App))
                     directories.Add(new DirectoryAlias(d.Name!.Trim(), d.App!.Trim(),
                         string.IsNullOrWhiteSpace(d.Purpose) ? null : d.Purpose!.Trim()));
+
+            foreach (var a in dto.Apps ?? Enumerable.Empty<AppDto>())
+                if (!string.IsNullOrWhiteSpace(a.Name) && !string.IsNullOrWhiteSpace(a.Description))
+                    apps.Add(new AppDescription(a.Name!.Trim(), a.Description!.Trim()));
         }
 
-        return new KnownSoftwareData(vendors, directories);
+        return new KnownSoftwareData(vendors, directories, apps);
     }
 
     private sealed class PackDto
     {
         public List<VendorDto>? Vendors { get; set; }
         public List<DirectoryDto>? Directories { get; set; }
+        public List<AppDto>? Apps { get; set; }
+    }
+
+    private sealed class AppDto
+    {
+        public string? Name { get; set; }
+        public string? Description { get; set; }
     }
 
     private sealed class VendorDto

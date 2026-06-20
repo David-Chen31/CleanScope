@@ -11,6 +11,12 @@ namespace CleanScope.Core.Decisions;
 /// </summary>
 public sealed class DecisionService : IDecisionService
 {
+    private readonly Attribution.KnownSoftwareCatalog _catalog;
+
+    /// <param name="catalog">知名软件特征库: 用应用名补"它是什么/干嘛的"语义 (问题#1)。null=空库。</param>
+    public DecisionService(Attribution.KnownSoftwareCatalog? catalog = null)
+        => _catalog = catalog ?? Attribution.KnownSoftwareCatalog.Empty;
+
     public IReadOnlyList<DecisionItem> Summarize(IReadOnlyList<FileAnalysis> analyses)
     {
         ArgumentNullException.ThrowIfNull(analyses);
@@ -60,7 +66,7 @@ public sealed class DecisionService : IDecisionService
         return null;
     }
 
-    private static DecisionItem ToItem(FileAnalysis a)
+    private DecisionItem ToItem(FileAnalysis a)
     {
         var validatedAi = a.Explanation is { Validated: true } ? a.Explanation : null;
 
@@ -142,6 +148,13 @@ public sealed class DecisionService : IDecisionService
         return top?.AppName ?? ai?.OwnerApp;
     }
 
+    private static string LeafName(string path)
+    {
+        var s = path.Replace('/', '\\').TrimEnd('\\');
+        var i = s.LastIndexOf('\\');
+        return i >= 0 && i + 1 < s.Length ? s[(i + 1)..] : s;
+    }
+
     // 规则权威优先 → 已校验 AI → 按风险默认。
     private static string RecommendedActionOf(FileAnalysis a, AiExplanation? ai)
     {
@@ -154,20 +167,53 @@ public sealed class DecisionService : IDecisionService
         return DefaultActionFor(a.Risk.Level);
     }
 
-    // 已校验 AI 措辞 (推测) 优先; 否则: 系统/共享路径先给"用途"(SystemOrigin), 再附事实因素。
-    private static string? ExplanationOf(FileAnalysis a, AiExplanation? ai)
+    // 已校验 AI 措辞 (推测) 优先; 否则按确定性来源拼"用途"。
+    private string? ExplanationOf(FileAnalysis a, AiExplanation? ai)
     {
         if (!string.IsNullOrWhiteSpace(ai?.UserFriendlyExplanation))
             return ai!.UserFriendlyExplanation;
 
         var path = a.Node.RealPath ?? a.Node.Path;
         var factors = a.Risk.Factors.Count > 0 ? string.Join("; ", a.Risk.Factors) : null;
-        // 用途优先级: 系统/共享路径用途 → 凭目录名可定的用途 (图片/.claude 等) → T3/特征库归属推出的用途 → 无。
+        // 用途优先级 (问题#1: 让"是哪个软件"升级为"它是干嘛的"):
+        //  系统/共享路径用途 → 目录名可定用途 (图片/.claude) → 归属应用的语义描述 (特征库/二进制描述) → T3 归属泛说 → 无。
         var purpose = Attribution.SystemOrigin.Resolve(path)?.Purpose
                       ?? Attribution.NameHeuristics.Resolve(path)?.Purpose
+                      ?? AppSemanticPurpose(a, ai)
                       ?? DirectoryPurposeFromAttribution(a);
         if (purpose is null) return factors;
         return factors is null ? $"用途: {purpose}" : $"用途: {purpose}; {factors}";
+    }
+
+    // 问题#1: 已识别归属应用时, 给"它是什么/干嘛的"语义 —— 特征库精选描述优先, 否则用二进制 FileDescription。
+    private string? AppSemanticPurpose(FileAnalysis a, AiExplanation? ai)
+    {
+        var owner = OwnerOf(a, ai);
+        if (!string.IsNullOrWhiteSpace(owner) && _catalog.DescribeApp(owner) is { } desc)
+            return desc;
+
+        // 纯数据目录 (无二进制): 特征库按目录名给的精选用途 (微信接收目录、数据集等)。
+        var path = a.Node.RealPath ?? a.Node.Path;
+        if (a.Node.IsDirectory && _catalog.MatchDirectory(LeafName(path)) is { Purpose: { Length: > 0 } p })
+            return p;
+
+        // 二进制自带的文件描述 (T3 采样到的代表性二进制), 通常一句话点明软件 (如 "Zed Editor")。
+        var fileDesc = a.Evidence.Metadata?.Description;
+        if (!string.IsNullOrWhiteSpace(fileDesc) && !LooksLikeNoise(fileDesc!))
+            return owner is { Length: > 0 } && !fileDesc!.Contains(owner, StringComparison.OrdinalIgnoreCase)
+                ? $"{owner}：{fileDesc}"
+                : fileDesc;
+        return null;
+    }
+
+    // 过滤无意义的 FileDescription (空泛/纯文件名/安装器措辞), 避免拿来当用途反而更糊涂。
+    private static bool LooksLikeNoise(string desc)
+    {
+        var d = desc.Trim();
+        if (d.Length < 2) return true;
+        return d.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+            || d.Contains("installer", StringComparison.OrdinalIgnoreCase)
+            || d.Contains("setup", StringComparison.OrdinalIgnoreCase);
     }
 
     // T3/特征库: 目录已归属某软件但路径/目录名表都没给出用途时, 据归属来源给一句诚实的用途

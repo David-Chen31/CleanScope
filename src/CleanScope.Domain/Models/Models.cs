@@ -188,13 +188,20 @@ public readonly record struct VendorAlias(string Contains, string Name);
 /// <summary>目录名别名: 叶子名匹配 <see cref="Name"/> → 归属 <see cref="App"/> (可带 <see cref="Purpose"/>; ① 特征库数据)。</summary>
 public readonly record struct DirectoryAlias(string Name, string App, string? Purpose);
 
+/// <summary>
+/// 软件语义描述 (① 特征库数据): 应用名 <see cref="App"/> → 一句话"它是什么/干嘛的" <see cref="Description"/>
+/// (如 Steam→游戏平台、Zed→代码编辑器)。补足"知道是哪个软件、却说不清它是干嘛的"语义缺口 (问题#1)。
+/// </summary>
+public readonly record struct AppDescription(string App, string Description);
+
 /// <summary>知名软件特征库原始数据 (KnownSoftwareLoader 产物; 由 Core 的 KnownSoftwareCatalog 包装出匹配能力)。</summary>
 public record KnownSoftwareData(
     IReadOnlyList<VendorAlias> Vendors,
-    IReadOnlyList<DirectoryAlias> Directories)
+    IReadOnlyList<DirectoryAlias> Directories,
+    IReadOnlyList<AppDescription> Apps)
 {
     public static KnownSoftwareData Empty { get; } =
-        new(Array.Empty<VendorAlias>(), Array.Empty<DirectoryAlias>());
+        new(Array.Empty<VendorAlias>(), Array.Empty<DirectoryAlias>(), Array.Empty<AppDescription>());
 }
 
 /// <summary>
