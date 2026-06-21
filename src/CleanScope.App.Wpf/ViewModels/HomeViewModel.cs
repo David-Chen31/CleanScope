@@ -27,7 +27,10 @@ public sealed class HomeViewModel : ViewModelBase
         _services = services;
         _host = host;
         AvailableDrives = ReadyDriveRoots();
-        _targetPath = OfficialCleanupCatalog.SystemDrive();        // 盘符优先: 默认整个系统盘 (通常 C:\)
+        // C: 记住上次扫描目标 / 管理员模式 (无则盘符优先, 默认整个系统盘 C:\)。
+        var prefs = Common.UserPrefs.Current;
+        _targetPath = !string.IsNullOrWhiteSpace(prefs.LastScanPath) ? prefs.LastScanPath! : OfficialCleanupCatalog.SystemDrive();
+        _adminMode = prefs.AdminMode;
         ScanCommand = new AsyncRelayCommand(_ => ScanAsync(), _ => CanScan);
         ScanAllDrivesCommand = new AsyncRelayCommand(_ => ScanAllDrivesAsync(), _ => !_isScanning && AvailableDrives.Count > 0);
         ScanDriveCommand = new RelayCommand(p => { if (p is string root) TargetPath = root; });
@@ -245,6 +248,9 @@ public sealed class HomeViewModel : ViewModelBase
         IsScanning = true;
         HasResult = false;
         Status = $"正在扫描 {target} …";
+        // C: 记住这次的目标 / 管理员模式, 下次启动自动回填。
+        var prefs = Common.UserPrefs.Current;
+        prefs.LastScanPath = target; prefs.AdminMode = AdminMode; prefs.Save();
         try
         {
             var mode = AdminMode ? ScanMode.Admin : ScanMode.Normal;

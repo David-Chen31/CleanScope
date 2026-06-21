@@ -24,7 +24,45 @@ public partial class MainWindow : Window
         StateChanged += OnStateChanged;
         SourceInitialized += OnSourceInitialized;
         PreviewKeyDown += OnPreviewKeyDown;
+        RestoreWindowGeometry();
+        Closing += OnClosing;
         UpdateThemeIcon();
+    }
+
+    // C: 恢复上次窗口尺寸/位置/最大化 (位置越界则不还原, 回退居中)。
+    private void RestoreWindowGeometry()
+    {
+        var p = UserPrefs.Current;
+        if (p.HasWindowSize) { Width = p.WinWidth; Height = p.WinHeight; }
+        if (p.HasWindowPos && IsOnScreen(p.WinLeft, p.WinTop, p.WinWidth, p.WinHeight))
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Left = p.WinLeft;
+            Top = p.WinTop;
+        }
+        if (p.WinMaximized) WindowState = WindowState.Maximized;
+    }
+
+    // C: 关闭时保存窗口几何 (最大化时存其还原后的尺寸, 以便下次还原态正常)。
+    private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        var p = UserPrefs.Current;
+        var b = WindowState == WindowState.Maximized ? RestoreBounds : new Rect(Left, Top, Width, Height);
+        if (b.Width >= 320 && b.Height >= 320)
+        {
+            p.WinLeft = b.Left; p.WinTop = b.Top; p.WinWidth = b.Width; p.WinHeight = b.Height;
+        }
+        p.WinMaximized = WindowState == WindowState.Maximized;
+        p.Save();
+    }
+
+    private static bool IsOnScreen(double left, double top, double w, double h)
+    {
+        double vx = SystemParameters.VirtualScreenLeft, vy = SystemParameters.VirtualScreenTop,
+               vw = SystemParameters.VirtualScreenWidth, vh = SystemParameters.VirtualScreenHeight;
+        // 要求标题栏中点落在虚拟屏内, 且顶边不被任务栏/屏外吞掉 (容差 20px)。
+        var cx = left + w * 0.5;
+        return cx >= vx && cx <= vx + vw && top >= vy - 1 && top <= vy + vh - 20;
     }
 
     // B: Ctrl+F → 切到可清理清单并聚焦搜索框 (聚焦是视图职责, 故在此处理而非命令)。
