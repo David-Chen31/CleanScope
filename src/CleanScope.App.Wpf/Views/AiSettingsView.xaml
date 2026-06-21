@@ -30,10 +30,20 @@
 
             <TextBlock Text="API Key" Foreground="{StaticResource Ink}" Margin="0,0,0,4"/>
             <PasswordBox x:Name="KeyBox" Style="{StaticResource FieldPassword}" Margin="0,0,0,4" PasswordChanged="KeyBox_PasswordChanged"/>
-            <TextBlock Text="🔒 本机 DPAPI 加密保存，绝不上传" Style="{StaticResource Caption}" Margin="2,0,0,12"/>
+            <StackPanel Orientation="Horizontal" Margin="2,0,0,12">
+                <Path Data="{StaticResource IconLock}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Faint}"
+                      Width="12" Height="12" Margin="0,0,5,0"/>
+                <TextBlock Text="本机 DPAPI 加密保存，绝不上传" Style="{StaticResource Caption}" VerticalAlignment="Center"/>
+            </StackPanel>
 
             <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                <Button Content="🔍 检索模型" Command="{Binding ListModelsCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"/>
+                <Button Command="{Binding ListModelsCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource IconSearch}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Accent}"
+                              Width="14" Height="14" Margin="0,0,6,0"/>
+                        <TextBlock Text="检索模型" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}"
                           MinWidth="240" Padding="8,6" VerticalContentAlignment="Center"/>
             </StackPanel>
@@ -46,7 +56,11 @@
             <!-- 出云脱敏: 三档平铺单选, 醒目卡片 (问题#4: 让用户一眼看到能调档, 不致误以为 AI 识别力弱) -->
             <Border Background="#FFF7E6" BorderBrush="#F0C36D" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,14">
                 <StackPanel>
-                    <TextBlock Text="🔧 出云脱敏档位（影响 AI 识别力 ←→ 隐私）" FontWeight="Bold" Foreground="#8A5A00" Margin="0,0,0,2"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                        <Path Data="{StaticResource IconTune}" Style="{StaticResource IconStroke}" Stroke="#8A5A00"
+                              Width="15" Height="15" Margin="0,0,7,0"/>
+                        <TextBlock Text="出云脱敏档位（影响 AI 识别力 ←→ 隐私）" FontWeight="Bold" Foreground="#8A5A00" VerticalAlignment="Center"/>
+                    </StackPanel>
                     <TextBlock Text="觉得 AI「认不出软件」？多半是脱敏太严。下面三档可随时切换，越往下识别越准、发送的路径信息越多。"
                                TextWrapping="Wrap" Style="{StaticResource Sub}" Margin="0,0,0,10"/>
 
@@ -65,8 +79,14 @@
             </Border>
 
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                <Button Content="🗎 查看日志" Command="{Binding OpenLogCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"
-                        ToolTip="打开本地诊断日志：AI 失败的真实原因（鉴权/模型名/网络/截断等）都记在这里"/>
+                <Button Command="{Binding OpenLogCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"
+                        ToolTip="在应用内查看诊断日志：AI 失败的真实原因（鉴权/模型名/网络/截断等）都记在这里">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource IconDoc}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Accent}"
+                              Width="14" Height="14" Margin="0,0,6,0"/>
+                        <TextBlock Text="查看日志" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <Button Content="测试连接" Command="{Binding TestCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"/>
                 <Button Command="{Binding SaveCommand}" Style="{StaticResource Primary}" MinWidth="132">
                     <Grid>
@@ -95,8 +115,12 @@
                             <TextBlock Text="保存中…" Foreground="White" Margin="8,0,0,0"/>
                         </StackPanel>
                         <!-- 已生效 -->
-                        <TextBlock Text="✓ 已生效" Foreground="White" VerticalAlignment="Center"
-                                   Visibility="{Binding JustSaved, Converter={StaticResource BoolToVis}}"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding JustSaved, Converter={StaticResource BoolToVis}}">
+                            <Path Data="{StaticResource IconCheck}" Style="{StaticResource IconStroke}" Stroke="White"
+                                  Width="14" Height="14" Margin="0,0,6,0"/>
+                            <TextBlock Text="已生效" Foreground="White" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </Grid>
                 </Button>
             </StackPanel>

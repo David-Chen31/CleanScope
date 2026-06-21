@@ -655,6 +655,42 @@
             <!-- 一根水平轴 + 左端楔形箭头, 描边渲染 (见各处 Path Stroke/StrokeThickness)。 -->
             <Geometry x:Key="IconBackArrow">M11,3 L4,10 L11,17 M4,10 L19,10</Geometry>
 
+            <!-- ===== 自绘矢量图标集 (A: 取代 emoji, 统一线性/实心风格, 看着是刻意设计) ===== -->
+            <!-- 描边类 (线性): 用 Stroke 渲染 -->
+            <Geometry x:Key="IconSearch">M7.5,2 A5.5,5.5 0 1,0 7.51,2 M11.6,11.6 L16,16</Geometry>
+            <Geometry x:Key="IconTrash">M3.5,4.6 H14.5 M6.5,4.6 V3.1 Q6.5,2.3 7.3,2.3 H10.7 Q11.5,2.3 11.5,3.1 V4.6 M5,4.6 L5.8,15.4 Q5.85,16.2 6.6,16.2 H11.4 Q12.15,16.2 12.2,15.4 L13,4.6 M7.7,7.2 V13.4 M10.3,7.2 V13.4</Geometry>
+            <Geometry x:Key="IconShield">M9,1.8 L15,4 V8.8 C15,13 12.4,15.2 9,16.4 C5.6,15.2 3,13 3,8.8 V4 Z</Geometry>
+            <Geometry x:Key="IconMonitor">M2.5,3 H15.5 V11.5 H2.5 Z M6.5,14.6 H11.5 M9,11.5 V14.6</Geometry>
+            <Geometry x:Key="IconPlan">M5,3 H13 V16 H5 Z M7.5,3 V2 H10.5 V3 M7,9 L8.2,10.2 L11,7.2 M7,13 H11</Geometry>
+            <Geometry x:Key="IconLock">M4.6,8 H13.4 V16 H4.6 Z M6.3,8 V5.6 C6.3,3.4 7.5,2.5 9,2.5 C10.5,2.5 11.7,3.4 11.7,5.6 V8 M9,11 V13.2</Geometry>
+            <Geometry x:Key="IconTune">M3,5 H7 M11,5 H15 M9,3.4 A1.6,1.6 0 1,0 9.01,3.4 M3,13 H7 M11,13 H15 M9,11.4 A1.6,1.6 0 1,0 9.01,11.4</Geometry>
+            <Geometry x:Key="IconDoc">M5,2.2 H11 L14,5.2 V16 H5 Z M11,2.2 V5.2 H14 M7,9 H12 M7,12 H12 M7,15 H10</Geometry>
+            <Geometry x:Key="IconWarn">M9,2.8 L16,15.2 H2 Z M9,7 V11.1 M9,12.7 V13.3</Geometry>
+            <Geometry x:Key="IconCheck">M3,9.5 L6.8,13.3 L15,5</Geometry>
+            <Geometry x:Key="IconRestore">M3.6,9 A5.4,5.4 0 1,1 5.2,12.8 M3.6,9 L3,6 M3.6,9 L6.6,8</Geometry>
+            <!-- 实心类: 用 Fill 渲染 -->
+            <Geometry x:Key="IconAi">M9,1.5 L10.7,6.8 L16,8.5 L10.7,10.2 L9,15.5 L7.3,10.2 L2,8.5 L7.3,6.8 Z</Geometry>
+            <Geometry x:Key="IconPlay">M5.5,3.5 L14.5,9 L5.5,14.5 Z</Geometry>
+
+            <!-- 图标渲染样式: 描边 / 实心 (统一尺寸/线宽/端点圆角) -->
+            <Style x:Key="IconStroke" TargetType="Path">
+                <Setter Property="StrokeThickness" Value="1.5"/>
+                <Setter Property="StrokeStartLineCap" Value="Round"/>
+                <Setter Property="StrokeEndLineCap" Value="Round"/>
+                <Setter Property="StrokeLineJoin" Value="Round"/>
+                <Setter Property="Stretch" Value="Uniform"/>
+                <Setter Property="Width" Value="16"/>
+                <Setter Property="Height" Value="16"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+            </Style>
+            <Style x:Key="IconFill" TargetType="Path">
+                <Setter Property="Stretch" Value="Uniform"/>
+                <Setter Property="Width" Value="16"/>
+                <Setter Property="Height" Value="16"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+
             <!-- 标题栏 AI 状态胶囊 (带标签可点; hover 微亮) -->
             <Style x:Key="AiPill" TargetType="Button">
                 <Setter Property="Foreground" Value="{StaticResource Muted}"/>

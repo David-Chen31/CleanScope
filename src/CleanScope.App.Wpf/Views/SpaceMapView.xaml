@@ -68,7 +68,8 @@
                             <TextBlock Text="E 系统关键 · 勿动" Style="{StaticResource Sub}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <TextBlock Text="✓" Foreground="#1E7E34" FontWeight="Bold" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <Path Data="{StaticResource IconCheck}" Style="{StaticResource IconStroke}" Stroke="#1E7E34"
+                                  Width="13" Height="13" Margin="0,0,5,0"/>
                             <TextBlock Text="角标 = 可清理（可勾选批量回收）" Style="{StaticResource Sub}"/>
                         </StackPanel>
                     </WrapPanel>

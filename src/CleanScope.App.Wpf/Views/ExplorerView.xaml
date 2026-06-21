@@ -19,7 +19,7 @@
             <StackPanel Grid.Row="0" Margin="0,0,0,10">
                 <Grid>
                     <TextBlock Text="资源管理器（整盘目录树 · 可清理清单）" Style="{StaticResource H2}" VerticalAlignment="Center"/>
-                    <CheckBox Content="✓ 只看可清理（扁平，可勾选批量清理）" IsChecked="{Binding ShowCleanableOnly}"
+                    <CheckBox Content="只看可清理（扁平，可勾选批量清理）" IsChecked="{Binding ShowCleanableOnly}"
                               HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#1E7E34" FontWeight="SemiBold"/>
                 </Grid>
 
@@ -56,8 +56,13 @@
                             Visibility="{Binding ShowBatchBar, Converter={StaticResource BoolToVis}}">
                     <Button Content="全选" Command="{Binding SelectAllCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
                     <Button Content="全不选" Command="{Binding SelectNoneCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
-                    <Button Content="🗑 移入回收站（可还原）" Command="{Binding RecycleSelectedCommand}"
-                            Style="{StaticResource Primary}" Margin="0,0,12,0"/>
+                    <Button Command="{Binding RecycleSelectedCommand}" Style="{StaticResource Primary}" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconTrash}" Style="{StaticResource IconStroke}" Stroke="White"
+                                  Width="14" Height="14" Margin="0,0,6,0"/>
+                            <TextBlock Text="移入回收站（可还原）" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <TextBlock Text="排序" VerticalAlignment="Center" Foreground="{StaticResource Muted}" Margin="0,0,4,0"/>
                     <Button Content="大小" Command="{Binding SortBySizeCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,0"/>
                     <Button Content="名称" Command="{Binding SortByNameCommand}" Style="{StaticResource Ghost}" Margin="0,0,16,0"/>
@@ -150,13 +155,25 @@
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
-                                    <TextBlock Text="  ✓可清理" Foreground="#1E7E34" FontSize="11" VerticalAlignment="Center"
-                                               Visibility="{Binding IsCleanable, Converter={StaticResource BoolToVis}}"/>
-                                    <TextBlock Text="  ♻已移入回收站" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center"
-                                               Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}"/>
-                                    <TextBlock Text="  ✨AI推测" Foreground="#8451C4" FontSize="11" VerticalAlignment="Center"
-                                               ToolTip="来源/用途由 AI 推测补充，仅供参考"
-                                               Visibility="{Binding IsAiResolved, Converter={StaticResource BoolToVis}}"/>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                Visibility="{Binding IsCleanable, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="{StaticResource IconCheck}" Style="{StaticResource IconStroke}" Stroke="#1E7E34"
+                                              Width="11" Height="11" Margin="0,0,3,0"/>
+                                        <TextBlock Text="可清理" Foreground="#1E7E34" FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="{StaticResource IconRestore}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Muted}"
+                                              Width="11" Height="11" Margin="0,0,3,0"/>
+                                        <TextBlock Text="已移入回收站" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                ToolTip="来源/用途由 AI 推测补充，仅供参考"
+                                                Visibility="{Binding IsAiResolved, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="{StaticResource IconAi}" Style="{StaticResource IconFill}" Fill="#8451C4"
+                                              Width="11" Height="11" Margin="0,0,3,0"/>
+                                        <TextBlock Text="AI推测" Foreground="#8451C4" FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0"
                                                 Visibility="{Binding IsInvestigating, Converter={StaticResource BoolToVis}}">
                                         <views:Spinner Diameter="11" Stroke="#8451C4" VerticalAlignment="Center"/>
@@ -257,14 +274,26 @@
                                     <Button Content="复制路径" Command="{Binding CopyPathCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"/>
                                     <Button Content="打开位置" Command="{Binding OpenLocationCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
                                             Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
-                                    <Button Content="✨ 用 AI 识别" Command="{Binding InvestigateCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
-                                            Visibility="{Binding ShowAiMenu, Converter={StaticResource BoolToVis}}"/>
+                                    <Button Command="{Binding InvestigateCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
+                                            Visibility="{Binding ShowAiMenu, Converter={StaticResource BoolToVis}}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource IconAi}" Style="{StaticResource IconFill}" Fill="{StaticResource Accent}"
+                                                  Width="13" Height="13" Margin="0,0,6,0"/>
+                                            <TextBlock Text="用 AI 识别" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
                                     <Button Content="加入忽略名单" Command="{Binding AddIgnoreCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
                                             Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
                                     <Button Content="迁移到其他盘" Command="{Binding MigrateCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
                                             Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
-                                    <Button Content="🗑 移入回收站" Command="{Binding RecycleCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
-                                            Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
+                                    <Button Command="{Binding RecycleCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
+                                            Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource IconTrash}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Accent}"
+                                                  Width="13" Height="13" Margin="0,0,6,0"/>
+                                            <TextBlock Text="移入回收站" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
                                     <Button Content="在回收站中查看 / 还原" Command="{Binding OpenRecycleBinCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
                                             Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}"/>
                                 </WrapPanel>

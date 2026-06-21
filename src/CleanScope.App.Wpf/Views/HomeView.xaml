@@ -21,9 +21,13 @@
             </Border.Background>
             <StackPanel>
                 <!-- 工作台首屏: 去掉大标题/口号 (占注意力且无用), 仅保留一行安全承诺作信任锚 (扫描前) -->
-                <TextBlock Text="🛡 只读分析 · 删除只进回收站可还原 · 系统关键文件零触碰"
-                           FontSize="12.5" Foreground="{StaticResource Muted}" Margin="0,0,0,2"
-                           Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,2"
+                            Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                    <Path Data="{StaticResource IconShield}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Clean}"
+                          Width="13" Height="13" Margin="0,0,6,0"/>
+                    <TextBlock Text="只读分析 · 删除只进回收站可还原 · 系统关键文件零触碰"
+                               FontSize="12.5" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                </StackPanel>
 
                 <TextBlock Text="{Binding DriveInfo}" FontSize="13.5" Foreground="{StaticResource Muted}"
                            Margin="0,12,0,12"/>
@@ -62,9 +66,14 @@
 
                 <!-- 次要选项: 整台电脑 + 管理员模式 (弱化, 不抢主操作) -->
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0" VerticalAlignment="Center">
-                    <Button Content="🖥 扫描整台电脑" Command="{Binding ScanAllDrivesCommand}"
-                            Style="{StaticResource Ghost}" Padding="12,6"
-                            ToolTip="一次扫描本机所有固定磁盘，合并成一份总览"/>
+                    <Button Command="{Binding ScanAllDrivesCommand}" Style="{StaticResource Ghost}" Padding="12,6"
+                            ToolTip="一次扫描本机所有固定磁盘，合并成一份总览">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconMonitor}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Accent}"
+                                  Width="14" Height="14" Margin="0,0,6,0"/>
+                            <TextBlock Text="扫描整台电脑" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <CheckBox Content="管理员模式（更全覆盖）" IsChecked="{Binding AdminMode}"
                               VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Muted}"/>
                 </StackPanel>
@@ -102,8 +111,13 @@
 
                 <!-- S-H: 整盘 AI 清理参谋 —— 按需生成 (零默认 token); 未配置 AI 时按钮不显示 -->
                 <StackPanel Margin="0,0,0,12" Visibility="{Binding ShowAdviseButton, Converter={StaticResource BoolToVis}}">
-                    <Button Content="🧭 生成 AI 行动计划（基于占用汇总，不含路径，请求一次，可选）" Command="{Binding AdviseCommand}"
-                            Style="{StaticResource Ghost}" HorizontalAlignment="Left"/>
+                    <Button Command="{Binding AdviseCommand}" Style="{StaticResource Ghost}" HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconPlan}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Accent}"
+                                  Width="14" Height="14" Margin="0,0,6,0"/>
+                            <TextBlock Text="生成 AI 行动计划（基于占用汇总，不含路径，请求一次，可选）" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <StackPanel Orientation="Horizontal" Margin="2,8,0,0" VerticalAlignment="Center"
                                 Visibility="{Binding AdviseStatus, Converter={StaticResource NotEmptyToVis}}">
                         <views:Spinner Diameter="14" VerticalAlignment="Center"
@@ -116,7 +130,11 @@
                 <Border Background="#F1F7FF" CornerRadius="6" Padding="12,10" Margin="0,0,0,12"
                         Visibility="{Binding HasAiAdvice, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
-                        <TextBlock Text="🧭 AI 清理行动计划（跨项建议，仅供参考）" FontWeight="SemiBold" Foreground="#1F4E8C"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconPlan}" Style="{StaticResource IconStroke}" Stroke="#1F4E8C"
+                                  Width="15" Height="15" Margin="0,0,7,0"/>
+                            <TextBlock Text="AI 清理行动计划（跨项建议，仅供参考）" FontWeight="SemiBold" Foreground="#1F4E8C" VerticalAlignment="Center"/>
+                        </StackPanel>
 
                         <!-- 一句话总览 (有结构化计划时) -->
                         <TextBlock Text="{Binding PlanSummary}" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="13.5"

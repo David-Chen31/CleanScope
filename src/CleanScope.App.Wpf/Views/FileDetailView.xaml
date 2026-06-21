@@ -42,8 +42,11 @@
                     <!-- 高风险提示: D/E 仅提示不建议删除, 不渲染任何删除入口 -->
                     <Border Margin="0,12,0,0" Padding="12" CornerRadius="6" Background="#FCE8E6"
                             Visibility="{Binding IsHighRisk, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Foreground="#9A1C19" TextWrapping="Wrap"
-                                   Text="🔴 该项为高风险（D/E）：可能是系统/应用关键文件或无法判断来源。本工具不提供删除入口，强烈建议保留。"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="10" Height="10" Fill="{StaticResource Critical}" VerticalAlignment="Top" Margin="0,3,8,0"/>
+                            <TextBlock Foreground="#9A1C19" TextWrapping="Wrap"
+                                       Text="该项为高风险（D/E）：可能是系统/应用关键文件或无法判断来源。本工具不提供删除入口，强烈建议保留。"/>
+                        </StackPanel>
                     </Border>
                 </StackPanel>
             </Border>
@@ -60,9 +63,13 @@
                         <StackPanel Margin="0,2"><TextBlock Text="最后修改" Style="{StaticResource Sub}"/><TextBlock Text="{Binding Mtime}"/></StackPanel>
                         <StackPanel Margin="0,2"><TextBlock Text="占用进程" Style="{StaticResource Sub}"/><TextBlock Text="{Binding OccupyingProcess}"/></StackPanel>
                     </UniformGrid>
-                    <TextBlock Margin="0,8,0,0" Foreground="#9A6700"
-                               Visibility="{Binding IsReparsePoint, Converter={StaticResource BoolToVis}}"
-                               Text="⚠ 此项为符号链接 / 联接点；风险判定基于解析后的真实路径。"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
+                                Visibility="{Binding IsReparsePoint, Converter={StaticResource BoolToVis}}">
+                        <Path Data="{StaticResource IconWarn}" Style="{StaticResource IconStroke}" Stroke="#9A6700"
+                              Width="13" Height="13" Margin="0,0,6,0" VerticalAlignment="Top"/>
+                        <TextBlock Foreground="#9A6700" TextWrapping="Wrap"
+                                   Text="此项为符号链接 / 联接点；风险判定基于解析后的真实路径。"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
@@ -168,9 +175,15 @@
         </Border>
 
         <!-- 按需 AI 解释入口: 不自动出云, 用户点了才请求 (省 token); 未配置 AI / 已解释 / 系统关键时不显示 -->
-        <Button Content="✨ 用 AI 解释这一项（脱敏后请求，可选）" Command="{Binding ExplainCommand}" Style="{StaticResource Ghost}"
+        <Button Command="{Binding ExplainCommand}" Style="{StaticResource Ghost}"
                 HorizontalAlignment="Left" Margin="0,0,0,8"
-                Visibility="{Binding CanExplain, Converter={StaticResource BoolToVis}}"/>
+                Visibility="{Binding CanExplain, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Horizontal">
+                <Path Data="{StaticResource IconAi}" Style="{StaticResource IconFill}" Fill="{StaticResource Accent}"
+                      Width="13" Height="13" Margin="0,0,6,0"/>
+                <TextBlock Text="用 AI 解释这一项（脱敏后请求，可选）" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
 
         <!-- AI 状态 (生成中 / 不可用; 无解释卡时显示); 生成中显示转圈 (问题#2) -->
         <StackPanel Orientation="Horizontal" Margin="2,-4,0,8" VerticalAlignment="Center"
@@ -190,10 +203,22 @@
                 <!-- S-E 删除入口: 仅"可清理"(A/B) 项显示, 移入回收站可还原; 经两步确认+闸门复核+审计。 -->
                 <!-- S-D 推荐动作: 命令型→运行/复制官方命令; 安装目录→卸载程序; 通用→定位/复制路径/忽略 -->
                 <WrapPanel>
-                    <Button Content="🗑 移入回收站（可还原）" Command="{Binding MoveToRecycleBinCommand}" Style="{StaticResource Primary}"
-                            Margin="0,0,8,8" Visibility="{Binding Row.CanRecycle, Converter={StaticResource BoolToVis}}"/>
-                    <Button Content="▶ 运行官方清理命令" Command="{Binding RunCommandCommand}" Style="{StaticResource Primary}"
-                            Margin="0,0,8,8" Visibility="{Binding Row.HasRunCommand, Converter={StaticResource BoolToVis}}"/>
+                    <Button Command="{Binding MoveToRecycleBinCommand}" Style="{StaticResource Primary}"
+                            Margin="0,0,8,8" Visibility="{Binding Row.CanRecycle, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconTrash}" Style="{StaticResource IconStroke}" Stroke="White"
+                                  Width="14" Height="14" Margin="0,0,6,0"/>
+                            <TextBlock Text="移入回收站（可还原）" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding RunCommandCommand}" Style="{StaticResource Primary}"
+                            Margin="0,0,8,8" Visibility="{Binding Row.HasRunCommand, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconPlay}" Style="{StaticResource IconFill}" Fill="White"
+                                  Width="13" Height="13" Margin="0,0,6,0"/>
+                            <TextBlock Text="运行官方清理命令" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <Button Content="复制清理命令" Command="{Binding CopyCommandCommand}" Style="{StaticResource Ghost}"
                             Margin="0,0,8,8" Visibility="{Binding Row.HasRunCommand, Converter={StaticResource BoolToVis}}"/>
                     <Button Content="打开卸载程序" Command="{Binding UninstallCommand}" Style="{StaticResource Ghost}"
