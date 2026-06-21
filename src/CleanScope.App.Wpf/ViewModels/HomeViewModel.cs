@@ -54,6 +54,10 @@ public sealed class HomeViewModel : ViewModelBase
     public IReadOnlyList<OfficialActionViewModel> OfficialActions { get; }
     public bool HasOfficialActions => OfficialActions.Count > 0;
 
+    /// <summary>问题#1: 本机实际检测到的官方手段 —— 紧跟 AI 行动计划展示为"一键执行"按钮, 让计划真正可落地。</summary>
+    public IReadOnlyList<OfficialActionViewModel> ApplicableOfficialActions => OfficialActions.Where(a => a.Detected).ToList();
+    public bool HasApplicableOfficialActions => ApplicableOfficialActions.Count > 0;
+
     private string _officialStatus = "";
     public string OfficialStatus { get => _officialStatus; private set => SetField(ref _officialStatus, value); }
 
@@ -382,21 +386,27 @@ public sealed class HomeViewModel : ViewModelBase
             : a.NeedsAdmin
                 ? "执行方式：CleanScope 在后台执行官方命令（无黑窗）；接下来 Windows 会弹一个授权(UAC)窗口，点「是」即可。"
                 : "执行方式：CleanScope 在后台执行官方命令（无黑窗），完成后显示结果。";
-        var recover = a.Reversible ? $"能否恢复：可以。{a.Undo}" : $"能否恢复：❌ 不可恢复。{a.Undo}";
-        // 问题#3: 弹窗讲清"做什么/后果/能否恢复/如何恢复/怎么执行", 让用户明白这一步到底干什么。
-        var confirm = MessageBox.Show(
-            $"【{a.Title}】\n\n" +
-            $"做什么：{a.Description}\n\n" +
-            $"执行后果：{(string.IsNullOrWhiteSpace(a.Consequence) ? a.Description : a.Consequence)}\n\n" +
-            $"{recover}\n\n" +
-            $"{surfaceLine}\n\n" +
-            $"实际执行的命令：{a.Payload}\n\n" +
-            $"提示：{a.Note}\n\n确定继续吗？",
-            $"确认执行：{a.Title} — CleanScope",
-            MessageBoxButton.OKCancel,
-            a.Reversible ? MessageBoxImage.Information : MessageBoxImage.Warning,
-            MessageBoxResult.Cancel);
-        if (confirm != MessageBoxResult.OK) { OfficialStatus = "已取消，未做任何改动。"; return; }
+        var recover = a.Reversible ? $"可以恢复。{a.Undo}" : $"❌ 不可恢复。{a.Undo}";
+        // 问题#3/#2: 自绘确认弹窗讲清"做什么/后果/能否恢复/如何执行"; 不可恢复手段红色强调 + 强确认勾选。
+        var model = new Views.ConfirmDialogModel
+        {
+            Title = $"执行：{a.Title}",
+            IsHighRisk = !a.Reversible,
+            Intro = a.Description,
+            Details = Views.ConfirmDialogModel.Rows(
+                ("后果", string.IsNullOrWhiteSpace(a.Consequence) ? a.Description : a.Consequence),
+                ("恢复", recover),
+                ("执行", surfaceLine),
+                ("命令", a.Payload),
+                ("提示", a.Note)),
+            WarningText = a.Reversible ? "" : "此操作不可恢复，请确认后再继续。",
+            CheckText = a.Reversible ? "" : "我已了解此操作不可恢复，确认继续。",
+            ConfirmText = a.Surface == CleanupSurface.OpensWindowsUi ? "打开并继续" : "执行",
+        };
+        if (!Views.ConfirmDialog.Show(System.Windows.Application.Current?.MainWindow, model))
+        {
+            OfficialStatus = "已取消，未做任何改动。"; return;
+        }
 
         IsOfficialRunning = true;
         try

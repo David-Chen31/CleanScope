@@ -111,8 +111,6 @@
                                                   Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
                                         <MenuItem Header="移入回收站（可还原）" Command="{Binding RecycleCommand}"
                                                   Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
-                                        <MenuItem Header="手动移入回收站（高风险项，需强确认）" Command="{Binding ManualRecycleCommand}"
-                                                  Visibility="{Binding CanManualRecycle, Converter={StaticResource BoolToVis}}"/>
                                         <MenuItem Header="在回收站中查看 / 还原" Command="{Binding OpenRecycleBinCommand}"
                                                   Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}"/>
                                     </ContextMenu>
@@ -263,8 +261,6 @@
                                             Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
                                     <Button Content="🗑 移入回收站" Command="{Binding RecycleCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
                                             Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}"/>
-                                    <Button Content="⚠ 手动移入回收站（高风险，需强确认）" Command="{Binding ManualRecycleCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
-                                            Visibility="{Binding CanManualRecycle, Converter={StaticResource BoolToVis}}"/>
                                     <Button Content="在回收站中查看 / 还原" Command="{Binding OpenRecycleBinCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
                                             Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}"/>
                                 </WrapPanel>

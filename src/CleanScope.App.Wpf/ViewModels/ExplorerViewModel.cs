@@ -19,8 +19,7 @@ public interface IExplorerActions
     int AiConfigGeneration { get; }   // 问题#5: 改模型/脱敏档位后 +1, 已识别项据此可重新识别
     void CopyToClipboard(string text, string okStatus);
     Task OpenLocationAsync(string path);
-    Task RecycleAsync(ExplorerNodeViewModel node);
-    Task ManualRecycleAsync(ExplorerNodeViewModel node);   // 问题#4: 强确认手动处置高风险项 (仍仅回收站)
+    Task RecycleAsync(ExplorerNodeViewModel node);   // 统一入口: 任意风险等级, 经确认弹窗 (高风险强确认) → 仅回收站
     Task InvestigateAsync(ExplorerNodeViewModel node);
     Task MigrateAsync(ExplorerNodeViewModel node);
     Task OpenRecycleBinAsync();
@@ -215,12 +214,19 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         if (targets.Count == 0) { ActionStatus = "请先勾选要清理的项。"; return; }
 
         var total = targets.Sum(n => n.RawSize);
-        var confirm = MessageBox.Show(
-            $"确定把选中的 {targets.Count} 项（约 {Format.HumanSize(total)}）移入回收站吗？\n\n" +
-            "可从回收站还原，非永久删除。每一项仍会经安全闸门复核，命中系统关键/容器/占用的会被自动跳过。",
-            "批量移入回收站 — CleanScope",
-            MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
-        if (confirm != MessageBoxResult.OK) { ActionStatus = "已取消，未做任何改动。"; return; }
+        var model = new ConfirmDialogModel
+        {
+            Title = "批量移入回收站",
+            Intro = "确定把选中的这些项移入回收站吗？可从回收站随时还原，非永久删除。",
+            Details = ConfirmDialogModel.Rows(
+                ("项数", $"{targets.Count} 项"), ("合计", $"约 {Format.HumanSize(total)}")),
+            WarningText = "每一项仍会逐一经安全闸门复核，命中系统关键/容器/占用的会被自动跳过、不动。",
+            ConfirmText = $"移入回收站（{targets.Count} 项）",
+        };
+        if (!ConfirmDialog.Show(System.Windows.Application.Current?.MainWindow, model))
+        {
+            ActionStatus = "已取消，未做任何改动。"; return;
+        }
 
         IsBusy = true;
         int ok = 0, skipped = 0;
@@ -434,14 +440,19 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         if (picker.ShowDialog() != true) { ActionStatus = "已取消迁移。"; return; }
         var targetRoot = picker.FolderName;
 
-        var confirm = MessageBox.Show(
-            $"将把以下目录迁移到其他磁盘，并在原位创建目录联接（对软件透明，照常使用）：\n\n" +
-            $"源：{node.Path}\n目标：{targetRoot}\n\n" +
-            "过程：复制到目标盘 → 校验 → 原目录改名留作备份 → 建立联接。\n" +
-            "我们不会永久删除任何数据；释放原盘空间需你之后确认软件正常、再删除那个 .cleanscope-bak 备份。\n\n确定继续吗？",
-            "迁移到其他盘 — CleanScope",
-            MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
-        if (confirm != MessageBoxResult.OK) { ActionStatus = "已取消，未做任何改动。"; return; }
+        var model = new ConfirmDialogModel
+        {
+            Title = "迁移到其他盘",
+            Intro = "将把以下目录迁移到其他磁盘，并在原位创建目录联接（对软件透明，照常使用）。",
+            Details = ConfirmDialogModel.Rows(("源", node.Path), ("目标", targetRoot),
+                ("过程", "复制到目标盘 → 校验 → 原目录改名留作备份 → 建立联接")),
+            WarningText = "不会永久删除任何数据；释放原盘空间需你之后确认软件正常、再自行删除那个 .cleanscope-bak 备份。",
+            ConfirmText = "开始迁移",
+        };
+        if (!ConfirmDialog.Show(System.Windows.Application.Current?.MainWindow, model))
+        {
+            ActionStatus = "已取消，未做任何改动。"; return;
+        }
 
         ActionStatus = $"正在迁移「{node.Name}」…（大目录可能需要一些时间）";
         try
@@ -475,31 +486,69 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         return RunAsync(request, approval, "已在系统资源管理器中打开位置。");
     }
 
-    // E3 删除: 安全闸门当场判定 (黑名单/容器/A·B/占用按路径独立强制) → 两步确认 → 执行器先写审计后仅移入回收站。
-    // 绝不永久删除; 被拒则只提示理由, 连确认框都不弹。
-    // B: 占用检测(Restart Manager)与回收站执行可能耗时, 一律放后台线程, 先给"检查中"提示, 避免确认框迟迟不弹/界面冻住像出 bug。
+    // E3 删除 (问题#2 统一入口): 任意风险等级走同一个"移入回收站"。两段式判定 ——
+    //   ① 先按常规 (A/B) 过闸门; 放行 → 普通确认弹窗。
+    //   ② 常规被拒 (风险等级不够) → 再以 UserOverride 复判; 这次放行 → 说明只是风险高 (非红线),
+    //      弹"高风险强确认"弹窗 (红 + 必须勾选), 用户确认后以 override 仅移入回收站。
+    //   ③ 连 override 都拒 → 命中系统关键/容器/占用红线, 不可删除, 只如实告知理由 (不弹确认框)。
+    // 绝不永久删除; 占用检测与回收站执行可能耗时, 一律放后台线程, 先给"检查中"提示, 避免界面像冻住。
     public async Task RecycleAsync(ExplorerNodeViewModel node)
     {
         if (node is null || !node.CanRecycle) return;
 
-        var request = new ActionRequest(null, node.Path, ActionType.MoveToRecycleBin);
-
+        var risk = node.ToRiskAssessment();
         ActionStatus = $"正在检查「{node.Name}」是否可安全清理…";
-        var verdict = await Task.Run(() => _services.SafetyGuard.Evaluate(request, null, node.ToRiskAssessment()));
+
+        var normal = new ActionRequest(null, node.Path, ActionType.MoveToRecycleBin);
+        var verdict = await Task.Run(() => _services.SafetyGuard.Evaluate(normal, null, risk));
+        var request = normal;
+        var highRisk = false;
+
         if (verdict.Outcome != GuardOutcome.Allowed)
         {
-            ActionStatus = string.IsNullOrWhiteSpace(verdict.RecommendedAlternative)
-                ? $"不可删除：{verdict.Reason}"
-                : $"不可删除：{verdict.Reason}　建议：{verdict.RecommendedAlternative}";
-            return;
+            // 风险等级不够 → 试 override; 若仍被拒, 即为红线 (黑名单/容器/占用), 不可越过。
+            var manual = new ActionRequest(null, node.Path, ActionType.MoveToRecycleBin, UserOverride: true);
+            var manualVerdict = await Task.Run(() => _services.SafetyGuard.Evaluate(manual, null, risk));
+            if (manualVerdict.Outcome != GuardOutcome.Allowed)
+            {
+                ActionStatus = string.IsNullOrWhiteSpace(manualVerdict.RecommendedAlternative)
+                    ? $"不可删除：{manualVerdict.Reason}"
+                    : $"不可删除：{manualVerdict.Reason}　建议：{manualVerdict.RecommendedAlternative}";
+                return;
+            }
+            verdict = manualVerdict;
+            request = manual;
+            highRisk = true;
         }
         ActionStatus = "";
 
-        var confirm = MessageBox.Show(
-            $"确定把以下项移入回收站吗？（可从回收站还原，非永久删除）\n\n{node.Path}\n\n大小：{node.SizeText}　来源：{node.Origin}",
-            "移入回收站 — CleanScope",
-            MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
-        if (confirm != MessageBoxResult.OK) { ActionStatus = "已取消，未做任何改动。"; return; }
+        var model = highRisk
+            ? new ConfirmDialogModel
+            {
+                Title = "移入回收站（高风险项）",
+                IsHighRisk = true,
+                Intro = "此项未被识别为可安全清理，等级偏高。仅在你确认这是你自己的、了解其用途的数据时才继续。",
+                Details = ConfirmDialogModel.Rows(
+                    ("名称", node.Name), ("路径", node.Path), ("大小", node.SizeText),
+                    ("来源", node.Origin), ("风险", node.BucketLabel)),
+                WarningText = "移入回收站后仍可还原，但请自行确认它不是某个程序/系统正在使用的数据。",
+                CheckText = "我确认这是我自己的数据，了解风险并自行承担（仍可从回收站还原）。",
+                ConfirmText = "确认移入回收站",
+            }
+            : new ConfirmDialogModel
+            {
+                Title = "移入回收站",
+                Intro = "确定把以下项移入回收站吗？可从回收站随时还原，非永久删除。",
+                Details = ConfirmDialogModel.Rows(
+                    ("名称", node.Name), ("路径", node.Path), ("大小", node.SizeText), ("来源", node.Origin)),
+                ConfirmText = "移入回收站",
+            };
+
+        if (!ConfirmDialog.Show(System.Windows.Application.Current?.MainWindow, model))
+        {
+            ActionStatus = "已取消，未做任何改动。";
+            return;
+        }
 
         ActionStatus = $"正在移入回收站「{node.Name}」…";
         var log = await Task.Run(() => _services.ActionExecutor.ExecuteAsync(request, verdict));
@@ -507,46 +556,6 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         {
             node.MarkDeleted();
             _session?.NotifyRemoved(node.Path, node.RawSize, node.IsCleanable);   // A1: 广播给其它页 + 概览扣减
-            ActionStatus = $"已移入回收站（可还原）：{node.Name}";
-            Toast.Show($"已移入回收站（可还原）：{node.Name}", ToastKind.Success, "打开回收站", () => _ = OpenRecycleBinAsync());
-        }
-        else
-        {
-            ActionStatus = $"操作未完成：{log.RejectReason}";
-            Toast.Error($"未能移入回收站：{log.RejectReason}");
-        }
-    }
-
-    // 问题#4: 手动处置高风险/识别不出的项 (如用户自己下载的文件夹)。强确认 (复选框勾选) → UserOverride 放行,
-    // 仅放宽风险等级闸门; 系统关键黑名单/容器/占用红线照旧, 且仍仅移入回收站 (可恢复, 永不永久删除)。
-    public async Task ManualRecycleAsync(ExplorerNodeViewModel node)
-    {
-        if (node is null || !node.CanManualRecycle) return;
-
-        var riskHint = $"风险桶：{node.BucketLabel}";
-        var confirmed = ManualDeleteDialog.Confirm(
-            System.Windows.Application.Current?.MainWindow, node.Name, node.Path, node.SizeText, node.Origin, riskHint);
-        if (!confirmed) { ActionStatus = "已取消，未做任何改动。"; return; }
-
-        var request = new ActionRequest(null, node.Path, ActionType.MoveToRecycleBin, UserOverride: true);
-
-        ActionStatus = $"正在检查「{node.Name}」…";
-        var verdict = await Task.Run(() => _services.SafetyGuard.Evaluate(request, null, node.ToRiskAssessment()));
-        if (verdict.Outcome != GuardOutcome.Allowed)
-        {
-            // 即便用户强确认, 黑名单/容器/占用仍会拒 —— 如实告知红线。
-            ActionStatus = string.IsNullOrWhiteSpace(verdict.RecommendedAlternative)
-                ? $"仍不可删除：{verdict.Reason}"
-                : $"仍不可删除：{verdict.Reason}　建议：{verdict.RecommendedAlternative}";
-            return;
-        }
-
-        ActionStatus = $"正在移入回收站「{node.Name}」…";
-        var log = await Task.Run(() => _services.ActionExecutor.ExecuteAsync(request, verdict));
-        if (log.Result == ActionResult.Success)
-        {
-            node.MarkDeleted();
-            _session?.NotifyRemoved(node.Path, node.RawSize, node.IsCleanable);
             ActionStatus = $"已移入回收站（可还原）：{node.Name}";
             Toast.Show($"已移入回收站（可还原）：{node.Name}", ToastKind.Success, "打开回收站", () => _ = OpenRecycleBinAsync());
         }

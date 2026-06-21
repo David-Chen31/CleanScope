@@ -113,6 +113,35 @@
                     <StackPanel>
                         <TextBlock Text="🧭 AI 清理行动计划（跨项建议，仅供参考）" FontWeight="SemiBold" Foreground="#1F4E8C"/>
                         <TextBlock common:MarkdownInline.Text="{Binding AiAdvice}" TextWrapping="Wrap" Margin="0,6,0,0" Foreground="#243B53"/>
+
+                        <!-- 问题#1: 计划不再止于文字 —— 紧跟可一键执行的官方手段按钮, 点了即先确认再执行, 不用开命令行 -->
+                        <Border Background="#FFFFFF" BorderBrush="#D6E4FB" BorderThickness="1" CornerRadius="6"
+                                Padding="10,8" Margin="0,10,0,0"
+                                Visibility="{Binding HasApplicableOfficialActions, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="↓ 按计划一键执行（点击后会先弹出确认，无需命令行）" FontSize="12"
+                                           Foreground="{StaticResource Muted}" Margin="0,0,0,6"/>
+                                <ItemsControl ItemsSource="{Binding ApplicableOfficialActions}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Margin="0,0,8,8" Style="{StaticResource Ghost}" Padding="12,7"
+                                                    Command="{Binding DataContext.RunOfficialActionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding SavingsText}" Margin="6,0,0,0" FontSize="11"
+                                                               Foreground="#1E7E34" VerticalAlignment="Center"
+                                                               Visibility="{Binding HasSavings, Converter={StaticResource BoolToVis}}"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Border>
 

@@ -8,8 +8,15 @@
              mc:Ignorable="d" d:DesignWidth="860">
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel>
-        <Button Content="← 返回" Command="{Binding BackCommand}" Style="{StaticResource Ghost}"
-                HorizontalAlignment="Left" Margin="0,0,0,12"/>
+        <Button Command="{Binding BackCommand}" Style="{StaticResource Outline}"
+                HorizontalAlignment="Left" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal">
+                <Path Data="{StaticResource IconBackArrow}" Stroke="{StaticResource Ink}" StrokeThickness="1.8"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                      Width="20" Height="18" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                <TextBlock Text="返回" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
 
         <StackPanel DataContext="{Binding Row}">
 

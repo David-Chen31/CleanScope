@@ -615,6 +615,46 @@
                 </Setter>
             </Style>
 
+            <!-- 危险主按钮 (移入回收站等破坏性确认; 红底白字, 与 Primary 同构) -->
+            <Style x:Key="Danger" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource Critical}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="16,9"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}" RenderTransformOrigin="0.5,0.5">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="#A81C1A"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="#8E1714"/>
+                                    <Setter TargetName="b" Property="RenderTransform">
+                                        <Setter.Value><ScaleTransform ScaleX="0.98" ScaleY="0.98"/></Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="b" Property="Background" Value="#D79B9A"/>
+                                    <Setter TargetName="b" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 手绘返回箭头 (问题#3: 线性矢量, 非 emoji; 圆角端点, 看着是刻意设计而非随手贴的字符) -->
+            <!-- 一根水平轴 + 左端楔形箭头, 描边渲染 (见各处 Path Stroke/StrokeThickness)。 -->
+            <Geometry x:Key="IconBackArrow">M11,3 L4,10 L11,17 M4,10 L19,10</Geometry>
+
             <!-- 标题栏 AI 状态胶囊 (带标签可点; hover 微亮) -->
             <Style x:Key="AiPill" TargetType="Button">
                 <Setter Property="Foreground" Value="{StaticResource Muted}"/>

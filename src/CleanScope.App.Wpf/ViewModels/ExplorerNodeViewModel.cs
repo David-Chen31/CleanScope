@@ -37,7 +37,6 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
             _ => !string.IsNullOrWhiteSpace(Purpose) || !string.IsNullOrWhiteSpace(RecommendedAction));
         OpenLocationCommand = new AsyncRelayCommand(_ => _actions?.OpenLocationAsync(Path) ?? Task.CompletedTask, _ => HasPath && !_isDeleted);
         RecycleCommand = new AsyncRelayCommand(_ => _actions?.RecycleAsync(this) ?? Task.CompletedTask, _ => CanRecycle);
-        ManualRecycleCommand = new AsyncRelayCommand(_ => _actions?.ManualRecycleAsync(this) ?? Task.CompletedTask, _ => CanManualRecycle);
         InvestigateCommand = new AsyncRelayCommand(_ => _actions?.InvestigateAsync(this) ?? Task.CompletedTask, _ => CanInvestigate);
         MigrateCommand = new AsyncRelayCommand(_ => _actions?.MigrateAsync(this) ?? Task.CompletedTask, _ => CanMigrate);
         OpenRecycleBinCommand = new AsyncRelayCommand(_ => _actions?.OpenRecycleBinAsync() ?? Task.CompletedTask, _ => _isDeleted);
@@ -53,8 +52,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     public RelayCommand CopyPathCommand { get; }
     public RelayCommand CopyPurposeCommand { get; }
     public AsyncRelayCommand OpenLocationCommand { get; }
-    public AsyncRelayCommand RecycleCommand { get; }
-    public AsyncRelayCommand ManualRecycleCommand { get; }  // 问题#4: 强确认手动处置高风险/识别不出的项 (仍仅移入回收站)
+    public AsyncRelayCommand RecycleCommand { get; }   // 统一入口: 任意风险等级 (高风险走强确认弹窗)
     public AsyncRelayCommand InvestigateCommand { get; }   // E5+: 按需用 AI 识别此项 (零默认开销)
     public AsyncRelayCommand MigrateCommand { get; }       // P0: 把此目录迁到其他盘 + 建目录联接
     public AsyncRelayCommand OpenRecycleBinCommand { get; }  // A2: 删除后唯一可用动作 —— 打开回收站查看/还原
@@ -131,12 +129,9 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     internal bool RawIsDirectory => _node.IsDirectory;
 
     private bool HasPath => !string.IsNullOrEmpty(_node.Path);
-    // 真实文件/目录 (有路径、非余量合成块) 才允许尝试移入回收站; 是否放行由安全闸门当场判定。
+    // 真实文件/目录 (有路径、非余量合成块) 才允许尝试移入回收站; 是否放行 (及是否需强确认) 由安全闸门当场判定。
+    // 问题#2: 单一"移入回收站"入口覆盖全部风险等级 —— A/B 普通确认, C-E 经 override 走高风险强确认弹窗。
     public bool CanRecycle => HasPath && !IsRemainder && !_isDeleted;
-
-    // 问题#4 手动处置入口: 真实、非容器、非余量、未删, 且**不在可清理桶** (即谨慎/勿动等高风险) 时显示。
-    // 用于"这是我自己下载的、识别不出的文件夹"——经强确认后走 UserOverride (仍仅移入回收站; 黑名单/容器/占用仍拦)。
-    public bool CanManualRecycle => HasPath && !IsRemainder && !_isDeleted && !_node.IsContainer && !EffectiveCleanable;
 
     // C1: "只看可清理"扁平视图里的批量勾选 (仅可回收项可勾)。
     public bool IsSelectable { get; }
@@ -161,13 +156,11 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
             if (!SetField(ref _isDeleted, value)) return;
             if (_isSelected) { _isSelected = false; OnPropertyChanged(nameof(IsSelected)); }
             OnPropertyChanged(nameof(CanRecycle));
-            OnPropertyChanged(nameof(CanManualRecycle));
             OnPropertyChanged(nameof(CanSelect));
             OnPropertyChanged(nameof(CanMigrate));
             OnPropertyChanged(nameof(CanInvestigate));
             OnPropertyChanged(nameof(ShowLiveActions));
             RecycleCommand.RaiseCanExecuteChanged();
-            ManualRecycleCommand.RaiseCanExecuteChanged();
             MigrateCommand.RaiseCanExecuteChanged();
             InvestigateCommand.RaiseCanExecuteChanged();
             OpenLocationCommand.RaiseCanExecuteChanged();

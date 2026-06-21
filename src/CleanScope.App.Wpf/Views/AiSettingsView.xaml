@@ -9,9 +9,16 @@
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <Border Style="{StaticResource Cards}">
         <StackPanel>
-            <!-- AI 设置页明确的返回出口; 用描边次级按钮, 比浅灰 Ghost 更显眼 (问题#3: 此前太浅太小) -->
-            <Button Content="←  返回" Style="{StaticResource Outline}" HorizontalAlignment="Left" MinWidth="92" Margin="0,0,0,16"
-                    Command="{Binding DataContext.GoBackFromAiCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+            <!-- AI 设置页返回出口 (问题#3): 手绘线性箭头 (非 emoji 字符) + 描边按钮, 看着是刻意设计 -->
+            <Button Style="{StaticResource Outline}" HorizontalAlignment="Left" Margin="0,0,0,16"
+                    Command="{Binding DataContext.GoBackFromAiCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                <StackPanel Orientation="Horizontal">
+                    <Path Data="{StaticResource IconBackArrow}" Stroke="{StaticResource Ink}" StrokeThickness="1.8"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                          Width="20" Height="18" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                    <TextBlock Text="返回" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
             <TextBlock Text="AI 设置" Style="{StaticResource H2}"/>
             <TextBlock Text="可选 · AI 仅在你点击 AI 功能时按需调用，不配置则全程本地。"
                        Style="{StaticResource Sub}" Margin="0,0,0,12"/>

@@ -18,14 +18,16 @@ namespace CleanScope.Ai.Advice;
 public sealed class CleanupAdvisor : ICleanupAdvisor
 {
     private const string SystemPrompt =
-        "你是 Windows 磁盘清理顾问。基于用户的占用汇总与本机适用的官方清理手段, 给出简洁中文的**可执行行动计划**: " +
-        "1) 按「省得多 + 风险低 + 操作简单」排出**优先顺序**; 2) 识别重复/冗余 (如多套同类工具链、重复缓存); " +
-        "3) 每条尽量对应一个明确动作 (在本程序点哪个按钮 / 用哪个官方手段)。" +
-        "若我额外提供了「具体大项」(含真实路径/名称), 请针对它们给出有依据的个性化建议 (指出哪些可清、哪些是个人资料应保留), " +
-        "但**只描述、不要输出删除命令或脚本**。" +
-        "只可引用我提供的官方手段, **不要自创命令**。" +
-        "要求: markdown 有序列表, 至多 7 条, 每条一句话且尽量带预估收益; 不要逐文件复述; " +
-        "**绝对不要输出任何删除命令、脚本**; 末尾一句提醒删除前确认、优先用官方方式。";
+        "你是 Windows 磁盘清理顾问, 面向**不懂命令行的普通用户**。基于用户的占用汇总与本机适用的官方清理手段, " +
+        "给出简洁中文的**可执行行动计划**, 按「省得多 + 风险低 + 操作简单」排优先顺序, 并识别重复/冗余 (多套同类工具链、重复缓存)。\n" +
+        "每一步都必须**具体、可照做**, 写清三件事: ①做什么 ②在哪做(怎么点) ③预计省多少。\n" +
+        "「在哪做」只能是下面两种之一, 且要让用户一眼知道去哪点, 不要含糊:\n" +
+        "  - 本程序「Windows 官方清理」卡片里**与我给的名称完全一致**的按钮 —— 注明它是『应用内一键执行(无需命令行)』还是『会打开 Windows 自带界面』;\n" +
+        "  - 或本程序「可清理清单」里勾选对应项后点『移入回收站』。\n" +
+        "**严禁**写「用官方方式清理」「用相关命令清理」这类笼统话; **严禁**让用户自己打开终端/PowerShell/CMD 或手敲命令; " +
+        "**严禁**输出任何删除命令、脚本、路径删除指令; 只能引用我提供的官方手段名称, 不要自创。\n" +
+        "若我额外提供了「具体大项」(真实路径/名称), 针对它们给个性化判断: 哪些可清、哪些是个人资料应保留 (只描述, 不给命令)。\n" +
+        "格式: markdown 有序列表, 至多 7 条, 每条一句话且带预估收益; 不逐文件复述; 末尾一句提醒『删除前再确认、本程序删除只进回收站可还原』。";
 
     private readonly IAiChat _chat;
 
@@ -83,9 +85,13 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
         var applicable = official?.Where(a => a.Detected).ToList();
         if (applicable is { Count: > 0 })
         {
-            sb.AppendLine("本机可用的官方清理手段 (手段 | 预估收益 | 需管理员 | 本程序内可一键执行):");
+            sb.AppendLine("本机可用的官方清理手段 —— 这些在本程序「Windows 官方清理」卡片里都有同名按钮, 引用时请用『确切名称』并注明执行方式:");
+            sb.AppendLine("(名称 | 预估收益 | 执行方式 | 需管理员)");
             foreach (var a in applicable)
-                sb.AppendLine($"- {a.Title} | {(a.EstimatedBytes > 0 ? Size(a.EstimatedBytes) : "未知")} | {(a.NeedsAdmin ? "是" : "否")} | 是");
+            {
+                var surface = a.Surface == Domain.Enums.CleanupSurface.OpensWindowsUi ? "会打开 Windows 自带界面" : "应用内一键执行(无需命令行)";
+                sb.AppendLine($"- {a.Title} | {(a.EstimatedBytes > 0 ? Size(a.EstimatedBytes) : "未知")} | {surface} | {(a.NeedsAdmin ? "是" : "否")}");
+            }
             sb.AppendLine();
         }
 

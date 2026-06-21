@@ -146,12 +146,16 @@ public sealed class FileDetailViewModel : ViewModelBase
             return;
         }
 
-        // 两步确认 (C8): 明确告知"移入回收站、可还原、非永久删除"。
-        var confirm = MessageBox.Show(
-            $"确定把以下项移入回收站吗？（可从回收站还原，非永久删除）\n\n{Row.Path}\n\n大小：{Row.SizeText}　归属：{Row.OwnerApp ?? "未知"}",
-            "移入回收站 — CleanScope",
-            MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
-        if (confirm != MessageBoxResult.OK)
+        // 两步确认 (C8): 自绘确认弹窗 (问题#2: 与全局视觉统一, 非 Windows MessageBox)。
+        var model = new Views.ConfirmDialogModel
+        {
+            Title = "移入回收站",
+            Intro = "确定把以下项移入回收站吗？可从回收站随时还原，非永久删除。",
+            Details = Views.ConfirmDialogModel.Rows(
+                ("名称", Row.Name), ("路径", Row.Path), ("大小", Row.SizeText), ("归属", Row.OwnerApp ?? "未知")),
+            ConfirmText = "移入回收站",
+        };
+        if (!Views.ConfirmDialog.Show(System.Windows.Application.Current?.MainWindow, model))
         {
             ActionStatus = "已取消，未做任何改动。";
             return;

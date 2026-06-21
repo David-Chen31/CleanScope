@@ -43,12 +43,13 @@ public sealed class CleanupAdvisorTests
         Assert.Contains("Miniconda (Python)", chat.LastUserPrompt);   // 仅软件名等聚合信息
     }
 
-    [Fact] // 系统提示必须明令"不要输出删除命令"(IR-6: 输出只展示, 不执行)。
+    [Fact] // 系统提示必须明令禁止输出删除命令 (IR-6: 输出只展示, 不执行)。
     public async Task System_prompt_forbids_delete_commands()
     {
         var chat = new FakeChat("ok");
         await new CleanupAdvisor(chat).AdviseAsync(Summary());
-        Assert.Contains("不要输出", chat.LastSystemPrompt);
+        Assert.Contains("严禁", chat.LastSystemPrompt);
+        Assert.Contains("删除命令", chat.LastSystemPrompt);
     }
 
     [Fact] // 未启用 → null, 不调用 AI (降级, 核心不依赖)
