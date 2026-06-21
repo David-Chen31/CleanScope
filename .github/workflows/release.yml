@@ -1,0 +1,61 @@
+name: Release
+
+# 打 v* tag 即自动: 测试门禁 → 自包含单文件发布 → 打包 zip → 建 GitHub release 上传产物。
+# 复刻原先手工的发布流程, 一劳永逸、可复现。
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write   # 创建 release / 上传产物
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # 质量门禁: 任一测试失败即中止发布 (broken 不发)。
+      - name: Test (release gate)
+        run: dotnet test CleanScope.sln --configuration Release
+
+      - name: Resolve version from tag
+        id: ver
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish (self-contained single-file win-x64)
+        run: >
+          dotnet publish src/CleanScope.App.Wpf/CleanScope.App.Wpf.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -o dist/release
+
+      - name: Package zip + SHA-256
+        shell: pwsh
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+        run: |
+          Remove-Item dist/release/*.pdb -Force -ErrorAction SilentlyContinue
+          Rename-Item dist/release/CleanScope.App.Wpf.exe CleanScope.exe -Force
+          $zip = "dist/CleanScope-$env:VER-win-x64.zip"
+          Compress-Archive -Path dist/release/* -DestinationPath $zip -CompressionLevel Optimal
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  CleanScope-$env:VER-win-x64.zip" | Out-File -Encoding ascii dist/SHA256.txt
+          Write-Host "SHA-256: $hash"
+
+      - name: Create GitHub release + upload assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VER: ${{ steps.ver.outputs.version }}
+        shell: bash
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/CleanScope-$VER-win-x64.zip" \
+            "dist/SHA256.txt" \
+            --title "CleanScope $VER" \
+            --generate-notes
