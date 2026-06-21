@@ -26,6 +26,7 @@ public partial class MainWindow : Window
         PreviewKeyDown += OnPreviewKeyDown;
         RestoreWindowGeometry();
         Closing += OnClosing;
+        Loaded += (_, _) => Views.OnboardingWindow.ShowIfFirstRun(this);   // D: 首启引导 (仅一次)
         UpdateThemeIcon();
     }
 

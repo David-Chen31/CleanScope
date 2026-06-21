@@ -1,0 +1,77 @@
+<Window x:Class="CleanScope.App.Wpf.Views.OnboardingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" SizeToContent="Height"
+        Width="540" WindowStartupLocation="CenterOwner" FontFamily="Segoe UI, Microsoft YaHei UI">
+
+    <!-- D: 首次启动引导 (小白友好): 一屏说清"做什么 + 安全 + 怎么上手" -->
+    <Border Background="{DynamicResource Card}" CornerRadius="14" Effect="{StaticResource PopShadow}" Margin="16">
+        <StackPanel>
+            <!-- 顶部品牌带 (可拖动) -->
+            <Border CornerRadius="14,14,0,0" Background="{DynamicResource AccentSoft}" Padding="24,20"
+                    MouseLeftButtonDown="Header_Drag">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource Accent}" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="欢迎使用 CleanScope" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource Ink}"/>
+                        <TextBlock Text="看清磁盘被谁占满，安全地清理出空间。" FontSize="12.5" Foreground="{DynamicResource Muted}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Margin="24,18,24,6">
+                <!-- 安全承诺 -->
+                <TextBlock Text="你的数据是安全的" FontWeight="SemiBold" Foreground="{DynamicResource Ink}" Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+                    <Path Data="{StaticResource IconShield}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Clean}"
+                          Width="15" Height="15" Margin="0,1,10,0" VerticalAlignment="Top"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Width="430"
+                               Text="只读分析 —— 扫描期间绝不改动你的任何文件。"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+                    <Path Data="{StaticResource IconRestore}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Accent}"
+                          Width="15" Height="15" Margin="0,1,10,0" VerticalAlignment="Top"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Width="430"
+                               Text="删除只进回收站 —— 随时可还原，绝不永久删除。"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                    <Path Data="{StaticResource IconCheck}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Clean}"
+                          Width="15" Height="15" Margin="0,1,10,0" VerticalAlignment="Top"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Width="430"
+                               Text="系统关键文件零触碰 —— 危险项被自动拦下，不让你误删。"/>
+                </StackPanel>
+
+                <!-- 三步上手 -->
+                <Border Background="{DynamicResource Subtle}" CornerRadius="8" Padding="14,12">
+                    <StackPanel>
+                        <TextBlock Text="三步上手" FontWeight="SemiBold" Foreground="{DynamicResource Ink}" Margin="0,0,0,8"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <TextBlock Text="①" Foreground="{DynamicResource Accent}" FontWeight="Bold" Margin="0,0,8,0"/>
+                            <TextBlock Text="选一个磁盘（或填路径），点「扫描」。" Foreground="{DynamicResource Ink}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <TextBlock Text="②" Foreground="{DynamicResource Accent}" FontWeight="Bold" Margin="0,0,8,0"/>
+                            <TextBlock Text="到「可清理清单」勾选要清理的项（A/B 级最安全）。" Foreground="{DynamicResource Ink}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="③" Foreground="{DynamicResource Accent}" FontWeight="Bold" Margin="0,0,8,0"/>
+                            <TextBlock Text="一键「移入回收站」—— 确认后即可，随时能还原。" Foreground="{DynamicResource Ink}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Margin="0,12,0,0" Style="{StaticResource Caption}" TextWrapping="Wrap"
+                           Text="提示：右上角可切换深 / 浅色主题；想让 AI 帮忙解释和出清理计划，点右上角「AI」配置即可（可选，默认全程本地）。"/>
+            </StackPanel>
+
+            <!-- 操作 -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="24,8,24,20">
+                <Button Content="开始使用  →" Style="{StaticResource Primary}" MinWidth="132" Click="Start_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>
