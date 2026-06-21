@@ -11,7 +11,7 @@
         Title="CleanScope" Height="760" Width="1180" MinHeight="560" MinWidth="900"
         Icon="pack://application:,,,/icon.ico"
         WindowStyle="None" ResizeMode="CanResize"
-        Background="{StaticResource Bg}"
+        Background="{DynamicResource Bg}"
         WindowStartupLocation="CenterScreen">
 
     <shell:WindowChrome.WindowChrome>
@@ -19,7 +19,7 @@
                             CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
-    <Border x:Name="RootBorder" Background="{StaticResource Bg}">
+    <Border x:Name="RootBorder" Background="{DynamicResource Bg}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="46"/>
@@ -28,16 +28,16 @@
             </Grid.RowDefinitions>
 
             <!-- ===== 自绘标题栏 (品牌 + 安全锚 + AI 设置 + 窗口按钮) ===== -->
-            <Border Grid.Row="0" Background="{StaticResource Card}" BorderBrush="{StaticResource Line}"
+            <Border Grid.Row="0" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}"
                     BorderThickness="0,0,0,1">
                 <DockPanel LastChildFill="False">
                     <Border DockPanel.Dock="Left" Width="26" Height="26" CornerRadius="7" Margin="16,0,0,0"
-                            Background="{StaticResource Accent}" VerticalAlignment="Center">
+                            Background="{DynamicResource Accent}" VerticalAlignment="Center">
                         <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="White"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <TextBlock DockPanel.Dock="Left" Text="CleanScope" FontSize="15" FontWeight="SemiBold"
-                               Foreground="{StaticResource Ink}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                               Foreground="{DynamicResource Ink}" VerticalAlignment="Center" Margin="10,0,0,0"/>
                     <!-- 标题栏只留品牌 + 窗口控制; 安全承诺移到首页空状态, AI 状态瘦成图标(评审问题#1: 顶部减负) -->
 
                     <!-- 窗口按钮 (right→left: 关闭/最大化/最小化) -->
@@ -48,6 +48,15 @@
                     <Button x:Name="MinBtn" DockPanel.Dock="Right" Style="{StaticResource WinBtn}"
                             Content="&#xE921;" Click="MinBtn_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
+                    <!-- E: 主题切换 (浅↔深); 图标提示将切换到的模式 -->
+                    <Button x:Name="ThemeBtn" DockPanel.Dock="Right" Style="{StaticResource WinBtn}" Width="40" Margin="0,0,6,0"
+                            Click="ThemeBtn_Click" ToolTip="切换深色 / 浅色主题"
+                            AutomationProperties.Name="切换深色或浅色主题"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Path x:Name="ThemeIcon" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Muted}"
+                              Width="16" Height="16"/>
+                    </Button>
+
                     <!-- AI 状态: 瘦成 点+AI+齿轮 (二级信息), 完整文案进 tooltip; 仍可点进设置, 保留发现性 -->
                     <Button DockPanel.Dock="Right" Style="{StaticResource AiPill}" Margin="0,0,10,0"
                             ToolTip="{Binding AiBadge}"
@@ -57,7 +66,7 @@
                                      Fill="{Binding AiEnabled, Converter={StaticResource AiDotBrush}}"/>
                             <TextBlock Text="AI" FontSize="12.5" VerticalAlignment="Center"/>
                             <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13"
-                                       Margin="6,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
+                                       Margin="6,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Muted}"/>
                         </StackPanel>
                     </Button>
                 </DockPanel>
@@ -65,13 +74,13 @@
 
             <!-- ===== 视图切换 = 原生 pivot (扁平 + 底线指示, 非浮起药丸; 仅扫描后出现) =====
                  评审 #2 左对齐贴合阅读流; #6 分隔线表达层级 (主: 概览/可清理清单 | 次: 三种镜头) -->
-            <Border Grid.Row="1" Padding="24,2,24,0" Background="{StaticResource Card}"
-                    BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1"
+            <Border Grid.Row="1" Padding="24,2,24,0" Background="{DynamicResource Card}"
+                    BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1"
                     Visibility="{Binding ShowResultsBar, Converter={StaticResource BoolToVis}}">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <Button Tag="home" Content="概览" Command="{Binding GoHomeCommand}" Style="{StaticResource SegItem}" Margin="0,0,22,0"/>
                     <Button Tag="explorer" Content="可清理清单" Command="{Binding GoExplorerCommand}" Style="{StaticResource SegItem}" Margin="0,0,16,0"/>
-                    <Border Width="1" Background="{StaticResource Line}" Margin="0,9,18,9"/>
+                    <Border Width="1" Background="{DynamicResource Line}" Margin="0,9,18,9"/>
                     <Button Tag="map" Content="空间地图" Command="{Binding GoMapCommand}" Style="{StaticResource SegItem}" Margin="0,0,22,0"/>
                     <Button Tag="software" Content="按软件" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource SegItem}" Margin="0,0,22,0"/>
                     <Button Tag="report" Content="报告" Command="{Binding GoReportCommand}" Style="{StaticResource SegItem}"/>

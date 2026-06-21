@@ -17,6 +17,9 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // E: 启动即应用已保存的主题 (浅/深), 在任何窗口显示前生效, 避免闪一下浅色。
+        Common.ThemeManager.Initialize();
+
         // 跨层诊断: 让 AI/编排等下层的"静默降级"也落到同一日志文件 (问题#1)。
         CleanScope.Domain.Diagnostics.AppTrace.UseSink(AppLog.Write);
 

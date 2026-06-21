@@ -11,9 +11,9 @@
             <TextBlock DockPanel.Dock="Top" Text="空间地图（矩形树图）" Style="{StaticResource H2}"/>
 
             <!-- 问题#2: 真实磁盘占用为准, 说明逻辑合计为何可能更大 (硬链接/稀疏文件) -->
-            <Border DockPanel.Dock="Top" Background="#F3F6FB" CornerRadius="6" Padding="10,7" Margin="0,0,0,8"
+            <Border DockPanel.Dock="Top" Background="{DynamicResource Subtle}" CornerRadius="6" Padding="10,7" Margin="0,0,0,8"
                     Visibility="{Binding HasDiskHint, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="{Binding DiskHint}" TextWrapping="Wrap" Foreground="{StaticResource Ink}"/>
+                <TextBlock Text="{Binding DiskHint}" TextWrapping="Wrap" Foreground="{DynamicResource Ink}"/>
             </Border>
 
             <!-- 面包屑 + 返回上层 -->
@@ -30,9 +30,9 @@
                                 <Button Content="{Binding Name}"
                                         Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding}"
-                                        Background="Transparent" BorderThickness="0" Foreground="{StaticResource Accent}"
+                                        Background="Transparent" BorderThickness="0" Foreground="{DynamicResource Accent}"
                                         Cursor="Hand" Padding="2,0"/>
-                                <TextBlock Text=" ›" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                                <TextBlock Text=" ›" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -42,10 +42,10 @@
             <TextBlock DockPanel.Dock="Top" Text="{Binding Hint}" Style="{StaticResource Sub}" Margin="0,0,0,8"/>
 
             <!-- P2 风险图例 = 页面主角: 颜色不是装饰, 而是"风险等级"; 一眼读懂红=勿动、蓝灰=你的资料、✓=可清理 -->
-            <Border DockPanel.Dock="Top" Background="{StaticResource Subtle}" BorderBrush="{StaticResource Line}"
+            <Border DockPanel.Dock="Top" Background="{DynamicResource Subtle}" BorderBrush="{DynamicResource Line}"
                     BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,10">
                 <StackPanel>
-                    <TextBlock Text="颜色 = 风险等级（不只是占用大小）" FontWeight="SemiBold" Foreground="{StaticResource Ink}" Margin="0,0,0,8"/>
+                    <TextBlock Text="颜色 = 风险等级（不只是占用大小）" FontWeight="SemiBold" Foreground="{DynamicResource Ink}" Margin="0,0,0,8"/>
                     <WrapPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,18,4">
                             <Border Background="#9BD3AE" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
@@ -68,7 +68,7 @@
                             <TextBlock Text="E 系统关键 · 勿动" Style="{StaticResource Sub}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <Path Data="{StaticResource IconCheck}" Style="{StaticResource IconStroke}" Stroke="#1E7E34"
+                            <Path Data="{StaticResource IconCheck}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Clean}"
                                   Width="13" Height="13" Margin="0,0,5,0"/>
                             <TextBlock Text="角标 = 可清理（可勾选批量回收）" Style="{StaticResource Sub}"/>
                         </StackPanel>
@@ -76,8 +76,8 @@
                 </StackPanel>
             </Border>
 
-            <Border BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4" MinHeight="420">
-                <Canvas x:Name="MapCanvas" ClipToBounds="True" Background="#FAFBFC"
+            <Border BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="4" MinHeight="420">
+                <Canvas x:Name="MapCanvas" ClipToBounds="True" Background="{DynamicResource Subtle}"
                         SizeChanged="MapCanvas_SizeChanged"/>
             </Border>
         </DockPanel>

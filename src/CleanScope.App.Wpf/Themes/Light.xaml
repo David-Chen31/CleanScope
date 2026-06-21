@@ -1,0 +1,36 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 浅色主题色板 (E: 与 Dark.xaml 同名键, 运行时整体替换即可切换主题) -->
+    <!-- 底层 -->
+    <SolidColorBrush x:Key="Bg"       Color="#F3F5F9"/>
+    <SolidColorBrush x:Key="Card"     Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Subtle"   Color="#F4F6FA"/>
+    <SolidColorBrush x:Key="Line"     Color="#E5E9F0"/>
+    <SolidColorBrush x:Key="LineSoft" Color="#EEF1F6"/>
+    <!-- 文字 -->
+    <SolidColorBrush x:Key="Ink"      Color="#1A2230"/>
+    <SolidColorBrush x:Key="Muted"    Color="#5C6877"/>
+    <SolidColorBrush x:Key="Faint"    Color="#8A94A3"/>
+    <!-- 强调 -->
+    <SolidColorBrush x:Key="Accent"      Color="#2563EB"/>
+    <SolidColorBrush x:Key="AccentHover" Color="#1D4FD7"/>
+    <SolidColorBrush x:Key="AccentPress" Color="#1A45BC"/>
+    <SolidColorBrush x:Key="AccentSoft"  Color="#E8F0FE"/>
+    <!-- 语义 (危险≠珍贵) -->
+    <SolidColorBrush x:Key="Clean"        Color="#157347"/>
+    <SolidColorBrush x:Key="CleanSoft"    Color="#E6F4EC"/>
+    <SolidColorBrush x:Key="Personal"     Color="#3A6EA5"/>
+    <SolidColorBrush x:Key="PersonalSoft" Color="#E8F0FA"/>
+    <SolidColorBrush x:Key="Warn"         Color="#B7791F"/>
+    <SolidColorBrush x:Key="WarnSoft"     Color="#FBF3E2"/>
+    <SolidColorBrush x:Key="Critical"     Color="#C5221F"/>
+    <SolidColorBrush x:Key="CriticalSoft" Color="#FBEAE9"/>
+    <!-- 外壳 -->
+    <SolidColorBrush x:Key="SidebarBg" Color="#FAFBFD"/>
+    <SolidColorBrush x:Key="Hover"     Color="#EEF2F8"/>
+    <!-- 中性轨道 / 软底 (进度条、比例条、状态条等浅底) -->
+    <SolidColorBrush x:Key="Track"     Color="#E6EAF0"/>
+    <!-- 首页 Hero 渐变端点 -->
+    <SolidColorBrush x:Key="HeroTop"    Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="HeroBottom" Color="#F2F7FF"/>
+</ResourceDictionary>

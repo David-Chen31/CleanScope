@@ -13,7 +13,7 @@
             <Button Style="{StaticResource Outline}" HorizontalAlignment="Left" Margin="0,0,0,16"
                     Command="{Binding DataContext.GoBackFromAiCommand, RelativeSource={RelativeSource AncestorType=Window}}">
                 <StackPanel Orientation="Horizontal">
-                    <Path Data="{StaticResource IconBackArrow}" Stroke="{StaticResource Ink}" StrokeThickness="1.8"
+                    <Path Data="{StaticResource IconBackArrow}" Stroke="{DynamicResource Ink}" StrokeThickness="1.8"
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
                           Width="20" Height="18" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,9,0"/>
                     <TextBlock Text="返回" VerticalAlignment="Center"/>
@@ -23,15 +23,15 @@
             <TextBlock Text="可选 · AI 仅在你点击 AI 功能时按需调用，不配置则全程本地。"
                        Style="{StaticResource Sub}" Margin="0,0,0,12"/>
 
-            <TextBlock Text="{Binding CurrentState}" FontWeight="SemiBold" Foreground="{StaticResource Accent}" Margin="0,0,0,14"/>
+            <TextBlock Text="{Binding CurrentState}" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" Margin="0,0,0,14"/>
 
-            <TextBlock Text="Base URL（如 https://your-relay/v1）" Foreground="{StaticResource Ink}" Margin="0,0,0,4"/>
+            <TextBlock Text="Base URL（如 https://your-relay/v1）" Foreground="{DynamicResource Ink}" Margin="0,0,0,4"/>
             <TextBox Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Field}" Margin="0,0,0,12"/>
 
-            <TextBlock Text="API Key" Foreground="{StaticResource Ink}" Margin="0,0,0,4"/>
+            <TextBlock Text="API Key" Foreground="{DynamicResource Ink}" Margin="0,0,0,4"/>
             <PasswordBox x:Name="KeyBox" Style="{StaticResource FieldPassword}" Margin="0,0,0,4" PasswordChanged="KeyBox_PasswordChanged"/>
             <StackPanel Orientation="Horizontal" Margin="2,0,0,12">
-                <Path Data="{StaticResource IconLock}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Faint}"
+                <Path Data="{StaticResource IconLock}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Faint}"
                       Width="12" Height="12" Margin="0,0,5,0"/>
                 <TextBlock Text="本机 DPAPI 加密保存，绝不上传" Style="{StaticResource Caption}" VerticalAlignment="Center"/>
             </StackPanel>
@@ -39,7 +39,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
                 <Button Command="{Binding ListModelsCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0">
                     <StackPanel Orientation="Horizontal">
-                        <Path Data="{StaticResource IconSearch}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Accent}"
+                        <Path Data="{StaticResource IconSearch}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Accent}"
                               Width="14" Height="14" Margin="0,0,6,0"/>
                         <TextBlock Text="检索模型" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -50,27 +50,27 @@
 
             <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
                 <ToggleButton IsChecked="{Binding CloudEnabled}" Style="{StaticResource Toggle}" VerticalAlignment="Center"/>
-                <TextBlock Text="启用 AI（脱敏后按需出云）" Foreground="{StaticResource Ink}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock Text="启用 AI（脱敏后按需出云）" Foreground="{DynamicResource Ink}" Margin="10,0,0,0" VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- 出云脱敏: 三档平铺单选, 醒目卡片 (问题#4: 让用户一眼看到能调档, 不致误以为 AI 识别力弱) -->
-            <Border Background="#FFF7E6" BorderBrush="#F0C36D" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,14">
+            <Border Background="{DynamicResource WarnSoft}" BorderBrush="{DynamicResource Warn}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,14">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                        <Path Data="{StaticResource IconTune}" Style="{StaticResource IconStroke}" Stroke="#8A5A00"
+                        <Path Data="{StaticResource IconTune}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Warn}"
                               Width="15" Height="15" Margin="0,0,7,0"/>
-                        <TextBlock Text="出云脱敏档位（影响 AI 识别力 ←→ 隐私）" FontWeight="Bold" Foreground="#8A5A00" VerticalAlignment="Center"/>
+                        <TextBlock Text="出云脱敏档位（影响 AI 识别力 ←→ 隐私）" FontWeight="Bold" Foreground="{DynamicResource Warn}" VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBlock Text="觉得 AI「认不出软件」？多半是脱敏太严。下面三档可随时切换，越往下识别越准、发送的路径信息越多。"
                                TextWrapping="Wrap" Style="{StaticResource Sub}" Margin="0,0,0,10"/>
 
-                    <RadioButton GroupName="San" IsChecked="{Binding IsStrict}" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Content="严格 — 最隐私，识别力受限"/>
+                    <RadioButton GroupName="San" IsChecked="{Binding IsStrict}" Foreground="{DynamicResource Ink}" FontWeight="SemiBold" Content="严格 — 最隐私，识别力受限"/>
                     <TextBlock Text="{Binding StrictHint}" TextWrapping="Wrap" Style="{StaticResource Sub}" Margin="24,1,0,8"/>
 
-                    <RadioButton GroupName="San" IsChecked="{Binding IsBalanced}" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Content="均衡 — 默认 · 推荐"/>
+                    <RadioButton GroupName="San" IsChecked="{Binding IsBalanced}" Foreground="{DynamicResource Ink}" FontWeight="SemiBold" Content="均衡 — 默认 · 推荐"/>
                     <TextBlock Text="{Binding BalancedHint}" TextWrapping="Wrap" Style="{StaticResource Sub}" Margin="24,1,0,8"/>
 
-                    <RadioButton GroupName="San" IsChecked="{Binding IsOff}" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Content="关闭 — 识别最准（发送真实相对路径）"/>
+                    <RadioButton GroupName="San" IsChecked="{Binding IsOff}" Foreground="{DynamicResource Ink}" FontWeight="SemiBold" Content="关闭 — 识别最准（发送真实相对路径）"/>
                     <TextBlock Text="{Binding OffHint}" TextWrapping="Wrap" Style="{StaticResource Sub}" Margin="24,1,0,8"/>
 
                     <TextBlock Text="无论哪一档，CleanScope 都绝不发送文件内容，只发送路径/名称等元数据。"
@@ -82,7 +82,7 @@
                 <Button Command="{Binding OpenLogCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"
                         ToolTip="在应用内查看诊断日志：AI 失败的真实原因（鉴权/模型名/网络/截断等）都记在这里">
                     <StackPanel Orientation="Horizontal">
-                        <Path Data="{StaticResource IconDoc}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Accent}"
+                        <Path Data="{StaticResource IconDoc}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Accent}"
                               Width="14" Height="14" Margin="0,0,6,0"/>
                         <TextBlock Text="查看日志" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -125,9 +125,9 @@
                 </Button>
             </StackPanel>
 
-            <Border Background="#F3F6FB" CornerRadius="6" Padding="10,8"
+            <Border Background="{DynamicResource Subtle}" CornerRadius="6" Padding="10,8"
                     Visibility="{Binding Status, Converter={StaticResource NotEmptyToVis}}">
-                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{StaticResource Ink}"/>
+                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource Ink}"/>
             </Border>
         </StackPanel>
     </Border>

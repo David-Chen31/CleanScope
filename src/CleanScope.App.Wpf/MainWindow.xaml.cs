@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
+using CleanScope.App.Wpf.Common;
 
 namespace CleanScope.App.Wpf;
 
@@ -19,6 +21,20 @@ public partial class MainWindow : Window
         InitializeComponent();
         StateChanged += OnStateChanged;
         SourceInitialized += OnSourceInitialized;
+        UpdateThemeIcon();
+    }
+
+    // E: 切换主题 + 更新图标 (浅色显示月亮=点击转深, 深色显示太阳=点击转浅)。
+    private void ThemeBtn_Click(object sender, RoutedEventArgs e)
+    {
+        ThemeManager.Toggle();
+        UpdateThemeIcon();
+    }
+
+    private void UpdateThemeIcon()
+    {
+        var key = ThemeManager.Current == AppTheme.Light ? "IconMoon" : "IconSun";
+        ThemeIcon.Data = (Geometry)FindResource(key);
     }
 
     private void MinBtn_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;

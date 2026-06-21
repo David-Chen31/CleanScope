@@ -6,17 +6,17 @@
         Width="500" WindowStartupLocation="CenterOwner" FontFamily="Segoe UI, Microsoft YaHei UI">
 
     <!-- 自绘卡片式确认弹窗 (问题#2: 取代 Windows 自带 MessageBox, 与全局视觉系统统一) -->
-    <Border Background="{StaticResource Card}" CornerRadius="12" Effect="{StaticResource PopShadow}" Margin="16">
+    <Border Background="{DynamicResource Card}" CornerRadius="12" Effect="{StaticResource PopShadow}" Margin="16">
         <StackPanel>
 
             <!-- 顶部色带: 高风险=红, 普通=强调蓝。点击可拖动窗口。 -->
             <Border x:Name="HeaderBar" CornerRadius="12,12,0,0" Padding="20,16" MouseLeftButtonDown="Header_Drag">
                 <Border.Style>
                     <Style TargetType="Border">
-                        <Setter Property="Background" Value="{StaticResource AccentSoft}"/>
+                        <Setter Property="Background" Value="{DynamicResource AccentSoft}"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsHighRisk}" Value="True">
-                                <Setter Property="Background" Value="{StaticResource CriticalSoft}"/>
+                                <Setter Property="Background" Value="{DynamicResource CriticalSoft}"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -25,24 +25,24 @@
                     <!-- 普通: 信息圆点 (强调蓝) -->
                     <Grid Width="26" Height="26" VerticalAlignment="Center" Margin="0,0,12,0"
                           Visibility="{Binding IsHighRisk, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
-                        <Ellipse Fill="{StaticResource Accent}"/>
+                        <Ellipse Fill="{DynamicResource Accent}"/>
                         <TextBlock Text="i" Foreground="White" FontWeight="Bold" FontStyle="Italic" FontSize="15"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Grid>
                     <!-- 高风险: 警示三角 (Critical) -->
                     <Grid Width="28" Height="26" VerticalAlignment="Center" Margin="0,0,12,0"
                           Visibility="{Binding IsHighRisk, Converter={StaticResource BoolToVis}}">
-                        <Path Data="M14,2 L27,24 L1,24 Z" Fill="{StaticResource Critical}"/>
+                        <Path Data="M14,2 L27,24 L1,24 Z" Fill="{DynamicResource Critical}"/>
                         <TextBlock Text="!" Foreground="White" FontWeight="Bold" FontSize="15" Margin="0,4,0,0"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Grid>
                     <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsHighRisk}" Value="True">
-                                        <Setter Property="Foreground" Value="{StaticResource Critical}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource Critical}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -53,11 +53,11 @@
 
             <!-- 正文 -->
             <StackPanel Margin="20,16,20,4">
-                <TextBlock Text="{Binding Intro}" TextWrapping="Wrap" Foreground="{StaticResource Ink}" FontSize="13.5"
+                <TextBlock Text="{Binding Intro}" TextWrapping="Wrap" Foreground="{DynamicResource Ink}" FontSize="13.5"
                            Visibility="{Binding Intro, Converter={StaticResource NotEmptyToVis}}"/>
 
                 <!-- 明细 (名称/路径/大小/来源…) -->
-                <Border Background="{StaticResource Subtle}" CornerRadius="8" Padding="12,8" Margin="0,12,0,0"
+                <Border Background="{DynamicResource Subtle}" CornerRadius="8" Padding="12,8" Margin="0,12,0,0"
                         Visibility="{Binding HasDetails, Converter={StaticResource BoolToVis}}">
                     <ItemsControl ItemsSource="{Binding Details}">
                         <ItemsControl.ItemTemplate>
@@ -67,8 +67,8 @@
                                         <ColumnDefinition Width="64"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding Label}" Foreground="{StaticResource Muted}" FontSize="12.5"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Value}" Foreground="{StaticResource Ink}" FontSize="12.5"
+                                    <TextBlock Grid.Column="0" Text="{Binding Label}" Foreground="{DynamicResource Muted}" FontSize="12.5"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Value}" Foreground="{DynamicResource Ink}" FontSize="12.5"
                                                TextWrapping="Wrap"/>
                                 </Grid>
                             </DataTemplate>
@@ -81,10 +81,10 @@
                         Visibility="{Binding HasWarning, Converter={StaticResource BoolToVis}}">
                     <Border.Style>
                         <Style TargetType="Border">
-                            <Setter Property="Background" Value="{StaticResource WarnSoft}"/>
+                            <Setter Property="Background" Value="{DynamicResource WarnSoft}"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsHighRisk}" Value="True">
-                                    <Setter Property="Background" Value="{StaticResource CriticalSoft}"/>
+                                    <Setter Property="Background" Value="{DynamicResource CriticalSoft}"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -92,10 +92,10 @@
                     <TextBlock Text="{Binding WarningText}" TextWrapping="Wrap" FontSize="13">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="{StaticResource Warn}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Warn}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsHighRisk}" Value="True">
-                                        <Setter Property="Foreground" Value="{StaticResource Critical}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource Critical}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -106,7 +106,7 @@
                 <!-- 强确认勾选 (高风险项: 必须勾选才能确定) -->
                 <CheckBox x:Name="AckCheck" Margin="0,14,0,2" IsChecked="{Binding IsChecked, Mode=TwoWay}"
                           Visibility="{Binding HasCheck, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="{Binding CheckText}" TextWrapping="Wrap" Foreground="{StaticResource Ink}"/>
+                    <TextBlock Text="{Binding CheckText}" TextWrapping="Wrap" Foreground="{DynamicResource Ink}"/>
                 </CheckBox>
             </StackPanel>
 

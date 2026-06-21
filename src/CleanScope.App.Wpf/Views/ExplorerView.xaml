@@ -20,11 +20,11 @@
                 <Grid>
                     <TextBlock Text="资源管理器（整盘目录树 · 可清理清单）" Style="{StaticResource H2}" VerticalAlignment="Center"/>
                     <CheckBox Content="只看可清理（扁平，可勾选批量清理）" IsChecked="{Binding ShowCleanableOnly}"
-                              HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#1E7E34" FontWeight="SemiBold"/>
+                              HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource Clean}" FontWeight="SemiBold"/>
                 </Grid>
 
                 <!-- F1/问题2: 搜索 / 路径定位 —— 按名称或路径过滤当前扫描结果 -->
-                <Border Background="{StaticResource Subtle}" CornerRadius="8" BorderBrush="{StaticResource Line}"
+                <Border Background="{DynamicResource Subtle}" CornerRadius="8" BorderBrush="{DynamicResource Line}"
                         BorderThickness="1" Margin="0,10,0,8" Padding="10,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -33,15 +33,15 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                   Foreground="{StaticResource Faint}" VerticalAlignment="Center" Margin="2,0,8,0"/>
+                                   Foreground="{DynamicResource Faint}" VerticalAlignment="Center" Margin="2,0,8,0"/>
                         <Grid Grid.Column="1">
                             <!-- 水印在底层 (TextBox 透明背景透出); 有文字时 TextBox 文字盖在其上, 且水印随 IsSearching 隐藏 -->
-                            <TextBlock Text="按名称或路径搜索当前结果…（可粘贴路径片段定位）" Foreground="{StaticResource Faint}"
+                            <TextBlock Text="按名称或路径搜索当前结果…（可粘贴路径片段定位）" Foreground="{DynamicResource Faint}"
                                        VerticalAlignment="Center" Margin="2,0,0,0" IsHitTestVisible="False"
                                        Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
                             <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
                                      BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
-                                     Padding="0,8" Foreground="{StaticResource Ink}"/>
+                                     Padding="0,8" Foreground="{DynamicResource Ink}"/>
                         </Grid>
                         <Button Grid.Column="2" Content="✕ 清除" Command="{Binding ClearSearchCommand}"
                                 Style="{StaticResource Ghost}" Padding="8,4" Margin="6,0,0,0"
@@ -63,7 +63,7 @@
                             <TextBlock Text="移入回收站（可还原）" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <TextBlock Text="排序" VerticalAlignment="Center" Foreground="{StaticResource Muted}" Margin="0,0,4,0"/>
+                    <TextBlock Text="排序" VerticalAlignment="Center" Foreground="{DynamicResource Muted}" Margin="0,0,4,0"/>
                     <Button Content="大小" Command="{Binding SortBySizeCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,0"/>
                     <Button Content="名称" Command="{Binding SortByNameCommand}" Style="{StaticResource Ghost}" Margin="0,0,16,0"/>
                     <TextBlock Text="{Binding SelectionSummary}" VerticalAlignment="Center" Style="{StaticResource Sub}"/>
@@ -149,7 +149,7 @@
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsDeleted}" Value="True">
                                                         <Setter Property="TextDecorations" Value="Strikethrough"/>
-                                                        <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -157,15 +157,15 @@
                                     </TextBlock>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"
                                                 Visibility="{Binding IsCleanable, Converter={StaticResource BoolToVis}}">
-                                        <Path Data="{StaticResource IconCheck}" Style="{StaticResource IconStroke}" Stroke="#1E7E34"
+                                        <Path Data="{StaticResource IconCheck}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Clean}"
                                               Width="11" Height="11" Margin="0,0,3,0"/>
-                                        <TextBlock Text="可清理" Foreground="#1E7E34" FontSize="11" VerticalAlignment="Center"/>
+                                        <TextBlock Text="可清理" Foreground="{DynamicResource Clean}" FontSize="11" VerticalAlignment="Center"/>
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"
                                                 Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}">
-                                        <Path Data="{StaticResource IconRestore}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Muted}"
+                                        <Path Data="{StaticResource IconRestore}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Muted}"
                                               Width="11" Height="11" Margin="0,0,3,0"/>
-                                        <TextBlock Text="已移入回收站" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center"/>
+                                        <TextBlock Text="已移入回收站" Foreground="{DynamicResource Muted}" FontSize="11" VerticalAlignment="Center"/>
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"
                                                 ToolTip="来源/用途由 AI 推测补充，仅供参考"
@@ -185,16 +185,16 @@
                                 <!-- 大小 + 占父目录比例条 (按等级配色统一) -->
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0">
                                     <TextBlock Text="{Binding SizeText}" HorizontalAlignment="Right" FontFamily="Consolas"/>
-                                    <Border Height="4" CornerRadius="2" Background="#E6EAF0" Margin="0,2,0,0">
+                                    <Border Height="4" CornerRadius="2" Background="{DynamicResource Track}" Margin="0,2,0,0">
                                         <Border HorizontalAlignment="Left" CornerRadius="2" Background="{Binding Grade.Chip}"
                                                 Width="{Binding FractionOfParent, Converter={StaticResource FractionToWidth}, ConverterParameter=108}"/>
                                     </Border>
                                 </StackPanel>
 
                                 <!-- 来源 = 安静的小 chip (用途/建议在右侧解释面板) -->
-                                <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{StaticResource Subtle}"
+                                <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{DynamicResource Subtle}"
                                         Margin="10,0,0,0" ToolTip="{Binding Purpose}" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Origin}" FontSize="12" Foreground="{StaticResource Muted}"
+                                    <TextBlock Text="{Binding Origin}" FontSize="12" Foreground="{DynamicResource Muted}"
                                                TextTrimming="CharacterEllipsis" MaxWidth="180"/>
                                 </Border>
                             </Grid>
@@ -206,15 +206,15 @@
                               Background="Transparent" ResizeBehavior="PreviousAndNext" FocusVisualStyle="{x:Null}"/>
 
                 <!-- ───── detail: 常驻解释面板 (解释优先 —— 永不离场) ───── -->
-                <Border Grid.Column="2" CornerRadius="8" Background="{StaticResource Subtle}"
-                        BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="14,12">
+                <Border Grid.Column="2" CornerRadius="8" Background="{DynamicResource Subtle}"
+                        BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="14,12">
                     <Grid>
                         <!-- 空态: 引导用户点击 -->
                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="12"
                                     Visibility="{Binding HasSelectedNode, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
-                            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="30" Foreground="{StaticResource Faint}"
+                            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="30" Foreground="{DynamicResource Faint}"
                                        HorizontalAlignment="Center"/>
-                            <TextBlock Text="选择左侧任意项" FontWeight="SemiBold" Foreground="{StaticResource Muted}"
+                            <TextBlock Text="选择左侧任意项" FontWeight="SemiBold" Foreground="{DynamicResource Muted}"
                                        HorizontalAlignment="Center" Margin="0,10,0,0"/>
                             <TextBlock Text="这里会解释它是什么、归谁、删了会怎样，再由你决定。"
                                        TextWrapping="Wrap" TextAlignment="Center" Style="{StaticResource Sub}" Margin="0,4,0,0"/>
@@ -228,13 +228,13 @@
 
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding Glyph}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource Ink}"
+                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource Ink}"
                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <TextBlock Text="{Binding SizeText}" Foreground="{StaticResource Muted}" Margin="0,3,0,0"/>
+                                <TextBlock Text="{Binding SizeText}" Foreground="{DynamicResource Muted}" Margin="0,3,0,0"/>
 
                                 <!-- 风险等级徽章 (品牌主角: 大号字母 + 人话标签) -->
-                                <Border CornerRadius="8" Background="{StaticResource Card}" BorderBrush="{StaticResource Line}"
+                                <Border CornerRadius="8" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}"
                                         BorderThickness="1" Padding="10,9" Margin="0,12,0,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Grid Width="30" Height="30" Margin="0,0,10,0" VerticalAlignment="Center">
@@ -247,27 +247,27 @@
                                                     Visibility="{Binding Grade.HasLetter, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
                                         </Grid>
                                         <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="风险等级" FontSize="11" Foreground="{StaticResource Muted}"/>
-                                            <TextBlock Text="{Binding Grade.Label}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+                                            <TextBlock Text="风险等级" FontSize="11" Foreground="{DynamicResource Muted}"/>
+                                            <TextBlock Text="{Binding Grade.Label}" FontWeight="SemiBold" Foreground="{DynamicResource Ink}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
 
                                 <!-- 路径 (可选中复制) -->
                                 <TextBox Text="{Binding Path, Mode=OneWay}" IsReadOnly="True" BorderThickness="0" Background="Transparent"
-                                         Foreground="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" FontSize="12"/>
+                                         Foreground="{DynamicResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" FontSize="12"/>
 
                                 <!-- 来源 / 用途 / 建议 -->
                                 <StackPanel Margin="0,12,0,0">
-                                    <TextBlock Text="来源 / 归属" FontSize="11" Foreground="{StaticResource Muted}"/>
-                                    <TextBlock Text="{Binding Origin}" TextWrapping="Wrap" Foreground="{StaticResource Ink}" Margin="0,2,0,0"/>
-                                    <TextBlock Text="用途 / 说明" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,10,0,0"/>
-                                    <TextBlock Text="{Binding Purpose}" TextWrapping="Wrap" Foreground="{StaticResource Ink}" Margin="0,2,0,0"/>
-                                    <TextBlock Text="建议" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,10,0,0"/>
-                                    <TextBlock Text="{Binding RecommendedAction}" TextWrapping="Wrap" Foreground="{StaticResource Ink}" Margin="0,2,0,0"/>
+                                    <TextBlock Text="来源 / 归属" FontSize="11" Foreground="{DynamicResource Muted}"/>
+                                    <TextBlock Text="{Binding Origin}" TextWrapping="Wrap" Foreground="{DynamicResource Ink}" Margin="0,2,0,0"/>
+                                    <TextBlock Text="用途 / 说明" FontSize="11" Foreground="{DynamicResource Muted}" Margin="0,10,0,0"/>
+                                    <TextBlock Text="{Binding Purpose}" TextWrapping="Wrap" Foreground="{DynamicResource Ink}" Margin="0,2,0,0"/>
+                                    <TextBlock Text="建议" FontSize="11" Foreground="{DynamicResource Muted}" Margin="0,10,0,0"/>
+                                    <TextBlock Text="{Binding RecommendedAction}" TextWrapping="Wrap" Foreground="{DynamicResource Ink}" Margin="0,2,0,0"/>
                                 </StackPanel>
 
-                                <Border Height="1" Background="{StaticResource Line}" Margin="0,14,0,12"/>
+                                <Border Height="1" Background="{DynamicResource Line}" Margin="0,14,0,12"/>
 
                                 <!-- 行内动作: 选中项即可直接操作 -->
                                 <WrapPanel>
@@ -277,7 +277,7 @@
                                     <Button Command="{Binding InvestigateCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
                                             Visibility="{Binding ShowAiMenu, Converter={StaticResource BoolToVis}}">
                                         <StackPanel Orientation="Horizontal">
-                                            <Path Data="{StaticResource IconAi}" Style="{StaticResource IconFill}" Fill="{StaticResource Accent}"
+                                            <Path Data="{StaticResource IconAi}" Style="{StaticResource IconFill}" Fill="{DynamicResource Accent}"
                                                   Width="13" Height="13" Margin="0,0,6,0"/>
                                             <TextBlock Text="用 AI 识别" VerticalAlignment="Center"/>
                                         </StackPanel>
@@ -289,7 +289,7 @@
                                     <Button Command="{Binding RecycleCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
                                             Visibility="{Binding ShowLiveActions, Converter={StaticResource BoolToVis}}">
                                         <StackPanel Orientation="Horizontal">
-                                            <Path Data="{StaticResource IconTrash}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Accent}"
+                                            <Path Data="{StaticResource IconTrash}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Accent}"
                                                   Width="13" Height="13" Margin="0,0,6,0"/>
                                             <TextBlock Text="移入回收站" VerticalAlignment="Center"/>
                                         </StackPanel>
@@ -312,7 +312,7 @@
             </Grid>
 
             <!-- 操作结果反馈 (复制/打开/移入回收站) -->
-            <Border Grid.Row="2" Margin="0,8,0,0" Padding="10,6" CornerRadius="4" Background="#F2F5FA"
+            <Border Grid.Row="2" Margin="0,8,0,0" Padding="10,6" CornerRadius="4" Background="{DynamicResource Subtle}"
                     Visibility="{Binding ActionStatus, Converter={StaticResource NotEmptyToVis}}">
                 <TextBlock Text="{Binding ActionStatus}" TextWrapping="Wrap"/>
             </Border>

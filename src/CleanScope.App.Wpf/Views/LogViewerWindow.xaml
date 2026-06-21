@@ -6,7 +6,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
         Title="CleanScope · 诊断日志" Width="760" Height="580" MinWidth="520" MinHeight="380"
-        WindowStartupLocation="CenterOwner" Background="{StaticResource Bg}"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource Bg}"
         FontFamily="Segoe UI, Microsoft YaHei UI">
     <Grid Margin="16">
         <Grid.RowDefinitions>
@@ -25,25 +25,25 @@
         </StackPanel>
 
         <!-- 最近一次问题: 一眼看到症结 -->
-        <Border Grid.Row="1" Background="{StaticResource CriticalSoft}" CornerRadius="8" Padding="12,10" Margin="0,0,0,10"
+        <Border Grid.Row="1" Background="{DynamicResource CriticalSoft}" CornerRadius="8" Padding="12,10" Margin="0,0,0,10"
                 Visibility="{Binding HasLastIssue, Converter={StaticResource BoolToVis}}">
             <StackPanel>
-                <TextBlock Text="最近一次问题" FontSize="11" Foreground="{StaticResource Critical}" FontWeight="SemiBold"/>
-                <TextBlock Text="{Binding LastIssue}" TextWrapping="Wrap" Foreground="{StaticResource Critical}" Margin="0,2,0,0"/>
+                <TextBlock Text="最近一次问题" FontSize="11" Foreground="{DynamicResource Critical}" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding LastIssue}" TextWrapping="Wrap" Foreground="{DynamicResource Critical}" Margin="0,2,0,0"/>
             </StackPanel>
         </Border>
 
         <!-- 日志正文 (只读, 可选中复制) -->
-        <Border Grid.Row="2" Background="{StaticResource Card}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+        <Border Grid.Row="2" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
                 CornerRadius="8" Padding="2">
             <Grid>
                 <TextBox Text="{Binding Content, Mode=OneWay}" IsReadOnly="True" BorderThickness="0" Background="Transparent"
-                         FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12.5" Foreground="{StaticResource Ink}"
+                         FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12.5" Foreground="{DynamicResource Ink}"
                          TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="10"
                          VerticalContentAlignment="Top"/>
                 <!-- 空态 -->
                 <TextBlock Text="暂无日志记录 — 一切正常 ✓&#10;出现 AI 失败后，这里会自动记录原因。" TextAlignment="Center"
-                           Foreground="{StaticResource Faint}" VerticalAlignment="Center" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource Faint}" VerticalAlignment="Center" HorizontalAlignment="Center"
                            Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </Border>

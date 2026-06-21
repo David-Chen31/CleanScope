@@ -17,7 +17,7 @@
                     <Button HorizontalAlignment="Right" VerticalAlignment="Center"
                             Command="{Binding OpenRecycleBinCommand}" Style="{StaticResource Outline}">
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource IconRestore}" Style="{StaticResource IconStroke}" Stroke="{StaticResource Ink}"
+                            <Path Data="{StaticResource IconRestore}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Ink}"
                                   Width="14" Height="14" Margin="0,0,6,0"/>
                             <TextBlock Text="打开回收站还原" VerticalAlignment="Center"/>
                         </StackPanel>
@@ -29,7 +29,7 @@
                               Visibility="{Binding HasRecycleHistory, Converter={StaticResource BoolToVis}}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
+                            <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -37,17 +37,17 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Margin="0,0,10,0">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Ink}"
                                                        TextTrimming="CharacterEllipsis"/>
-                                            <Border Background="{StaticResource CleanSoft}" CornerRadius="3" Padding="5,1" Margin="8,0,0,0"
+                                            <Border Background="{DynamicResource CleanSoft}" CornerRadius="3" Padding="5,1" Margin="8,0,0,0"
                                                     Visibility="{Binding Recoverable, Converter={StaticResource BoolToVis}}">
-                                                <TextBlock Text="可还原" FontSize="11" Foreground="{StaticResource Clean}"/>
+                                                <TextBlock Text="可还原" FontSize="11" Foreground="{DynamicResource Clean}"/>
                                             </Border>
                                         </StackPanel>
-                                        <TextBlock Text="{Binding Path}" Foreground="{StaticResource Muted}" FontSize="11"
+                                        <TextBlock Text="{Binding Path}" Foreground="{DynamicResource Muted}" FontSize="11"
                                                    TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
-                                    <TextBlock Grid.Column="1" Text="{Binding When}" Foreground="{StaticResource Faint}"
+                                    <TextBlock Grid.Column="1" Text="{Binding When}" Foreground="{DynamicResource Faint}"
                                                FontSize="12" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
@@ -63,13 +63,13 @@
             <StackPanel>
                 <TextBlock Text="可清理类别（按类别聚合，A/B）" Style="{StaticResource H2}"/>
                 <TextBlock Style="{StaticResource Sub}" Margin="0,0,0,8">
-                    <Run Text="预计可回收（去重，仍建议确认）："/><Run Text="{Binding ReclaimableTotal, Mode=OneWay}" FontWeight="Bold" Foreground="#1E7E34"/>
+                    <Run Text="预计可回收（去重，仍建议确认）："/><Run Text="{Binding ReclaimableTotal, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource Clean}"/>
                     <Run Text="　— 仅给出可回收空间与官方清理方式，绝不自动删除。"/>
                 </TextBlock>
                 <ItemsControl ItemsSource="{Binding CleanupCategories}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
+                            <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="220"/>
@@ -77,15 +77,15 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
-                                        <TextBlock Foreground="{StaticResource Muted}" FontSize="11">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Ink}"/>
+                                        <TextBlock Foreground="{DynamicResource Muted}" FontSize="11">
                                             <Run Text="{Binding ItemCount, Mode=OneWay}"/><Run Text=" 项 · "/><Run Text="{Binding RiskText, Mode=OneWay}"/>
                                         </TextBlock>
                                     </StackPanel>
                                     <TextBlock Grid.Column="1" Text="{Binding ReclaimableText}" FontWeight="Bold"
-                                               Foreground="#1E7E34" VerticalAlignment="Center"/>
+                                               Foreground="{DynamicResource Clean}" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="2" Text="{Binding RecommendedAction}" TextWrapping="Wrap"
-                                               Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                                               Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>
@@ -137,15 +137,15 @@
                 <ItemsControl ItemsSource="{Binding Ignores}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
+                            <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="{Binding PathOrPattern}" Foreground="{StaticResource Ink}" FontWeight="SemiBold"/>
-                                        <TextBlock Foreground="{StaticResource Muted}" FontSize="11">
+                                        <TextBlock Text="{Binding PathOrPattern}" Foreground="{DynamicResource Ink}" FontWeight="SemiBold"/>
+                                        <TextBlock Foreground="{DynamicResource Muted}" FontSize="11">
                                             <Run Text="{Binding MatchType, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding CreatedAt, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Reason, Mode=OneWay}"/>
                                         </TextBlock>
                                     </StackPanel>
