@@ -27,6 +27,22 @@ public sealed class UserPrefs
     // —— D: 首启引导 ——
     public bool OnboardingSeen { get; set; }
 
+    // —— H: 最近扫描历史 (最多 8 条, 最近在前, 按目标去重) ——
+    public List<ScanHistoryEntry> RecentScans { get; set; } = new();
+
+    /// <summary>记一次扫描 (去重置顶, 截断到 8 条) 并保存。</summary>
+    public void AddScan(string target, long totalSize, long fileCount)
+    {
+        if (string.IsNullOrWhiteSpace(target)) return;
+        RecentScans.RemoveAll(s => string.Equals(s.Target, target, StringComparison.OrdinalIgnoreCase));
+        RecentScans.Insert(0, new ScanHistoryEntry
+        {
+            Target = target, TotalSize = totalSize, FileCount = fileCount, WhenUtc = DateTime.UtcNow,
+        });
+        if (RecentScans.Count > 8) RecentScans.RemoveRange(8, RecentScans.Count - 8);
+        Save();
+    }
+
     public bool HasWindowSize => WinWidth >= 320 && WinHeight >= 320;
     public bool HasWindowPos => !double.IsNaN(WinLeft) && !double.IsNaN(WinTop);
 
@@ -57,4 +73,13 @@ public sealed class UserPrefs
         }
         catch { /* 写入失败不抛 */ }
     }
+}
+
+/// <summary>H: 一条扫描历史 (目标 / 总占用 / 项数 / 时间)。</summary>
+public sealed class ScanHistoryEntry
+{
+    public string Target { get; set; } = "";
+    public long TotalSize { get; set; }
+    public long FileCount { get; set; }
+    public DateTime WhenUtc { get; set; }
 }

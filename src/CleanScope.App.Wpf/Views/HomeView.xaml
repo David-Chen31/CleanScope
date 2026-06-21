@@ -82,6 +82,38 @@
             </StackPanel>
         </Border>
 
+        <!-- H: 最近扫描 (扫描前展示, 一键回到上次目标) -->
+        <Border Style="{StaticResource Cards}" Visibility="{Binding ShowRecentScans, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <TextBlock Text="最近扫描" Style="{StaticResource H2}"/>
+                <TextBlock Text="点任意一条即可一键重新扫描该位置。" Style="{StaticResource Sub}" Margin="0,0,0,8"/>
+                <ItemsControl ItemsSource="{Binding RecentScans}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding DataContext.RescanRecentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding Target}" Style="{StaticResource Ghost}"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,0,0,6" Padding="12,9">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                        <TextBlock Text="{Binding Target}" Foreground="{DynamicResource Ink}" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Foreground="{DynamicResource Muted}" FontSize="11.5">
+                                            <Run Text="{Binding SizeText, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding CountText, Mode=OneWay}"/><Run Text="　"/><Run Text="{Binding WhenText, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="重扫 →" Foreground="{DynamicResource Accent}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
         <!-- 扫描后概览 (评审问题#4: 工作台首屏先给结果, 排在官方清理之上) -->
         <Border Style="{StaticResource Cards}" Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
             <StackPanel>

@@ -144,9 +144,10 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
 
     public void Load(ScanSession session)
     {
-        if (_session is not null) _session.ItemRemoved -= OnItemRemoved;
+        if (_session is not null) { _session.ItemRemoved -= OnItemRemoved; _session.ItemRestored -= OnItemRestored; }
         _session = session;
         _session.ItemRemoved += OnItemRemoved;   // A1: 别处删除时, 本页同步移除/置删除
+        _session.ItemRestored += OnItemRestored; // H: 撤销还原后, 本页重建以重新纳入已还原项
         ActionStatus = "";
         _ = PreloadInsightsAsync();              // F: 拉取历史 AI 识别缓存, 供"用 AI 识别"命中复用
         Rebuild();
@@ -164,6 +165,9 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         }
         catch (Exception ex) { CleanScope.Domain.Diagnostics.AppTrace.Log("加载 AI 识别缓存失败", ex); }
     }
+
+    // H: 撤销还原后, 整页重建 —— 还原项已从 session._removed 移出, 重建即重新纳入显示 (与磁盘一致)。
+    private void OnItemRestored(string path) => Rebuild();
 
     // A1: 任一页移除某路径 → 本页同步。只看可清理模式直接移除对应根(便宜, 避免每次全量重建);
     // 树模式标记已物化的对应节点为已删。
@@ -245,6 +249,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         IsBusy = true;
         int ok = 0, skipped = 0;
         var count = targets.Count;
+        var recycled = new List<(string path, long size, bool cleanable)>();   // H: 供"撤销"
         var reporter = (IProgress<(int done, ExplorerNodeViewModel? deleted)>)new Progress<(int done, ExplorerNodeViewModel? deleted)>(p =>
         {
             ActionStatus = $"正在处理 {p.done}/{count}…";
@@ -252,6 +257,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             {
                 p.deleted.MarkDeleted();
                 _session?.NotifyRemoved(p.deleted.Path, p.deleted.RawSize, p.deleted.IsCleanable);
+                recycled.Add((p.deleted.Path, p.deleted.RawSize, p.deleted.IsCleanable));
             }
         });
         try
@@ -276,10 +282,44 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             IsBusy = false;
         }
 
+        _lastRecycled = recycled;
         ActionStatus = $"已移入回收站 {ok} 项（可还原）"
             + (skipped > 0 ? $"；{skipped} 项被安全闸门拦下或失败，已保留。" : "。");
-        if (ok > 0) Toast.Show($"已移入回收站 {ok} 项（可还原）", ToastKind.Success, "打开回收站", () => _ = OpenRecycleBinAsync());
+        if (ok > 0) Toast.Show($"已移入回收站 {ok} 项", ToastKind.Success, "撤销", () => _ = UndoLastRecycleAsync());
         UpdateSelectionSummary();
+    }
+
+    // H: 撤销刚才的回收 —— 从回收站还原回原位 (纯还原); 自动还原失败的回退到"打开回收站"。
+    private List<(string path, long size, bool cleanable)> _lastRecycled = new();
+
+    private async Task UndoLastRecycleAsync()
+    {
+        var batch = _lastRecycled.ToList();
+        if (batch.Count == 0) { await OpenRecycleBinAsync(); return; }
+        ActionStatus = $"正在还原 {batch.Count} 项…";
+        int ok = 0, fail = 0;
+        foreach (var (path, size, cleanable) in batch)
+        {
+            var restored = await Task.Run(() => _services.RecycleRestore.TryRestore(path));
+            if (restored) { _session?.NotifyRestored(path, size, cleanable); ok++; }
+            else fail++;
+        }
+        _lastRecycled.Clear();
+        if (ok > 0 && fail == 0)
+        {
+            ActionStatus = $"已还原 {ok} 项到原位。";
+            Toast.Show($"已还原 {ok} 项", ToastKind.Success);
+        }
+        else if (ok > 0)
+        {
+            ActionStatus = $"已还原 {ok} 项；{fail} 项未能自动还原，已为你打开回收站手动还原。";
+            await OpenRecycleBinAsync();
+        }
+        else
+        {
+            ActionStatus = "未能自动还原，已为你打开回收站，可在其中右键「还原」。";
+            await OpenRecycleBinAsync();
+        }
     }
 
     private static void MarkMaterializedDeleted(IEnumerable<ExplorerNodeViewModel> nodes, string path)
@@ -588,8 +628,9 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         {
             node.MarkDeleted();
             _session?.NotifyRemoved(node.Path, node.RawSize, node.IsCleanable);   // A1: 广播给其它页 + 概览扣减
+            _lastRecycled = new() { (node.Path, node.RawSize, node.IsCleanable) };  // H: 供"撤销"
             ActionStatus = $"已移入回收站（可还原）：{node.Name}";
-            Toast.Show($"已移入回收站（可还原）：{node.Name}", ToastKind.Success, "打开回收站", () => _ = OpenRecycleBinAsync());
+            Toast.Show($"已移入回收站：{node.Name}", ToastKind.Success, "撤销", () => _ = UndoLastRecycleAsync());
         }
         else
         {

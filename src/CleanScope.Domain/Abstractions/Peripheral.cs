@@ -48,3 +48,13 @@ public interface IRecycleBin
     /// <summary>把目标移入回收站 (可恢复)。目标不存在/被占用/出错时抛出, 绝不静默永久删除。</summary>
     void Send(string path);
 }
+
+/// <summary>
+/// 回收站还原端口 (H): 把之前移入回收站的某原始路径项**还原回原位**。纯还原, 不删除任何东西。
+/// 受系统/区域影响可能失败 → 返回 false, 由上层回退"打开回收站手动还原"。Windows 实现在 Infrastructure。
+/// </summary>
+public interface IRecycleRestore
+{
+    /// <summary>尝试把原路径为 <paramref name="originalPath"/> 的回收站项还原回原位; 成功 true, 否则 false (不抛)。</summary>
+    bool TryRestore(string originalPath);
+}

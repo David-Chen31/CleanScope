@@ -38,6 +38,11 @@ public sealed class HomeViewModel : ViewModelBase
         AdviseCommand = new AsyncRelayCommand(_ => AdviseAsync(), _ => CanAdvise);
         RunOfficialActionCommand = new AsyncRelayCommand(p => RunOfficialAsync(p as OfficialActionViewModel), _ => !_isScanning && !_officialBusy);
         OfficialActions = _services.OfficialActions.Select(a => new OfficialActionViewModel(a)).ToList();
+        RescanRecentCommand = new RelayCommand(p =>   // H: 点最近扫描项 → 设为目标并重扫
+        {
+            if (p is string t) { TargetPath = t; if (ScanCommand.CanExecute(null)) ScanCommand.Execute(null); }
+        }, _ => !_isScanning);
+        RefreshRecentScans();
         RefreshDrive();
     }
 
@@ -53,6 +58,27 @@ public sealed class HomeViewModel : ViewModelBase
 
     /// <summary>本机已就绪的盘符根 (供"盘符优先"芯片), 如 C:\、D:\。</summary>
     public IReadOnlyList<string> AvailableDrives { get; }
+
+    // —— H: 最近扫描 (扫描前展示, 一键回到上次的目标) ——
+    public RelayCommand RescanRecentCommand { get; }
+    public ObservableCollection<RecentScanViewModel> RecentScans { get; } = new();
+    public bool HasRecentScans => RecentScans.Count > 0;
+    /// <summary>仅在"尚未出结果"时展示最近扫描 (出结果后焦点是概览)。</summary>
+    public bool ShowRecentScans => HasRecentScans && !HasResult;
+
+    private void RefreshRecentScans()
+    {
+        RecentScans.Clear();
+        foreach (var s in Common.UserPrefs.Current.RecentScans) RecentScans.Add(new RecentScanViewModel(s));
+        OnPropertyChanged(nameof(HasRecentScans));
+        OnPropertyChanged(nameof(ShowRecentScans));
+    }
+
+    private void RecordScanHistory(string target, long total, long count)
+    {
+        Common.UserPrefs.Current.AddScan(target, total, count);
+        RefreshRecentScans();
+    }
 
     /// <summary>系统级官方清理手段 (P0): 关闭休眠/清空回收站/DISM/磁盘清理…，确定性目录。</summary>
     public IReadOnlyList<OfficialActionViewModel> OfficialActions { get; }
@@ -110,7 +136,7 @@ public sealed class HomeViewModel : ViewModelBase
     public ScanSession? Session { get; private set; }
 
     private bool _hasResult;
-    public bool HasResult { get => _hasResult; private set => SetField(ref _hasResult, value); }
+    public bool HasResult { get => _hasResult; private set { if (SetField(ref _hasResult, value)) OnPropertyChanged(nameof(ShowRecentScans)); } }
 
     private string _overviewTotal = "";
     public string OverviewTotal { get => _overviewTotal; private set => SetField(ref _overviewTotal, value); }
@@ -278,6 +304,7 @@ public sealed class HomeViewModel : ViewModelBase
 
             var session = new ScanSession(target, result.Report, rows, result.Tree);
             _host.LoadSession(session);   // 触发各页加载 (含本页 OnSessionLoaded)
+            RecordScanHistory(target, session.TotalSize, session.FileCount);   // H: 记入"最近扫描"
             Status = $"扫描完成：{rows.Count} 项。下方是最划算的几步与官方清理手段；点「去可清理清单」可批量处理。";
         }
         catch (DirectoryNotFoundException)
@@ -370,9 +397,10 @@ public sealed class HomeViewModel : ViewModelBase
 
     public void OnSessionLoaded(ScanSession session)
     {
-        if (Session is not null) Session.ItemRemoved -= OnItemRemoved;
+        if (Session is not null) { Session.ItemRemoved -= OnItemRemoved; Session.ItemRestored -= OnItemRemoved; }
         Session = session;
-        Session.ItemRemoved += OnItemRemoved;   // A3: 别处删除 → 概览数字随之扣减
+        Session.ItemRemoved += OnItemRemoved;     // A3: 别处删除 → 概览数字随之扣减
+        Session.ItemRestored += OnItemRemoved;    // H: 撤销还原 → 概览数字随之回补 (同一重算)
         HasResult = true;
         OverviewTotal = $"{Format.HumanSize(session.TotalSize)}（{session.FileCount} 项）";
         HighRiskCount = session.HighRiskCount;
@@ -551,6 +579,23 @@ public sealed class HomeViewModel : ViewModelBase
 
 /// <summary>概览"最划算的几步"行 (只读预览; 操作在可清理清单页批量进行)。</summary>
 public sealed record OverviewItem(string SizeText, string Name, string Path, string Origin);
+
+/// <summary>H: 最近扫描项 (目标 / 占用 / 项数 / 时间) —— 点击一键重扫该目标。</summary>
+public sealed class RecentScanViewModel
+{
+    public RecentScanViewModel(Common.ScanHistoryEntry e)
+    {
+        Target = e.Target;
+        SizeText = Common.Format.HumanSize(e.TotalSize);
+        CountText = $"{e.FileCount} 项";
+        WhenText = e.WhenUtc == default ? "" : e.WhenUtc.ToLocalTime().ToString("MM-dd HH:mm");
+    }
+
+    public string Target { get; }
+    public string SizeText { get; }
+    public string CountText { get; }
+    public string WhenText { get; }
+}
 
 /// <summary>
 /// 问题#1: AI 清理计划的一步 (卡片展示)。小白看标题/收益/难度/在哪做即可上手;

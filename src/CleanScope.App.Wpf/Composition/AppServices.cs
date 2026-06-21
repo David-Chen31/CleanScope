@@ -24,6 +24,8 @@ public sealed class AppServices
     public required IAuditLogRepository AuditLog { get; init; }
     /// <summary>F: AI 识别结果缓存 (跨会话)。命中即免再花 token; 仅本地、仅推测。</summary>
     public required IAiInsightRepository AiInsights { get; init; }
+    /// <summary>H: 一键撤销回收 (从回收站还原回原位)。纯还原, 不删除。</summary>
+    public required IRecycleRestore RecycleRestore { get; init; }
     public required IActionExecutor ActionExecutor { get; init; }
     public required ISafetyGuard SafetyGuard { get; init; }
 

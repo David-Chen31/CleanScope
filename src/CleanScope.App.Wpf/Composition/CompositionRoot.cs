@@ -58,6 +58,7 @@ public static class CompositionRoot
         // 系统关键/容器/C-E/占用一律拒。执行器先写审计 (SR-9) 再经回收站端口删除 (无永久删除路径)。
         var safety = new SafetyGuard(windows, deleteEnabled: true);
         var executor = new ActionExecutor(new ShellLauncher(), audit, ignore, AppVersion, new WindowsRecycleBin());
+        var recycleRestore = new WindowsRecycleRestore();   // H: 一键撤销回收 (从回收站还原回原位)
 
         // —— AI 旁路: 脱敏 → 解释 → 校验。始终装配, 但对话客户端可热替换 (D); 未配置/停用时走本地规则降级 ——
         // 配置来源: 用户目录 (设置页写入, Key 经 DPAPI 加密) 优先, 回退旧的 appsettings.ai.local.json + 环境变量。
@@ -82,6 +83,7 @@ public static class CompositionRoot
             IgnoreRepository = ignore,
             AuditLog = audit,
             AiInsights = aiInsights,
+            RecycleRestore = recycleRestore,
             ActionExecutor = executor,
             SafetyGuard = safety,
             AiChat = aiChat,

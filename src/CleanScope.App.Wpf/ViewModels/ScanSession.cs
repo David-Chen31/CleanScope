@@ -52,6 +52,9 @@ public sealed class ScanSession
     /// <summary>某路径被移除(回收/迁移)时触发, 参数为被移除路径。各页订阅后移除对应项或重算。</summary>
     public event Action<string>? ItemRemoved;
 
+    /// <summary>H: 某路径被还原(撤销回收)时触发, 各页据此重新纳入/重算。</summary>
+    public event Action<string>? ItemRestored;
+
     /// <summary>修订号: 每次移除递增, 供导航时判断某页是否需要按最新状态重载。</summary>
     public int Revision { get; private set; }
 
@@ -70,6 +73,17 @@ public sealed class ScanSession
         if (wasReclaimable) RemovedReclaimableBytes += size;
         Revision++;
         ItemRemoved?.Invoke(path);
+    }
+
+    /// <summary>H: 撤销一次移除 (还原)。从集合移出、回补累计、递增修订号并广播。未登记过则忽略。</summary>
+    public void NotifyRestored(string path, long size, bool wasReclaimable)
+    {
+        var p = Norm(path);
+        if (p.Length == 0 || !_removed.Remove(p)) return;
+        RemovedCount = Math.Max(0, RemovedCount - 1);
+        if (wasReclaimable) RemovedReclaimableBytes = Math.Max(0, RemovedReclaimableBytes - size);
+        Revision++;
+        ItemRestored?.Invoke(path);
     }
 
     /// <summary>该路径或其某个祖先是否已被移除 (移除父目录则其子孙都视为已移除)。</summary>
