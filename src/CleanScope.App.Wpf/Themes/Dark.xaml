@@ -33,4 +33,18 @@
     <!-- 首页 Hero 渐变端点 -->
     <SolidColorBrush x:Key="HeroTop"    Color="#222732"/>
     <SolidColorBrush x:Key="HeroBottom" Color="#1A1F2B"/>
+    <!-- 输入控件底 (下沉井, 比卡片略亮一档, 配 Line 描边读作可填写) -->
+    <SolidColorBrush x:Key="Input"            Color="#232831"/>
+    <SolidColorBrush x:Key="InputBorderHover" Color="#3C424D"/>
+    <!-- AI 推测语义紫 (暗底提亮) -->
+    <SolidColorBrush x:Key="Ai" Color="#B79BE8"/>
+    <!-- 风险等级配色 (暗色: 同色相但压暗降饱和, 坐进深色面板不刺眼; 文字用 RiskInk 浅色) -->
+    <SolidColorBrush x:Key="RiskA"         Color="#33503D"/>
+    <SolidColorBrush x:Key="RiskB"         Color="#314360"/>
+    <SolidColorBrush x:Key="RiskC"         Color="#524629"/>
+    <SolidColorBrush x:Key="RiskD"         Color="#5E3636"/>
+    <SolidColorBrush x:Key="RiskE"         Color="#4A302C"/>
+    <SolidColorBrush x:Key="RiskNone"      Color="#363D48"/>
+    <SolidColorBrush x:Key="RiskRemainder" Color="#21252D"/>
+    <SolidColorBrush x:Key="RiskInk"       Color="#E7EAF0"/>
 </ResourceDictionary>

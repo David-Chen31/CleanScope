@@ -12,6 +12,9 @@ public static class ThemeManager
 {
     public static AppTheme Current { get; private set; } = AppTheme.Light;
 
+    /// <summary>主题切换后触发 (自绘视图如 treemap 用 DynamicResource 无法自动重着色, 借此重绘)。</summary>
+    public static event Action? ThemeChanged;
+
     /// <summary>启动时按已保存偏好应用主题 (在主窗口显示前调用)。</summary>
     public static void Initialize()
     {
@@ -39,6 +42,7 @@ public static class ThemeManager
             UserPrefs.Current.Theme = theme.ToString();
             UserPrefs.Current.Save();
         }
+        ThemeChanged?.Invoke();
     }
 
     private static AppTheme Parse(string? s) =>

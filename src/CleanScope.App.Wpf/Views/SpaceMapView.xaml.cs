@@ -19,6 +19,9 @@ public partial class SpaceMapView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        // 自绘瓦片用主题资源着色, 但 Canvas 上的 Border 非 DynamicResource → 切主题时手动重绘。
+        Loaded += (_, _) => ThemeManager.ThemeChanged += Render;
+        Unloaded += (_, _) => ThemeManager.ThemeChanged -= Render;
     }
 
     private void OnDataContextChanged(object? sender, DependencyPropertyChangedEventArgs e)
@@ -59,7 +62,7 @@ public partial class SpaceMapView : UserControl
             {
                 Width = tw,
                 Height = th,
-                Background = child.IsRemainder ? new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xEE)) : fill,
+                Background = child.IsRemainder ? RiskPalette.Remainder : fill,
                 BorderBrush = new SolidColorBrush(Color.FromArgb(0x33, 0, 0, 0)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(2),
@@ -80,7 +83,7 @@ public partial class SpaceMapView : UserControl
                     Margin = new Thickness(6, 4, 6, 4),
                     TextTrimming = TextTrimming.CharacterEllipsis,
                     TextWrapping = TextWrapping.NoWrap,
-                    Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x29, 0x33)),
+                    Foreground = RiskPalette.Ink,
                     FontSize = 12,
                     VerticalAlignment = VerticalAlignment.Top,
                 });
@@ -89,7 +92,8 @@ public partial class SpaceMapView : UserControl
                     {
                         Text = "✓",
                         Margin = new Thickness(0, 3, 6, 0),
-                        Foreground = new SolidColorBrush(Color.FromRgb(0x1E, 0x7E, 0x34)),
+                        Foreground = (System.Windows.Application.Current?.TryFindResource("Clean") as Brush)
+                            ?? new SolidColorBrush(Color.FromRgb(0x1E, 0x7E, 0x34)),
                         FontWeight = FontWeights.Bold,
                         FontSize = 12,
                         HorizontalAlignment = HorizontalAlignment.Right,

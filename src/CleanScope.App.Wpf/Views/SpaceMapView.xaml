@@ -48,23 +48,23 @@
                     <TextBlock Text="颜色 = 风险等级（不只是占用大小）" FontWeight="SemiBold" Foreground="{DynamicResource Ink}" Margin="0,0,0,8"/>
                     <WrapPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,18,4">
-                            <Border Background="#9BD3AE" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
+                            <Border Background="{DynamicResource RiskA}" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
                             <TextBlock Text="A 可放心清理" Style="{StaticResource Sub}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,18,4">
-                            <Border Background="#A9C7F5" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
+                            <Border Background="{DynamicResource RiskB}" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
                             <TextBlock Text="B 基本安全" Style="{StaticResource Sub}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,18,4">
-                            <Border Background="#F4D58A" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
+                            <Border Background="{DynamicResource RiskC}" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
                             <TextBlock Text="C 谨慎 · 删前确认" Style="{StaticResource Sub}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,18,4">
-                            <Border Background="#F0A8A4" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
+                            <Border Background="{DynamicResource RiskD}" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
                             <TextBlock Text="D 高风险 · 不建议删" Style="{StaticResource Sub}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,18,4">
-                            <Border Background="#C98B88" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
+                            <Border Background="{DynamicResource RiskE}" Width="14" Height="14" CornerRadius="3" Margin="0,0,5,0"/>
                             <TextBlock Text="E 系统关键 · 勿动" Style="{StaticResource Sub}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">

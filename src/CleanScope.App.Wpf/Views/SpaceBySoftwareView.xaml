@@ -40,8 +40,7 @@
                                             <Button Command="{Binding DataContext.OpenDetailCommand,
                                                         RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}"
-                                                    HorizontalContentAlignment="Stretch" Cursor="Hand"
-                                                    Background="Transparent" BorderThickness="0" Padding="4,3">
+                                                    Style="{StaticResource RowButton}" Padding="4,3">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="92"/>

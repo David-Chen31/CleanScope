@@ -123,12 +123,18 @@ public sealed class AiDotBrushConverter : IValueConverter
         throw new NotSupportedException();
 }
 
-/// <summary>事实/推测 → 徽标背景色 (事实=蓝, AI 推测=琥珀, 视觉区分, 安全§9)。</summary>
+/// <summary>
+/// 事实/推测 → 底色 (事实=蓝, AI 推测=琥珀, 视觉区分, 安全§9)。
+/// 随主题取明暗两套: 暗色用压暗色调, 让其上的浅色 Ink 文字可读 (修复暗色"浅底浅字看不清")。
+/// </summary>
 public sealed class FactToBrushConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object? parameter, CultureInfo culture)
     {
-        var hex = value is true ? "#E8F0FE" : "#FEF3C7";
+        var dark = Common.ThemeManager.Current == Common.AppTheme.Dark;
+        var hex = value is true
+            ? (dark ? "#1C2A45" : "#E8F0FE")
+            : (dark ? "#322713" : "#FEF3C7");
         return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
     }
 
