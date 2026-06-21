@@ -198,26 +198,11 @@ public sealed class AiSettingsViewModel : ViewModelBase
         finally { if (Phase == SavePhase.Saved) Phase = SavePhase.Idle; IsBusy = false; }
     }
 
-    // 打开本地诊断日志: 存在则在资源管理器中选中, 否则打开 logs 目录 (并提示尚无记录)。
+    // 问题#3: 应用内查看诊断日志 (不再让用户自己去开文件); 打开主题化的日志窗 (非模态, 可边看边调设置)。
     private void OpenLog()
     {
-        var path = AppLog.LogPath;
-        try
-        {
-            if (System.IO.File.Exists(path))
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
-                Status = $"已打开日志：{path}";
-            }
-            else
-            {
-                var dir = System.IO.Path.GetDirectoryName(path)!;
-                System.IO.Directory.CreateDirectory(dir);
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", dir) { UseShellExecute = true });
-                Status = "暂无日志记录（出现 AI 失败后这里会有诊断详情）。";
-            }
-        }
-        catch (Exception ex) { Status = $"打开日志失败：{ex.Message}　日志位置：{path}"; }
+        Views.LogViewerWindow.ShowFor(System.Windows.Application.Current?.MainWindow);
+        Status = "已打开诊断日志窗口。AI 失败的真实原因都记在这里，可点「复制全部」发给开发者。";
     }
 
     private void RaiseAll()

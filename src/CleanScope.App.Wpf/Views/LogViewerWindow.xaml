@@ -1,0 +1,63 @@
+<Window x:Class="CleanScope.App.Wpf.Views.LogViewerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:CleanScope.App.Wpf.ViewModels"
+        d:DataContext="{d:DesignInstance vm:LogViewerViewModel}"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
+        Title="CleanScope · 诊断日志" Width="760" Height="580" MinWidth="520" MinHeight="380"
+        WindowStartupLocation="CenterOwner" Background="{StaticResource Bg}"
+        FontFamily="Segoe UI, Microsoft YaHei UI">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 标题 + 小白友好的说明 -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="诊断日志" Style="{StaticResource H1}"/>
+            <TextBlock Style="{StaticResource Sub}"
+                       Text="这里记录 AI 调用失败的真实原因（鉴权 / 模型名 / 网络 / 内容截断等）。日志仅保存在本机、从不上传；遇到问题可点「复制全部」截图发给开发者。"/>
+        </StackPanel>
+
+        <!-- 最近一次问题: 一眼看到症结 -->
+        <Border Grid.Row="1" Background="{StaticResource CriticalSoft}" CornerRadius="8" Padding="12,10" Margin="0,0,0,10"
+                Visibility="{Binding HasLastIssue, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <TextBlock Text="最近一次问题" FontSize="11" Foreground="{StaticResource Critical}" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding LastIssue}" TextWrapping="Wrap" Foreground="{StaticResource Critical}" Margin="0,2,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 日志正文 (只读, 可选中复制) -->
+        <Border Grid.Row="2" Background="{StaticResource Card}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                CornerRadius="8" Padding="2">
+            <Grid>
+                <TextBox Text="{Binding Content, Mode=OneWay}" IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                         FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12.5" Foreground="{StaticResource Ink}"
+                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="10"
+                         VerticalContentAlignment="Top"/>
+                <!-- 空态 -->
+                <TextBlock Text="暂无日志记录 — 一切正常 ✓&#10;出现 AI 失败后，这里会自动记录原因。" TextAlignment="Center"
+                           Foreground="{StaticResource Faint}" VerticalAlignment="Center" HorizontalAlignment="Center"
+                           Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+        </Border>
+
+        <!-- 状态 -->
+        <TextBlock Grid.Row="3" Text="{Binding Status}" Style="{StaticResource Sub}" Margin="2,10,0,0" TextWrapping="Wrap"/>
+
+        <!-- 操作 -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,12,0,0">
+            <Button Content="刷新" Command="{Binding RefreshCommand}" Style="{StaticResource Outline}" MinWidth="84" Margin="0,0,8,0"/>
+            <Button Content="复制全部" Command="{Binding CopyCommand}" Style="{StaticResource Outline}" MinWidth="96" Margin="0,0,8,0"/>
+            <Button Content="打开所在文件夹" Command="{Binding OpenFolderCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+            <Button Content="清空日志" Command="{Binding ClearCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+            <Button Content="关闭" Click="Close_Click" Style="{StaticResource Primary}" MinWidth="96" HorizontalAlignment="Right"/>
+        </StackPanel>
+    </Grid>
+</Window>

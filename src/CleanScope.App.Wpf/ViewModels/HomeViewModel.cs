@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using CleanScope.App.Wpf.Common;
@@ -122,11 +123,44 @@ public sealed class HomeViewModel : ViewModelBase
     public string? AiAdvice
     {
         get => _aiAdvice;
-        private set { if (SetField(ref _aiAdvice, value)) { OnPropertyChanged(nameof(HasAiAdvice)); OnPropertyChanged(nameof(ShowAdviseButton)); AdviseCommand.RaiseCanExecuteChanged(); } }
+        private set { if (SetField(ref _aiAdvice, value)) { OnPropertyChanged(nameof(HasAiAdvice)); OnPropertyChanged(nameof(ShowAdviseButton)); OnPropertyChanged(nameof(ShowAdviceText)); AdviseCommand.RaiseCanExecuteChanged(); } }
     }
     public bool HasAiAdvice => !string.IsNullOrWhiteSpace(_aiAdvice);
 
+    // 问题#1: 结构化分步计划 (卡片渲染)。有结构化步骤 → 显示卡片; 否则回退把 AiAdvice 当纯文本展示。
+    public ObservableCollection<CleanupPlanStepViewModel> PlanSteps { get; } = new();
+    public bool HasPlanSteps => PlanSteps.Count > 0;
+    /// <summary>无结构化步骤时 (旧会话 / 解析失败) 才显示纯文本建议, 避免与卡片重复。</summary>
+    public bool ShowAdviceText => HasAiAdvice && !HasPlanSteps;
+
+    private string _planSummary = "";
+    public string PlanSummary { get => _planSummary; private set { if (SetField(ref _planSummary, value)) OnPropertyChanged(nameof(HasPlanSummary)); } }
+    public bool HasPlanSummary => !string.IsNullOrWhiteSpace(_planSummary);
+
+    private string _planNote = "";
+    public string PlanNote { get => _planNote; private set { if (SetField(ref _planNote, value)) OnPropertyChanged(nameof(HasPlanNote)); } }
+    public bool HasPlanNote => !string.IsNullOrWhiteSpace(_planNote);
+
+    // 把结构化计划写进展示属性 (供卡片) + 纯文本回退。null/空 → 清空。
+    private void SetPlan(CleanupPlan? plan)
+    {
+        PlanSteps.Clear();
+        if (plan is not null)
+            foreach (var s in plan.Steps) PlanSteps.Add(new CleanupPlanStepViewModel(s));
+        PlanSummary = plan?.Summary ?? "";
+        PlanNote = plan?.Note ?? "";
+        OnPropertyChanged(nameof(HasPlanSteps));
+        OnPropertyChanged(nameof(ShowAdviceText));
+        AiAdvice = plan?.Markdown;   // 触发 HasAiAdvice / 卡片可见性
+    }
+
     private bool _advising;
+    /// <summary>问题#2: AI 行动计划生成中 → 显示转圈, 避免用户以为卡住。</summary>
+    public bool IsAdvising
+    {
+        get => _advising;
+        private set { if (SetField(ref _advising, value)) { OnPropertyChanged(nameof(CanAdvise)); AdviseCommand.RaiseCanExecuteChanged(); } }
+    }
     private string _adviseStatus = "";
     public string AdviseStatus { get => _adviseStatus; private set => SetField(ref _adviseStatus, value); }
 
@@ -139,8 +173,7 @@ public sealed class HomeViewModel : ViewModelBase
     private async Task AdviseAsync()
     {
         if (Session is null || _services.CleanupAdvisor is not { Enabled: true }) return;
-        _advising = true;
-        AdviseCommand.RaiseCanExecuteChanged();
+        IsAdvising = true;
         var level = _services.SanitizationLevel;
         AdviseStatus = level switch
         {
@@ -152,8 +185,8 @@ public sealed class HomeViewModel : ViewModelBase
         {
             var summary = CleanupSummaryBuilder.From(Session.Report.Items);
             var concrete = BuildConcreteItems(level);
-            var advice = await _services.CleanupAdvisor.AdviseAsync(summary, _services.OfficialActions, concrete);
-            if (string.IsNullOrWhiteSpace(advice))
+            var plan = await _services.CleanupAdvisor.AdviseAsync(summary, _services.OfficialActions, concrete);
+            if (plan is null || string.IsNullOrWhiteSpace(plan.Markdown))
             {
                 // 问题#1: 不再笼统报"未能生成", 带上真实原因 (来自 AppTrace) + 查看日志指引。
                 var reason = CleanScope.Domain.Diagnostics.AppTrace.LastError;
@@ -162,8 +195,8 @@ public sealed class HomeViewModel : ViewModelBase
                     : $"AI 未能生成建议：{reason}　可在「AI 设置 → 查看日志」看详情；当前以按类别/按软件清理为准。";
                 return;
             }
-            Session.ApplyAiAdvice(advice);   // 写回报告, 让导出的报告也含此建议
-            AiAdvice = advice;
+            Session.ApplyAiAdvice(plan.Markdown);   // 写回报告, 让导出的报告也含此建议
+            SetPlan(plan);                          // 结构化步骤 → 卡片 (无步骤则回退纯文本)
             AdviseStatus = "";
         }
         catch (Exception ex)
@@ -173,8 +206,7 @@ public sealed class HomeViewModel : ViewModelBase
         }
         finally
         {
-            _advising = false;
-            AdviseCommand.RaiseCanExecuteChanged();
+            IsAdvising = false;
         }
     }
 
@@ -332,6 +364,10 @@ public sealed class HomeViewModel : ViewModelBase
         HasResult = true;
         OverviewTotal = $"{Format.HumanSize(session.TotalSize)}（{session.FileCount} 项）";
         HighRiskCount = session.HighRiskCount;
+        // 加载会话: 只持久化了 markdown 文本 (无结构化步骤) → 清空卡片, 走纯文本回退展示。
+        PlanSteps.Clear();
+        PlanSummary = ""; PlanNote = "";
+        OnPropertyChanged(nameof(HasPlanSteps));
         AiAdvice = session.AiCleanupAdvice;
         AdviseStatus = "";
         RecomputeOverview();
@@ -503,6 +539,54 @@ public sealed class HomeViewModel : ViewModelBase
 
 /// <summary>概览"最划算的几步"行 (只读预览; 操作在可清理清单页批量进行)。</summary>
 public sealed record OverviewItem(string SizeText, string Name, string Path, string Origin);
+
+/// <summary>
+/// 问题#1: AI 清理计划的一步 (卡片展示)。小白看标题/收益/难度/在哪做即可上手;
+/// 想了解原因的展开"为什么"。纯展示, 不驱动执行 (执行仍走确定性官方手段/可清理清单)。
+/// </summary>
+public sealed class CleanupPlanStepViewModel : Mvvm.ViewModelBase
+{
+    public CleanupPlanStepViewModel(CleanupPlanStep s)
+    {
+        Order = s.Order;
+        Title = s.Title;
+        Detail = s.Detail;
+        Saving = s.Saving;
+        Difficulty = s.Difficulty;
+        Where = s.Where;
+        ToggleDetailCommand = new RelayCommand(() => IsExpanded = !IsExpanded, () => HasDetail);
+    }
+
+    public int Order { get; }
+    public string Title { get; }
+    public string Detail { get; }
+    public string Saving { get; }
+    public string Difficulty { get; }
+    public string Where { get; }
+
+    public bool HasDetail => !string.IsNullOrWhiteSpace(Detail);
+    public bool HasSaving => !string.IsNullOrWhiteSpace(Saving);
+    public bool HasDifficulty => !string.IsNullOrWhiteSpace(Difficulty);
+    public bool HasWhere => !string.IsNullOrWhiteSpace(Where);
+
+    // 难度色: 简单=绿, 中等=琥珀, 谨慎=红; 其它=中性。
+    public string DifficultyColor => Difficulty switch
+    {
+        "简单" => "#157347",
+        "中等" => "#B7791F",
+        "谨慎" => "#C5221F",
+        _ => "#5C6877",
+    };
+
+    public RelayCommand ToggleDetailCommand { get; }
+    private bool _isExpanded;
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set { if (SetField(ref _isExpanded, value)) OnPropertyChanged(nameof(ToggleLabel)); }
+    }
+    public string ToggleLabel => _isExpanded ? "收起" : "为什么";
+}
 
 /// <summary>官方清理手段的展示包装 (P0): 标题/说明/预估收益/标签 + 绑定到首页的执行命令。</summary>
 public sealed class OfficialActionViewModel

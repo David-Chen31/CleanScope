@@ -21,15 +21,35 @@ public sealed class CleanupAdvisorTests
             new CleanupCategory("可重建缓存(按目录名推断)", 4, 1_500_000_000, RiskLevel.B, "用官方方式清理"),
         });
 
-    [Fact]
+    [Fact] // 非 JSON 回复 → 退化为纯文本计划 (Markdown 含原文, 无结构化步骤)。
     public async Task Returns_advice_text_when_enabled()
     {
         var chat = new FakeChat("- 你装了 Miniconda 和 Anaconda 两套 Python，可考虑保留其一。");
-        var advice = await new CleanupAdvisor(chat).AdviseAsync(Summary());
+        var plan = await new CleanupAdvisor(chat).AdviseAsync(Summary());
 
-        Assert.False(string.IsNullOrWhiteSpace(advice));
-        Assert.Contains("Anaconda", advice);
+        Assert.NotNull(plan);
+        Assert.Contains("Anaconda", plan!.Markdown);
+        Assert.Empty(plan.Steps);              // 非 JSON → 无结构化步骤, 回退纯文本
         Assert.Equal(1, chat.Calls);
+    }
+
+    [Fact] // JSON 回复 → 解析成结构化分步计划 (供卡片渲染) + 合成可读 Markdown (供报告)。
+    public async Task Parses_structured_json_plan()
+    {
+        const string json = """
+        {"summary":"预计可省约 1.4 GB","steps":[
+          {"title":"清理可重建的编译缓存","detail":"删后不影响源码，下次构建会重建。","saving":"约 1.4 GB","difficulty":"简单","where":"可清理清单"}
+        ],"note":"删除前再确认；只进回收站可还原。"}
+        """;
+        var plan = await new CleanupAdvisor(new FakeChat(json)).AdviseAsync(Summary());
+
+        Assert.NotNull(plan);
+        Assert.Single(plan!.Steps);
+        Assert.Equal("清理可重建的编译缓存", plan.Steps[0].Title);
+        Assert.Equal("简单", plan.Steps[0].Difficulty);
+        Assert.Equal("可清理清单", plan.Steps[0].Where);
+        Assert.Contains("可省约 1.4 GB", plan.Summary);
+        Assert.Contains("清理可重建的编译缓存", plan.Markdown);   // 合成的 markdown 含步骤
     }
 
     [Fact] // 脱敏: 喂给 AI 的用户提示只含软件/类别/容量, 不含任何路径或盘符。

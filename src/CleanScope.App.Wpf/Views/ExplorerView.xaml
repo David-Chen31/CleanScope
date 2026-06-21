@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:CleanScope.App.Wpf.ViewModels"
+             xmlns:views="clr-namespace:CleanScope.App.Wpf.Views"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              d:DataContext="{d:DesignInstance vm:ExplorerViewModel}"
@@ -156,9 +157,12 @@
                                     <TextBlock Text="  ✨AI推测" Foreground="#8451C4" FontSize="11" VerticalAlignment="Center"
                                                ToolTip="来源/用途由 AI 推测补充，仅供参考"
                                                Visibility="{Binding IsAiResolved, Converter={StaticResource BoolToVis}}"/>
-                                    <TextBlock Text="  ✨识别中…" Foreground="#8451C4" FontSize="11" VerticalAlignment="Center"
-                                               FontStyle="Italic"
-                                               Visibility="{Binding IsInvestigating, Converter={StaticResource BoolToVis}}"/>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                Visibility="{Binding IsInvestigating, Converter={StaticResource BoolToVis}}">
+                                        <views:Spinner Diameter="11" Stroke="#8451C4" VerticalAlignment="Center"/>
+                                        <TextBlock Text="识别中…" Foreground="#8451C4" FontSize="11" FontStyle="Italic"
+                                                   VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                    </StackPanel>
                                 </StackPanel>
 
                                 <!-- 大小 + 占父目录比例条 (按等级配色统一) -->
@@ -264,6 +268,14 @@
                                     <Button Content="在回收站中查看 / 还原" Command="{Binding OpenRecycleBinCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,6"
                                             Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}"/>
                                 </WrapPanel>
+
+                                <!-- 问题#2: AI 识别进行中 —— 转圈 + 文案, 避免用户以为卡住 -->
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0" VerticalAlignment="Center"
+                                            Visibility="{Binding IsInvestigating, Converter={StaticResource BoolToVis}}">
+                                    <views:Spinner Diameter="14" Stroke="#8451C4" VerticalAlignment="Center"/>
+                                    <TextBlock Text="正在用 AI 识别这一项…（脱敏后请求，仅供参考）" Foreground="#8451C4" FontSize="12"
+                                               Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
                     </Grid>

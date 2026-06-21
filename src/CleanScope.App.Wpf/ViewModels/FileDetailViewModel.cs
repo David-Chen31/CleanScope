@@ -50,6 +50,12 @@ public sealed class FileDetailViewModel : ViewModelBase
     public bool CanExplain => _services.AiEnabled && _ai is null && !_explaining
         && _row?.Analysis.RuleMatch?.IsSystemCritical != true;
     private bool _explaining;
+    /// <summary>问题#2: AI 解释生成中 → 显示转圈, 避免用户以为卡住。</summary>
+    public bool IsExplaining
+    {
+        get => _explaining;
+        private set { if (SetField(ref _explaining, value)) { OnPropertyChanged(nameof(CanExplain)); ExplainCommand.RaiseCanExecuteChanged(); } }
+    }
 
     private FileRowViewModel? _row;
     public FileRowViewModel? Row { get => _row; private set => SetField(ref _row, value); }
@@ -90,12 +96,10 @@ public sealed class FileDetailViewModel : ViewModelBase
     private async Task ExplainAsync()
     {
         if (Row is null) return;
-        _explaining = true;
-        ExplainCommand.RaiseCanExecuteChanged();
-        OnPropertyChanged(nameof(CanExplain));
+        IsExplaining = true;
         AiStatus = "正在生成 AI 解释（脱敏后请求，仅供参考）…";
         try { await LoadAiAsync(Row); }
-        finally { _explaining = false; ExplainCommand.RaiseCanExecuteChanged(); OnPropertyChanged(nameof(CanExplain)); }
+        finally { IsExplaining = false; }
     }
 
     private async Task LoadAiAsync(FileRowViewModel row)

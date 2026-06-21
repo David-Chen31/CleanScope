@@ -106,12 +106,12 @@ try
     var report = result.Report;
     if (advisor is { Enabled: true })
     {
-        var advice = await advisor.AdviseAsync(CleanupSummaryBuilder.From(result.Decisions));
-        if (!string.IsNullOrWhiteSpace(advice))
+        var plan = await advisor.AdviseAsync(CleanupSummaryBuilder.From(result.Decisions));
+        if (plan is not null && !string.IsNullOrWhiteSpace(plan.Markdown))
         {
-            report = report with { AiCleanupAdvice = advice };
+            report = report with { AiCleanupAdvice = plan.Markdown };
             Console.WriteLine("\n🧭 AI 清理参谋 (跨项建议, 仅供参考):");
-            Console.WriteLine(advice.Trim());
+            Console.WriteLine(plan.Markdown.Trim());
         }
     }
 

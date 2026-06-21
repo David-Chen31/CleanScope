@@ -147,6 +147,26 @@ public record ScanReport(
     IReadOnlyList<DecisionItem> Items,
     string? AiCleanupAdvice = null);
 
+/// <summary>
+/// 结构化 AI 清理计划 (S-H 升级)。AI 以 JSON 给出分步计划, 由宿主**仅作展示**渲染成卡片
+/// (小白看标题/收益/在哪做, 进阶看展开的"为什么"); 解析失败时退化为 <see cref="Markdown"/> 原文。
+/// 红线不变: 这里只是展示结构, 绝不解析其中内容来驱动删除 (IR-6); 真正执行仍是确定性官方手段/可清理清单。
+/// </summary>
+public sealed record CleanupPlan(
+    string Summary,
+    IReadOnlyList<CleanupPlanStep> Steps,
+    string Note,
+    string Markdown);     // 供报告导出 / Console / 解析失败时回退展示的纯文本(markdown)
+
+/// <summary>清理计划的一步。字段均为展示文本 (非可执行指令)。</summary>
+public sealed record CleanupPlanStep(
+    int Order,
+    string Title,         // 一句话的具体动作 (小白可懂)
+    string Detail,        // 为什么这么做 / 删了影响什么 (进阶展开看)
+    string Saving,        // 预计可省, 如 "约 1.4 GB"; 不确定为空
+    string Difficulty,    // 简单 / 中等 / 谨慎
+    string Where);        // 在哪做: "可清理清单" 或 "Windows 官方清理" 里的确切按钮名
+
 /// <summary>已脱敏的 AI 输入 (脱敏网关唯一产物; 仅 P0 + 脱敏 P1; 永不含文件内容, PR-1)。</summary>
 public record AiInput(
     string PathPattern,        // 脱敏: %USER%/%FILE%

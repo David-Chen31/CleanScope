@@ -44,7 +44,7 @@ public interface ICleanupAdvisor
     /// <paramref name="concreteItems"/>: 已按当前脱敏档位处理过的"具体大项"描述行 (如"路径 | 大小 | 风险")。
     /// 关闭脱敏时由宿主附上真实路径以便 AI 给个性化建议; 严格档位下应传空 (保持仅聚合)。可传空。
     /// </summary>
-    Task<string?> AdviseAsync(
+    Task<CleanupPlan?> AdviseAsync(
         CleanupSummary summary,
         IReadOnlyList<OfficialCleanupAction>? officialActions = null,
         IReadOnlyList<string>? concreteItems = null,
