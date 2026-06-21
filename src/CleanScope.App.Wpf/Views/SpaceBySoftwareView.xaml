@@ -24,7 +24,8 @@
                             <Expander Margin="0,0,0,6">
                                 <Expander.Header>
                                     <StackPanel Orientation="Horizontal" Margin="2">
-                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource Ink}"/>
                                         <Border Background="{DynamicResource CleanSoft}" CornerRadius="4" Padding="8,1" Margin="10,0,0,0"
                                                 Visibility="{Binding HasCleanable, Converter={StaticResource BoolToVis}}">
                                             <TextBlock Foreground="{DynamicResource Clean}" FontSize="12">

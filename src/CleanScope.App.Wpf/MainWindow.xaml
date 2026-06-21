@@ -25,7 +25,9 @@
         <KeyBinding Key="F5" Command="{Binding RescanCommand}"/>
     </Window.InputBindings>
 
-    <Border x:Name="RootBorder" Background="{DynamicResource Bg}">
+    <!-- 全局文字默认色 = Ink (随主题): 未显式设 Foreground 的文本 (树节点名/大小/Expander 头) 借继承取色,
+         避免暗色下回退到框架默认黑字而看不清; 带样式的文本与按钮自设前景, 优先级更高不受影响。 -->
+    <Border x:Name="RootBorder" Background="{DynamicResource Bg}" TextElement.Foreground="{DynamicResource Ink}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="46"/>
