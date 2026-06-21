@@ -97,6 +97,8 @@
                         <Style TargetType="TreeViewItem">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                             <Setter Property="Padding" Value="0,2"/>
+                            <!-- 系统默认 TreeViewItem 样式会把 Foreground 钉成黑色, 截断继承; 显式置 Ink 让暗色节点文字可读。 -->
+                            <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
                         </Style>
                     </TreeView.ItemContainerStyle>
                     <TreeView.ItemTemplate>
