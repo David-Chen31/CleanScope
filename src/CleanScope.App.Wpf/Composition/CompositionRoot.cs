@@ -79,6 +79,7 @@ public static class CompositionRoot
                 ? new CsvReportExporter(sanitizePaths: false)
                 : new MarkdownReportExporter(sanitizePaths: false),
             IgnoreRepository = ignore,
+            AuditLog = audit,
             ActionExecutor = executor,
             SafetyGuard = safety,
             AiChat = aiChat,

@@ -9,6 +9,48 @@
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel>
 
+        <!-- F3: 回收历史 / 还原 (跨会话持久; 强化"删除可还原") -->
+        <Border Style="{StaticResource Cards}">
+            <StackPanel>
+                <Grid>
+                    <TextBlock Text="回收历史 · 随时可还原" Style="{StaticResource H2}" VerticalAlignment="Center"/>
+                    <Button HorizontalAlignment="Right" VerticalAlignment="Center" Content="🗑 打开回收站还原"
+                            Command="{Binding OpenRecycleBinCommand}" Style="{StaticResource Outline}"/>
+                </Grid>
+                <TextBlock Text="{Binding HistoryStatus}" Style="{StaticResource Sub}" Margin="0,2,0,8" TextWrapping="Wrap"/>
+
+                <ItemsControl ItemsSource="{Binding RecycleHistory}"
+                              Visibility="{Binding HasRecycleHistory, Converter={StaticResource BoolToVis}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <Border Background="{StaticResource CleanSoft}" CornerRadius="3" Padding="5,1" Margin="8,0,0,0"
+                                                    Visibility="{Binding Recoverable, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="可还原" FontSize="11" Foreground="{StaticResource Clean}"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Path}" Foreground="{StaticResource Muted}" FontSize="11"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{Binding When}" Foreground="{StaticResource Faint}"
+                                               FontSize="12" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
         <!-- 可清理类别聚合 (S3) -->
         <Border Style="{StaticResource Cards}"
                 Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}">

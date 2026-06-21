@@ -27,14 +27,24 @@ public sealed class ReportViewModel : ViewModelBase
         ExportCommand = new AsyncRelayCommand(_ => ExportAsync(), _ => _session is not null);
         AddIgnoreCommand = new AsyncRelayCommand(_ => AddIgnoreAsync(), _ => !string.IsNullOrWhiteSpace(NewIgnorePath));
         RemoveIgnoreCommand = new AsyncRelayCommand(RemoveIgnoreAsync);
+        OpenRecycleBinCommand = new RelayCommand(OpenRecycleBin);
         _ = RefreshIgnoresAsync();
+        _ = RefreshHistoryAsync();
     }
 
     public AsyncRelayCommand ExportCommand { get; }
     public AsyncRelayCommand AddIgnoreCommand { get; }
     public AsyncRelayCommand RemoveIgnoreCommand { get; }
+    public RelayCommand OpenRecycleBinCommand { get; }   // F3: 打开系统回收站 (在其中还原)
 
     public ObservableCollection<IgnoreEntryViewModel> Ignores { get; } = new();
+
+    // F3: 回收历史 (跨会话持久, 来自本地审计日志)。强化"删除可还原"心智。
+    public ObservableCollection<RecycleHistoryViewModel> RecycleHistory { get; } = new();
+    public bool HasRecycleHistory => RecycleHistory.Count > 0;
+
+    private string _historyStatus = "";
+    public string HistoryStatus { get => _historyStatus; private set => SetField(ref _historyStatus, value); }
     public ObservableCollection<CleanupCategoryViewModel> CleanupCategories { get; } = new();
 
     private string _reclaimableTotal = "";
@@ -125,8 +135,39 @@ public sealed class ReportViewModel : ViewModelBase
         }
     }
 
-    /// <summary>A5: 切回本页时刷新忽略名单 (别处可能新增了忽略项, 如资源管理器右键)。</summary>
-    public void RefreshOnShow() => _ = RefreshIgnoresAsync();
+    /// <summary>A5/F3: 切回本页时刷新忽略名单 + 回收历史 (别处可能刚回收了文件)。</summary>
+    public void RefreshOnShow() { _ = RefreshIgnoresAsync(); _ = RefreshHistoryAsync(); }
+
+    // F3: 从本地审计日志读取"已成功移入回收站"的记录 (跨会话持久)。
+    private async Task RefreshHistoryAsync()
+    {
+        try
+        {
+            var logs = await _services.AuditLog.GetRecentAsync(200);
+            RecycleHistory.Clear();
+            foreach (var l in logs.Where(l => l.Action == ActionType.MoveToRecycleBin && l.Result == ActionResult.Success))
+                RecycleHistory.Add(new RecycleHistoryViewModel(l));
+            OnPropertyChanged(nameof(HasRecycleHistory));
+            HistoryStatus = RecycleHistory.Count == 0
+                ? "暂无回收记录。你在本应用移入回收站的项会出现在这里，随时可还原。"
+                : $"共 {RecycleHistory.Count} 条回收记录（均可在回收站还原）。";
+        }
+        catch (Exception ex)
+        {
+            HistoryStatus = $"读取回收历史失败：{ex.Message}";
+        }
+    }
+
+    private void OpenRecycleBin()
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo("explorer.exe", "shell:RecycleBinFolder") { UseShellExecute = true });
+            HistoryStatus = "已打开回收站：选中要恢复的项 → 右键「还原」即可复位到原处。";
+        }
+        catch (Exception ex) { HistoryStatus = $"打开回收站失败：{ex.Message}"; }
+    }
 
     private async Task RefreshIgnoresAsync()
     {
@@ -167,6 +208,30 @@ public sealed class CleanupCategoryViewModel
     public string ReclaimableText { get; }
     public string RiskText { get; }
     public string RecommendedAction { get; }
+}
+
+/// <summary>F3: 回收历史条目展示 (来自审计日志的一条"移入回收站"记录)。</summary>
+public sealed class RecycleHistoryViewModel
+{
+    public RecycleHistoryViewModel(ActionLog log)
+    {
+        Path = log.TargetPath ?? "";
+        Name = LeafName(Path);
+        When = log.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+        Recoverable = log.Recoverable;
+    }
+
+    public string Path { get; }
+    public string Name { get; }
+    public string When { get; }
+    public bool Recoverable { get; }
+
+    private static string LeafName(string p)
+    {
+        var s = p.TrimEnd('\\', '/');
+        var i = s.LastIndexOfAny(new[] { '\\', '/' });
+        return i >= 0 && i + 1 < s.Length ? s[(i + 1)..] : s;
+    }
 }
 
 /// <summary>忽略名单条目展示。</summary>
