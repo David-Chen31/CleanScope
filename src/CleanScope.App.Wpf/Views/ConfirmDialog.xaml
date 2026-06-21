@@ -113,7 +113,8 @@
             <!-- 操作 -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,12,20,18">
                 <Button x:Name="CancelBtn" Content="{Binding CancelText}" Style="{StaticResource Outline}"
-                        MinWidth="92" Margin="0,0,10,0" IsCancel="True" Click="Cancel_Click"/>
+                        MinWidth="92" Margin="0,0,10,0" IsCancel="True" Click="Cancel_Click"
+                        Visibility="{Binding ShowCancel, Converter={StaticResource BoolToVis}}"/>
                 <!-- 普通确认 -->
                 <Button Content="{Binding ConfirmText}" Style="{StaticResource Primary}" MinWidth="132"
                         IsEnabled="{Binding CanConfirm}" Click="Confirm_Click"

@@ -46,8 +46,7 @@ public partial class App : System.Windows.Application
         catch (Exception ex)
         {
             AppLog.Error("OnStartup", ex);
-            MessageBox.Show($"启动失败：{ex.GetType().Name}\n{ex.Message}\n\n详情见日志：{AppLog.LogPath}", "CleanScope",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowError("启动失败", $"{ex.GetType().Name}：{ex.Message}\n\n详情见日志：{AppLog.LogPath}");
             Shutdown(1);
         }
     }
@@ -65,14 +64,19 @@ public partial class App : System.Windows.Application
         _dialogOpen = true;
         try
         {
-            MessageBox.Show(
-                $"发生了一个错误，但应用会尽量继续运行。\n\n{e.Exception.GetType().Name}: {e.Exception.Message}\n\n详情见日志：{AppLog.LogPath}",
-                "CleanScope", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowError("发生了一个错误", $"应用会尽量继续运行。\n\n{e.Exception.GetType().Name}：{e.Exception.Message}\n\n详情见日志：{AppLog.LogPath}");
         }
         finally
         {
             _lastDialog = DateTime.Now;
             _dialogOpen = false;
         }
+    }
+
+    // G: 主题化错误弹窗 (取代原生 MessageBox); 若自绘弹窗本身异常则回退原生, 保证错误总能被看到。
+    private static void ShowError(string title, string message)
+    {
+        try { Views.ConfirmDialog.ShowMessage(Current?.MainWindow, title, message, error: true); }
+        catch { MessageBox.Show($"{title}\n\n{message}", "CleanScope", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 }

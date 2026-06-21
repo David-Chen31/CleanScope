@@ -32,6 +32,19 @@ public partial class ConfirmDialog : Window
         return dlg.ShowDialog() == true;
     }
 
+    /// <summary>G: 只读提示弹窗 (单个"知道了"按钮; error=true 用红色强调)。用于错误/通知, 取代原生 MessageBox。</summary>
+    public static void ShowMessage(Window? owner, string title, string message, bool error = false)
+    {
+        Show(owner, new ConfirmDialogModel
+        {
+            Title = title,
+            IsHighRisk = error,
+            Intro = message,
+            OkOnly = true,
+            ConfirmText = "知道了",
+        });
+    }
+
     private void Header_Drag(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
@@ -52,6 +65,10 @@ public sealed class ConfirmDialogModel : ViewModelBase
 
     /// <summary>高风险: 顶部红带 + 红色确认按钮 + 强制勾选确认框。</summary>
     public bool IsHighRisk { get; init; }
+
+    /// <summary>G: 只读提示模式 (隐藏取消, 仅"知道了")。</summary>
+    public bool OkOnly { get; init; }
+    public bool ShowCancel => !OkOnly;
 
     public IReadOnlyList<DetailRow> Details { get; init; } = System.Array.Empty<DetailRow>();
     public bool HasDetails => Details.Count > 0;
