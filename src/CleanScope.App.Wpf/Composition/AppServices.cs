@@ -22,6 +22,8 @@ public sealed class AppServices
     public required IIgnoreRepository IgnoreRepository { get; init; }
     /// <summary>F3: 操作审计 (回收历史)。仅本地, 用于"我回收了什么 / 去还原"。</summary>
     public required IAuditLogRepository AuditLog { get; init; }
+    /// <summary>F: AI 识别结果缓存 (跨会话)。命中即免再花 token; 仅本地、仅推测。</summary>
+    public required IAiInsightRepository AiInsights { get; init; }
     public required IActionExecutor ActionExecutor { get; init; }
     public required ISafetyGuard SafetyGuard { get; init; }
 

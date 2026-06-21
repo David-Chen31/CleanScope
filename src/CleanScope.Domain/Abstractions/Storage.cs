@@ -86,3 +86,10 @@ public interface IAuditLogRepository
     Task AddAsync(ActionLog log, CancellationToken ct = default);   // 先写后执行 (SR-9)
     Task<IReadOnlyList<ActionLog>> GetRecentAsync(int count, CancellationToken ct = default);
 }
+
+/// <summary>AI 识别缓存仓储 (F): 按路径 upsert/读取"AI 推测"结果, 跨会话复用免重复花 token。仅本地。</summary>
+public interface IAiInsightRepository
+{
+    Task UpsertAsync(AiInsight insight, CancellationToken ct = default);
+    Task<IReadOnlyList<AiInsight>> GetAllAsync(CancellationToken ct = default);
+}

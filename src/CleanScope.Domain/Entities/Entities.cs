@@ -132,6 +132,16 @@ public record IgnoreEntry(
     string? Reason,           // P2 机密
     DateTime CreatedAt);
 
+/// <summary>
+/// AI 识别缓存 (表 ai_insight, F): 用户对某路径"用 AI 识别"过的推测结果, 跨会话持久化,
+/// 重启后命中即免再花 token。仅推测/展示, 绝不参与风险或删除判定; 整表仅本地。
+/// </summary>
+public sealed record AiInsight(
+    string Path,
+    string? Origin,
+    string? Purpose,
+    DateTime CreatedAt);
+
 /// <summary>操作日志 (表 action_log)。审计, 先写后执行 (SR-9)。整表仅本地。</summary>
 public record ActionLog(
     long Id,

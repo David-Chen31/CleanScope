@@ -51,6 +51,7 @@ public static class CompositionRoot
         await new SqliteStorage(provider).InitializeAsync(ct);
         var ignore = new IgnoreRepository(provider);
         var audit = new AuditLogRepository(provider);
+        var aiInsights = new AiInsightRepository(provider);   // F: AI 识别结果跨会话缓存
 
         // —— 安全闸门 + 执行器 (唯一可改盘路径; S-E: 桌面端开启删除能力) ——
         // deleteEnabled=true ⇒ 仅"可清理"桶 (A/B)、非黑名单/非容器/未占用项可放行, 且**仅移入回收站 (可恢复)**;
@@ -80,6 +81,7 @@ public static class CompositionRoot
                 : new MarkdownReportExporter(sanitizePaths: false),
             IgnoreRepository = ignore,
             AuditLog = audit,
+            AiInsights = aiInsights,
             ActionExecutor = executor,
             SafetyGuard = safety,
             AiChat = aiChat,

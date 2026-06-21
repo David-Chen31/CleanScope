@@ -148,7 +148,21 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         _session = session;
         _session.ItemRemoved += OnItemRemoved;   // A1: 别处删除时, 本页同步移除/置删除
         ActionStatus = "";
+        _ = PreloadInsightsAsync();              // F: 拉取历史 AI 识别缓存, 供"用 AI 识别"命中复用
         Rebuild();
+    }
+
+    // F: AI 识别结果缓存 (path → 推测), 跨会话。命中即免再花 token。仅推测/展示。
+    private readonly Dictionary<string, AiInsight> _insightCache = new(StringComparer.OrdinalIgnoreCase);
+    private async Task PreloadInsightsAsync()
+    {
+        try
+        {
+            var all = await _services.AiInsights.GetAllAsync();
+            _insightCache.Clear();
+            foreach (var i in all) _insightCache[i.Path] = i;
+        }
+        catch (Exception ex) { CleanScope.Domain.Diagnostics.AppTrace.Log("加载 AI 识别缓存失败", ex); }
     }
 
     // A1: 任一页移除某路径 → 本页同步。只看可清理模式直接移除对应根(便宜, 避免每次全量重建);
@@ -383,6 +397,18 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     public async Task InvestigateAsync(ExplorerNodeViewModel node)
     {
         if (node is null || !node.CanInvestigate) return;
+
+        // F: 缓存命中 (上次/上回会话识别过的同一路径) → 直接复用, 不再花 token。
+        // 仅在本会话尚未识别该项时用缓存; 改了模型/脱敏档位后再点 (IsAiResolved=true) 则跳过缓存、走 AI 取新结果。
+        if (!node.IsAiResolved && !string.IsNullOrEmpty(node.Path)
+            && _insightCache.TryGetValue(node.Path, out var cached)
+            && (cached.Origin is not null || cached.Purpose is not null))
+        {
+            node.ApplyAiInvestigation(cached.Origin, cached.Purpose);
+            ActionStatus = $"已复用上次的 AI 识别「{node.Name}」（缓存，未再花 token）。";
+            return;
+        }
+
         node.BeginInvestigating();   // A4: 行内"✨识别中…"+ 禁用再点, 让用户明确知道在转
         // 问题#4: 把当前脱敏档位摆到用户眼前, 让"可调三档位"被看见 (Strict 时尤其要让人知道可降档提升识别力)。
         ActionStatus = $"正在用 AI 识别「{node.Name}」（当前出云脱敏：{SanitizationLabel}；脱敏后请求，仅供参考）…";
@@ -415,6 +441,12 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             }
             node.ApplyAiInvestigation(origin, purpose);
             ActionStatus = $"已用 AI 补充识别「{node.Name}」（推测，仅供参考）。";
+
+            // F: 落库缓存 (跨会话复用, 下次同一路径免再花 token)。失败不影响本次结果。
+            var insight = new AiInsight(node.Path, origin, purpose, DateTime.UtcNow);
+            _insightCache[node.Path] = insight;
+            try { await _services.AiInsights.UpsertAsync(insight); }
+            catch (Exception ex) { CleanScope.Domain.Diagnostics.AppTrace.Log("写入 AI 识别缓存失败", ex); }
         }
         catch (Exception ex)
         {

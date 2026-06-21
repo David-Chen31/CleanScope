@@ -152,13 +152,20 @@ public static class SqliteSchema
           timestamp            TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS ix_actionlog_time ON action_log(timestamp DESC);
+
+        CREATE TABLE IF NOT EXISTS ai_insight (
+          path        TEXT PRIMARY KEY,
+          origin      TEXT,
+          purpose     TEXT,
+          created_at  TEXT NOT NULL
+        );
         """;
 
-    /// <summary>11 张业务表名 (供测试/校验)。</summary>
+    /// <summary>业务表名 (供测试/校验)。</summary>
     public static readonly string[] TableNames =
     {
         "scan_task", "file_node", "file_metadata", "evidence", "rule_match",
         "attribution_candidate", "risk_assessment", "ai_explanation",
-        "user_decision", "ignore_entry", "action_log"
+        "user_decision", "ignore_entry", "action_log", "ai_insight"
     };
 }
