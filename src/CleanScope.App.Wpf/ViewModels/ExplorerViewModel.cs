@@ -43,8 +43,9 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         SelectAllCommand = new RelayCommand(() => SetAllSelected(true), () => _showCleanableOnly && !_busy);
         SelectNoneCommand = new RelayCommand(() => SetAllSelected(false), () => _showCleanableOnly && !_busy);
         RecycleSelectedCommand = new AsyncRelayCommand(_ => RecycleSelectedAsync(), _ => _showCleanableOnly && !_busy);
-        SortBySizeCommand = new RelayCommand(() => SortFlat(bySize: true), () => _showCleanableOnly);
-        SortByNameCommand = new RelayCommand(() => SortFlat(bySize: false), () => _showCleanableOnly);
+        SortBySizeCommand = new RelayCommand(() => SortFlat(bySize: true), () => _showCleanableOnly && !IsSearching);
+        SortByNameCommand = new RelayCommand(() => SortFlat(bySize: false), () => _showCleanableOnly && !IsSearching);
+        ClearSearchCommand = new RelayCommand(() => SearchText = "");
         services.AiChanged += OnAiConfigChanged;   // 问题#5: 改模型/脱敏后, 已识别项恢复"可重新识别"
     }
 
@@ -72,6 +73,24 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     public AsyncRelayCommand RecycleSelectedCommand { get; }
     public RelayCommand SortBySizeCommand { get; }
     public RelayCommand SortByNameCommand { get; }
+    public RelayCommand ClearSearchCommand { get; }
+
+    // F1/问题2: 按名称或路径在当前扫描结果里搜索/定位 (输入路径片段即可定位)。仅检索 ≥ 建树阈值 的目录/文件。
+    private string _searchText = "";
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (!SetField(ref _searchText, value ?? "")) return;
+            OnPropertyChanged(nameof(IsSearching));
+            OnPropertyChanged(nameof(ShowBatchBar));
+            SortBySizeCommand.RaiseCanExecuteChanged();
+            SortByNameCommand.RaiseCanExecuteChanged();
+            Rebuild();
+        }
+    }
+    public bool IsSearching => !string.IsNullOrWhiteSpace(_searchText);
 
     private string _summary = "扫描后在此像目录树一样浏览整个磁盘。";
     public string Summary { get => _summary; private set => SetField(ref _summary, value); }
@@ -112,8 +131,8 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         }
     }
 
-    /// <summary>批量操作条仅在"只看可清理"时显示。</summary>
-    public bool ShowBatchBar => _showCleanableOnly;
+    /// <summary>批量操作条仅在"只看可清理"且非搜索态时显示 (搜索结果不参与批量)。</summary>
+    public bool ShowBatchBar => _showCleanableOnly && !IsSearching;
 
     // C2: 当前选中节点 → 底部详情面板完整展示来源/用途/AI 解释/建议 (长文本不再被列截断、不必复制)。
     private ExplorerNodeViewModel? _selectedNode;
@@ -254,6 +273,19 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         }
     }
 
+    // 整棵扫描树的 DFS 枚举 (搜索用)。树已按建树阈值剪枝, 规模有界。
+    private static IEnumerable<ScanTreeNode> EnumerateAll(ScanTreeNode root)
+    {
+        var stack = new Stack<ScanTreeNode>();
+        stack.Push(root);
+        while (stack.Count > 0)
+        {
+            var n = stack.Pop();
+            yield return n;
+            foreach (var c in n.Children) stack.Push(c);
+        }
+    }
+
     private void Rebuild()
     {
         // 释放上一批扁平节点的勾选订阅, 避免泄漏。
@@ -264,6 +296,27 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         if (session?.Tree is null)
         {
             Summary = "本次扫描未生成目录树。";
+            SelectionSummary = "";
+            return;
+        }
+
+        // F1/问题2: 搜索态优先 —— 不论树/扁平, 都把整棵扫描树里名称或路径匹配的项铺平展示, 供快速定位。
+        if (IsSearching)
+        {
+            var q = _searchText.Trim();
+            var matches = EnumerateAll(session.Tree)
+                .Where(n => !string.IsNullOrEmpty(n.Path) && !ReferenceEquals(n, session.Tree)
+                            && (n.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                                || n.Path.Contains(q, StringComparison.OrdinalIgnoreCase)))
+                .OrderByDescending(n => n.Size)
+                .Take(500)
+                .ToList();
+            var top = matches.Count > 0 ? matches[0].Size : 1;
+            foreach (var n in matches)
+                Roots.Add(new ExplorerNodeViewModel(n, top, withinCleanable: false, actions: this));
+            Summary = matches.Count == 0
+                ? $"没有匹配「{q}」的项（仅检索 ≥ 阈值的目录/文件）。"
+                : $"搜索「{q}」：{matches.Count} 个匹配，按大小排序（最多 500 个；仅含 ≥ 阈值的项）。点项看右侧解释。";
             SelectionSummary = "";
             return;
         }

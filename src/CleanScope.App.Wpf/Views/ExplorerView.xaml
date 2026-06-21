@@ -21,6 +21,33 @@
                     <CheckBox Content="✓ 只看可清理（扁平，可勾选批量清理）" IsChecked="{Binding ShowCleanableOnly}"
                               HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#1E7E34" FontWeight="SemiBold"/>
                 </Grid>
+
+                <!-- F1/问题2: 搜索 / 路径定位 —— 按名称或路径过滤当前扫描结果 -->
+                <Border Background="{StaticResource Subtle}" CornerRadius="8" BorderBrush="{StaticResource Line}"
+                        BorderThickness="1" Margin="0,10,0,8" Padding="10,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   Foreground="{StaticResource Faint}" VerticalAlignment="Center" Margin="2,0,8,0"/>
+                        <Grid Grid.Column="1">
+                            <!-- 水印在底层 (TextBox 透明背景透出); 有文字时 TextBox 文字盖在其上, 且水印随 IsSearching 隐藏 -->
+                            <TextBlock Text="按名称或路径搜索当前结果…（可粘贴路径片段定位）" Foreground="{StaticResource Faint}"
+                                       VerticalAlignment="Center" Margin="2,0,0,0" IsHitTestVisible="False"
+                                       Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
+                            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                                     BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
+                                     Padding="0,8" Foreground="{StaticResource Ink}"/>
+                        </Grid>
+                        <Button Grid.Column="2" Content="✕ 清除" Command="{Binding ClearSearchCommand}"
+                                Style="{StaticResource Ghost}" Padding="8,4" Margin="6,0,0,0"
+                                Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}}"/>
+                    </Grid>
+                </Border>
+
                 <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}"/>
 
                 <!-- C1 批量操作条 (仅"只看可清理"显示) -->
