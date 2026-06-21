@@ -43,7 +43,7 @@ public sealed class ScanEngine : IScanEngine
         var now = DateTime.UtcNow;
 
         if (Directory.Exists(options.TargetPath))
-            VisitDirectory(new DirectoryInfo(options.TargetPath), ctx, now, ct);
+            VisitRoot(new DirectoryInfo(options.TargetPath), ctx, now, ct);
         else if (File.Exists(options.TargetPath))
             VisitFile(new FileInfo(options.TargetPath), ctx, now, ct);
         else
@@ -51,6 +51,46 @@ public sealed class ScanEngine : IScanEngine
 
         ctx.Flush();
         return ctx.Heap.ToDescending();
+    }
+
+    // P1 顶层并行: 扫描根的**直接子目录各跑一棵子树**, 有界并行 (子树内部仍单线程, 由线程安全的 ctx 串行收口)。
+    // I/O 枚举在锁外并发进行 (主要提速来源); 仅 Emit/计数在 ctx 锁内串行, 保证 TopN/聚合/计数与单线程一致。
+    private static void VisitRoot(DirectoryInfo dir, ScanContext ctx, DateTime now, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        if (ctx.ShouldSkip(dir.FullName)) return;
+
+        if (SafeIsReparsePoint(dir))
+        {
+            ctx.Emit(MakeNode(dir, isDir: true, isReparse: true, size: 0,
+                AccessState.Accessible, ResolveRealPath(dir), now));
+            ctx.EnterDir(dir.FullName);
+            return;
+        }
+
+        var (children, state) = SafeEnumerate(dir, ctx.Mode);
+        long total = 0;
+        var subdirs = new List<DirectoryInfo>();
+        foreach (var child in children)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (child is DirectoryInfo sub) subdirs.Add(sub);
+            else if (child is FileInfo file) total += VisitFile(file, ctx, now, ct);   // 直接文件串行
+        }
+
+        if (subdirs.Count > 0)
+        {
+            long subTotal = 0;
+            var dop = Math.Min(Environment.ProcessorCount, subdirs.Count);
+            Parallel.ForEach(subdirs,
+                new ParallelOptions { MaxDegreeOfParallelism = dop, CancellationToken = ct },
+                sub => Interlocked.Add(ref subTotal, VisitDirectory(sub, ctx, now, ct)));
+            total += Interlocked.Read(ref subTotal);
+        }
+
+        ctx.Emit(MakeNode(dir, isDir: true, isReparse: false, size: total, state, realPath: null, now));
+        ctx.EnterDir(dir.FullName);
     }
 
     // 返回该目录子树聚合字节数; 沿途把节点投喂最小堆 + 流式 sink。
@@ -222,26 +262,36 @@ public sealed class ScanEngine : IScanEngine
 
         private static readonly HashSet<string> EmptySkip = new(StringComparer.OrdinalIgnoreCase);
 
+        // P1: 顶层并行时多线程并发收口 —— 单锁保护 堆/计数/sink, 让其表现与单线程一致 (I/O 在锁外并发)。
+        private readonly object _gate = new();
+
         public bool ShouldSkip(string fullPath) => _skip.Count > 0 && _skip.Contains(fullPath);
 
         // 定稿一个节点: 入 TopN 堆, 并全量流式投递给编排层 (中断恢复的耐久性基础)。
         public void Emit(FileNode node)
         {
-            Heap.Offer(node);
-            _onNode?.Report(node);
+            lock (_gate)
+            {
+                Heap.Offer(node);
+                _onNode?.Report(node);   // 锁内串行调用, 使消费方无需自身线程安全
+            }
         }
 
         // 进入目录: 仅推进进度路径 (不计入文件数)。
-        public void EnterDir(string path) => Bump(path);
+        public void EnterDir(string path) { lock (_gate) Bump(path); }
 
         // 计入一个文件 (文件数 + 字节数)。
         public void CountFile(string path, long size)
         {
-            _files++;
-            _bytes += size;
-            Bump(path);
+            lock (_gate)
+            {
+                _files++;
+                _bytes += size;
+                Bump(path);
+            }
         }
 
+        // 注意: 必须在持有 _gate 时调用。
         private void Bump(string currentPath)
         {
             if (_progress is null) return;
@@ -251,6 +301,6 @@ public sealed class ScanEngine : IScanEngine
         }
 
         // 收尾: 无条件上报最终总量 (CurrentPath=null 表示已完成)。
-        public void Flush() => _progress?.Report(new ScanProgress(_files, _bytes, null));
+        public void Flush() { lock (_gate) _progress?.Report(new ScanProgress(_files, _bytes, null)); }
     }
 }

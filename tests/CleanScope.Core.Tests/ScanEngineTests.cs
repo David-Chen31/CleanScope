@@ -110,6 +110,38 @@ public sealed class ScanEngineTests : IDisposable
             () => new ScanEngine().ScanAsync(Options(100), null, cts.Token));
     }
 
+    // P1: 多个顶层子目录触发并行扇出 —— 验证聚合/计数与预期严格一致 (无并发丢失/重复)。
+    [Fact]
+    public async Task Parallel_top_level_subdirs_aggregate_correctly()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "cleanscope_par_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        long expected = 0; int files = 0;
+        for (var i = 0; i < 12; i++)
+        {
+            var d = Path.Combine(root, "d" + i);
+            Directory.CreateDirectory(d);
+            for (var j = 0; j < 5; j++)
+            {
+                var size = 1000 * (i + 1) + j;
+                WriteFile(Path.Combine(d, $"f{j}.bin"), size);
+                expected += size; files++;
+            }
+        }
+        try
+        {
+            ScanProgress? last = null;
+            var nodes = await new ScanEngine().ScanAsync(
+                new ScanOptions(root, 1000, ScanMode.Normal), new SyncProgress(p => last = p));
+            var byPath = nodes.ToDictionary(n => n.Path, n => n);
+
+            Assert.Equal(expected, byPath[root].Size);     // 根聚合 = 全部 (并发求和正确)
+            Assert.Equal(files, last!.FilesScanned);       // 文件计数无丢失/重复
+            Assert.Equal(expected, last.BytesScanned);
+        }
+        finally { try { Directory.Delete(root, recursive: true); } catch { /* 尽力而为 */ } }
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); } catch { /* 清理尽力而为 */ }
