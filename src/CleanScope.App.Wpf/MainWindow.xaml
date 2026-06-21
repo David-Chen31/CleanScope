@@ -19,6 +19,12 @@
                             CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
+    <!-- B: 全局快捷键 — Esc 返回 (AI设置/详情) · F5 重扫上次目标 (Ctrl+F 聚焦搜索见 PreviewKeyDown) -->
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding BackCommand}"/>
+        <KeyBinding Key="F5" Command="{Binding RescanCommand}"/>
+    </Window.InputBindings>
+
     <Border x:Name="RootBorder" Background="{DynamicResource Bg}">
         <Grid>
             <Grid.RowDefinitions>
@@ -42,11 +48,14 @@
 
                     <!-- 窗口按钮 (right→left: 关闭/最大化/最小化) -->
                     <Button x:Name="CloseBtn" DockPanel.Dock="Right" Style="{StaticResource WinClose}"
-                            Content="&#xE8BB;" Click="CloseBtn_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                            Content="&#xE8BB;" Click="CloseBtn_Click" AutomationProperties.Name="关闭" ToolTip="关闭"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <Button x:Name="MaxBtn" DockPanel.Dock="Right" Style="{StaticResource WinBtn}"
-                            Content="&#xE922;" Click="MaxBtn_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                            Content="&#xE922;" Click="MaxBtn_Click" AutomationProperties.Name="最大化或还原" ToolTip="最大化 / 还原"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <Button x:Name="MinBtn" DockPanel.Dock="Right" Style="{StaticResource WinBtn}"
-                            Content="&#xE921;" Click="MinBtn_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                            Content="&#xE921;" Click="MinBtn_Click" AutomationProperties.Name="最小化" ToolTip="最小化"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                     <!-- E: 主题切换 (浅↔深); 图标提示将切换到的模式 -->
                     <Button x:Name="ThemeBtn" DockPanel.Dock="Right" Style="{StaticResource WinBtn}" Width="40" Margin="0,0,6,0"
@@ -59,7 +68,7 @@
 
                     <!-- AI 状态: 瘦成 点+AI+齿轮 (二级信息), 完整文案进 tooltip; 仍可点进设置, 保留发现性 -->
                     <Button DockPanel.Dock="Right" Style="{StaticResource AiPill}" Margin="0,0,10,0"
-                            ToolTip="{Binding AiBadge}"
+                            ToolTip="{Binding AiBadge}" AutomationProperties.Name="AI 设置"
                             Command="{Binding GoAiSettingsCommand}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Ellipse Width="7" Height="7" Margin="0,0,6,0" VerticalAlignment="Center"

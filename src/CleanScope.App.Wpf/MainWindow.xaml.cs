@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using CleanScope.App.Wpf.Common;
@@ -21,7 +23,36 @@ public partial class MainWindow : Window
         InitializeComponent();
         StateChanged += OnStateChanged;
         SourceInitialized += OnSourceInitialized;
+        PreviewKeyDown += OnPreviewKeyDown;
         UpdateThemeIcon();
+    }
+
+    // B: Ctrl+F → 切到可清理清单并聚焦搜索框 (聚焦是视图职责, 故在此处理而非命令)。
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.F && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control
+            && DataContext is ViewModels.ShellViewModel shell && shell.GoExplorerCommand.CanExecute(null))
+        {
+            shell.GoExplorerCommand.Execute(null);
+            Dispatcher.BeginInvoke(new Action(FocusSearchBox), System.Windows.Threading.DispatcherPriority.Background);
+            e.Handled = true;
+        }
+    }
+
+    private void FocusSearchBox()
+    {
+        if (FindDescendant<TextBox>(this, "SearchBox") is { } box) { box.Focus(); box.SelectAll(); }
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root, string name) where T : FrameworkElement
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T fe && fe.Name == name) return fe;
+            if (FindDescendant<T>(child, name) is { } found) return found;
+        }
+        return null;
     }
 
     // E: 切换主题 + 更新图标 (浅色显示月亮=点击转深, 深色显示太阳=点击转浅)。

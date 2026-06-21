@@ -168,6 +168,12 @@ public sealed class HomeViewModel : ViewModelBase
     public bool CanAdvise => _services.CleanupAdvisor is { Enabled: true } && HasResult && !HasAiAdvice && !_advising;
     public bool ShowAdviseButton => _services.CleanupAdvisor is { Enabled: true } && HasResult && !HasAiAdvice;
 
+    /// <summary>B: F5 重扫 —— 若当前路径可扫描则重跑一次 (回到首页执行)。</summary>
+    public void RequestRescan()
+    {
+        if (ScanCommand.CanExecute(null)) ScanCommand.Execute(null);
+    }
+
     // 按需: 用户点击才发一次脱敏聚合请求 (整盘跨项建议)。失败不阻断, 仅提示。
     // P1: 把"本机适用的官方手段 + 预估收益"一并喂给参谋, 让它给可执行、带优先级的行动计划 (而非泛泛而谈)。
     private async Task AdviseAsync()

@@ -54,9 +54,10 @@
                     <TextBox Grid.Column="0" Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource Field}" VerticalAlignment="Center"
                              ToolTip="可填磁盘根 (如 C:\) 或任意文件夹路径"/>
-                    <Button Grid.Column="1" Content="扫描此磁盘  →" Command="{Binding ScanCommand}"
+                    <Button Grid.Column="1" Content="扫描此磁盘  →" Command="{Binding ScanCommand}" IsDefault="True"
                             Style="{StaticResource Primary}" Margin="12,0,0,0" MinWidth="150"
-                            FontSize="15" Padding="24,12"/>
+                            FontSize="15" Padding="24,12"
+                            ToolTip="快捷键：在路径框按 Enter 即可扫描"/>
                 </Grid>
 
                 <!-- 次要选项: 整台电脑 + 管理员模式 (弱化, 不抢主操作) -->

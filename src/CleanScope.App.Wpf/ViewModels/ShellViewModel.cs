@@ -35,6 +35,8 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         GoReportCommand = new RelayCommand(ShowReport, () => Session is not null);
         GoAiSettingsCommand = new RelayCommand(ShowAiSettings);
         GoBackFromAiCommand = new RelayCommand(BackFromAi);
+        BackCommand = new RelayCommand(GoBack);                         // B: Esc 返回 (AI设置/详情页 → 来处)
+        RescanCommand = new RelayCommand(() => _home.RequestRescan());  // B: F5 重扫上次目标
 
         _current = _home;
         _aiBadge = ComputeAiBadge();
@@ -95,6 +97,15 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
     public RelayCommand GoReportCommand { get; }
     public RelayCommand GoAiSettingsCommand { get; }
     public RelayCommand GoBackFromAiCommand { get; }
+    public RelayCommand BackCommand { get; }     // B: Esc
+    public RelayCommand RescanCommand { get; }    // B: F5
+
+    // B: Esc —— 在 AI 设置 / 详情页时退回来处; 在主页面则不动 (不误退出)。
+    private void GoBack()
+    {
+        if (_activePage == "ai") BackFromAi();
+        else if (ReferenceEquals(_current, _detail)) BackFromDetail();
+    }
 
     // A1: 聚合页(空间地图/按软件/报告)按修订号懒重载 —— 删除发生在别处时, 切回来才按最新状态重算一次, 避免每次删除都全量重建。
     private readonly Dictionary<object, int> _shownRevision = new();

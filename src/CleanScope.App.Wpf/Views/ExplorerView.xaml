@@ -39,9 +39,10 @@
                             <TextBlock Text="按名称或路径搜索当前结果…（可粘贴路径片段定位）" Foreground="{DynamicResource Faint}"
                                        VerticalAlignment="Center" Margin="2,0,0,0" IsHitTestVisible="False"
                                        Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
-                            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                            <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
                                      BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
-                                     Padding="0,8" Foreground="{DynamicResource Ink}"/>
+                                     Padding="0,8" Foreground="{DynamicResource Ink}"
+                                     AutomationProperties.Name="搜索当前扫描结果"/>
                         </Grid>
                         <Button Grid.Column="2" Content="✕ 清除" Command="{Binding ClearSearchCommand}"
                                 Style="{StaticResource Ghost}" Padding="8,4" Margin="6,0,0,0"
