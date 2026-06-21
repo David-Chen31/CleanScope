@@ -9,8 +9,8 @@
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <Border Style="{StaticResource Cards}">
         <StackPanel>
-            <!-- #3 修复: AI 设置页提供明确的返回出口 (此前进来后无路可退) -->
-            <Button Content="←  返回" Style="{StaticResource Ghost}" HorizontalAlignment="Left" Padding="14,6" Margin="0,0,0,14"
+            <!-- AI 设置页明确的返回出口; 用描边次级按钮, 比浅灰 Ghost 更显眼 (问题#3: 此前太浅太小) -->
+            <Button Content="←  返回" Style="{StaticResource Outline}" HorizontalAlignment="Left" MinWidth="92" Margin="0,0,0,16"
                     Command="{Binding DataContext.GoBackFromAiCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
             <TextBlock Text="AI 设置" Style="{StaticResource H2}"/>
             <TextBlock Text="可选 · AI 仅在你点击 AI 功能时按需调用，不配置则全程本地。"
@@ -58,6 +58,8 @@
             </Border>
 
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Button Content="🗎 查看日志" Command="{Binding OpenLogCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"
+                        ToolTip="打开本地诊断日志：AI 失败的真实原因（鉴权/模型名/网络/截断等）都记在这里"/>
                 <Button Content="测试连接" Command="{Binding TestCommand}" Style="{StaticResource Ghost}" Margin="0,0,10,0"/>
                 <Button Command="{Binding SaveCommand}" Style="{StaticResource Primary}" MinWidth="132">
                     <Grid>

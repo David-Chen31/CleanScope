@@ -45,10 +45,13 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
         try
         {
             var reply = await _chat.CompleteAsync(SystemPrompt, BuildUserPrompt(summary, officialActions, concreteItems), ct);
-            return string.IsNullOrWhiteSpace(reply) ? null : reply.Trim();
+            if (!string.IsNullOrWhiteSpace(reply)) return reply.Trim();
+            Domain.Diagnostics.AppTrace.Log("AI 行动计划: 返回空内容");
+            return null;
         }
-        catch
+        catch (Exception ex)
         {
+            Domain.Diagnostics.AppTrace.Log("AI 行动计划生成失败", ex);   // 问题#1: 记录真实原因, 不再静默
             return null;   // 降级: 失败不影响核心流程
         }
     }

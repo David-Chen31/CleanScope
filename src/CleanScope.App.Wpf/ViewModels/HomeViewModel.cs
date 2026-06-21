@@ -151,16 +151,21 @@ public sealed class HomeViewModel : ViewModelBase
             var advice = await _services.CleanupAdvisor.AdviseAsync(summary, _services.OfficialActions, concrete);
             if (string.IsNullOrWhiteSpace(advice))
             {
-                AdviseStatus = "AI 未能生成建议（以确定性的按类别/按软件清理为准）。";
+                // 问题#1: 不再笼统报"未能生成", 带上真实原因 (来自 AppTrace) + 查看日志指引。
+                var reason = CleanScope.Domain.Diagnostics.AppTrace.LastError;
+                AdviseStatus = reason is null
+                    ? "AI 未能生成建议（以确定性的按类别/按软件清理为准）。"
+                    : $"AI 未能生成建议：{reason}　可在「AI 设置 → 查看日志」看详情；当前以按类别/按软件清理为准。";
                 return;
             }
             Session.ApplyAiAdvice(advice);   // 写回报告, 让导出的报告也含此建议
             AiAdvice = advice;
             AdviseStatus = "";
         }
-        catch
+        catch (Exception ex)
         {
-            AdviseStatus = "AI 生成建议失败（以确定性的按类别/按软件清理为准）。";
+            CleanScope.Domain.Diagnostics.AppTrace.Log("生成 AI 建议时出错", ex);
+            AdviseStatus = $"AI 生成建议失败：{ex.Message}（可在「AI 设置 → 查看日志」看详情；当前以按类别/按软件清理为准）。";
         }
         finally
         {

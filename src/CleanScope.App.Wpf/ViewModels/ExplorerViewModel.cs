@@ -309,9 +309,15 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     };
 
     // 严格档下 AI 常认不出具体软件; 提示用户"可在 AI 设置降档重试", 避免误以为 AI 能力弱。
-    private string IdentifyFailedHint(string name) => _services.SanitizationLevel == SanitizationLevel.Strict
-        ? $"AI 未能识别「{name}」。当前出云脱敏为「严格」(不发送文件夹名)，可在「AI 设置」改为「均衡」后重新识别以提升识别力。"
-        : $"AI 未能识别「{name}」（以现有结论为准）。";
+    // 问题#1: 若失败有诊断原因 (网络/鉴权/模型名/截断), 一并带出, 不再笼统"未能识别"。
+    private string IdentifyFailedHint(string name)
+    {
+        var baseHint = _services.SanitizationLevel == SanitizationLevel.Strict
+            ? $"AI 未能识别「{name}」。当前出云脱敏为「严格」(不发送文件夹名)，可在「AI 设置」改为「均衡」后重新识别以提升识别力。"
+            : $"AI 未能识别「{name}」（以现有结论为准）。";
+        var reason = CleanScope.Domain.Diagnostics.AppTrace.LastError;
+        return reason is null ? baseHint : $"{baseHint}　原因：{reason}（详见 AI 设置 → 查看日志）。";
+    }
 
     // E5+ 按需 AI 识别 (最小用量): 只在用户点了右键"用 AI 识别"时, 对这一个目录发一次脱敏请求。
     // 确定性目录名启发(NameHeuristics)已先免费兜底; AI 仅消化它认不出的残余未知。未配置 AI 的用户菜单项不显示, 零开销。
@@ -351,9 +357,10 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             node.ApplyAiInvestigation(origin, purpose);
             ActionStatus = $"已用 AI 补充识别「{node.Name}」（推测，仅供参考）。";
         }
-        catch
+        catch (Exception ex)
         {
-            ActionStatus = $"AI 识别失败「{node.Name}」（以现有结论为准）。";
+            CleanScope.Domain.Diagnostics.AppTrace.Log($"AI 识别「{node.Name}」失败", ex);
+            ActionStatus = $"AI 识别失败「{node.Name}」：{ex.Message}（可在「AI 设置 → 查看日志」看详情；以现有结论为准）。";
         }
         finally
         {

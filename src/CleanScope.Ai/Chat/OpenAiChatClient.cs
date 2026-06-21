@@ -30,7 +30,7 @@ public sealed class OpenAiChatClient : IAiChat
         {
             model = _options.Model,
             temperature = 0.2,
-            max_tokens = 600,
+            max_tokens = 1500,          // 600 偏小, JSON 解释易被截断导致解析失败 → 误报"未能生成"
             messages = new[]
             {
                 new { role = "system", content = systemPrompt },
@@ -39,7 +39,15 @@ public sealed class OpenAiChatClient : IAiChat
         });
 
         using var resp = await _http.SendAsync(req, ct);
-        resp.EnsureSuccessStatusCode();
+        // 非 2xx: 读取响应体并抛出**含状态码与原因**的异常 (问题#1: 让"模型名错/鉴权失败/限流"等可诊断,
+        // 而非被上层吞成笼统的"AI 未能生成建议")。
+        if (!resp.IsSuccessStatusCode)
+        {
+            var body = await SafeReadBodyAsync(resp, ct);
+            throw new AiChatException((int)resp.StatusCode,
+                $"AI 服务返回 {(int)resp.StatusCode} {resp.ReasonPhrase}{(body.Length > 0 ? "：" + body : "")}");
+        }
+
         using var stream = await resp.Content.ReadAsStreamAsync(ct);
         using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
 
@@ -49,6 +57,18 @@ public sealed class OpenAiChatClient : IAiChat
             .GetProperty("content")
             .GetString();
 
-        return content ?? throw new InvalidOperationException("AI 返回空内容");
+        return content ?? throw new AiChatException(0, "AI 返回了空内容 (model 可能不支持该请求)");
+    }
+
+    // 读取错误响应体的前若干字符 (含服务端的 error.message), 失败不抛。
+    private static async Task<string> SafeReadBodyAsync(HttpResponseMessage resp, CancellationToken ct)
+    {
+        try
+        {
+            var s = await resp.Content.ReadAsStringAsync(ct);
+            s = s.Replace('\n', ' ').Replace('\r', ' ').Trim();
+            return s.Length > 300 ? s[..300] + "…" : s;
+        }
+        catch { return string.Empty; }
     }
 }

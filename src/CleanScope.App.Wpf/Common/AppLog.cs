@@ -14,15 +14,21 @@ public static class AppLog
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "CleanScope", "logs", "app.log");
 
-    public static void Error(string context, Exception ex)
+    public static void Error(string context, Exception ex) => Write(context, ex);
+
+    /// <summary>统一写入口 (供 <see cref="CleanScope.Domain.Diagnostics.AppTrace"/> sink 注入)。
+    /// ex 为 null 时写一条信息行; 非 null 时附完整异常 (含堆栈)。</summary>
+    public static void Write(string context, Exception? ex)
     {
         try
         {
             lock (Gate)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-                File.AppendAllText(LogPath,
-                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {context}\n{ex}\n\n");
+                var line = ex is null
+                    ? $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {context}\n"
+                    : $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {context}\n{ex}\n\n";
+                File.AppendAllText(LogPath, line);
             }
         }
         catch { /* 日志失败不得再抛 */ }

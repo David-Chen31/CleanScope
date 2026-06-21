@@ -17,6 +17,9 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // 跨层诊断: 让 AI/编排等下层的"静默降级"也落到同一日志文件 (问题#1)。
+        CleanScope.Domain.Diagnostics.AppTrace.UseSink(AppLog.Write);
+
         // UI 线程未处理异常 → 记录并提示, 不闪退 (可恢复的尽量保活)。
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += (_, ev) =>

@@ -31,11 +31,13 @@ public sealed class AiSettingsViewModel : ViewModelBase
         ListModelsCommand = new AsyncRelayCommand(_ => ListModelsAsync(), _ => !_busy && HasBaseUrl);
         TestCommand = new AsyncRelayCommand(_ => TestAsync(), _ => !_busy && CanUse);
         SaveCommand = new AsyncRelayCommand(_ => SaveAsync(), _ => !_busy);
+        OpenLogCommand = new RelayCommand(OpenLog);
     }
 
     public AsyncRelayCommand ListModelsCommand { get; }
     public AsyncRelayCommand TestCommand { get; }
     public AsyncRelayCommand SaveCommand { get; }
+    public RelayCommand OpenLogCommand { get; }   // 问题#1: 一键打开本地诊断日志 (AI 失败原因都在这里)
 
     public ObservableCollection<string> Models { get; } = new();
 
@@ -194,6 +196,28 @@ public sealed class AiSettingsViewModel : ViewModelBase
         }
         catch (Exception ex) { Status = "保存失败：" + ex.Message; Toast.Error("保存失败：" + ex.Message); }
         finally { if (Phase == SavePhase.Saved) Phase = SavePhase.Idle; IsBusy = false; }
+    }
+
+    // 打开本地诊断日志: 存在则在资源管理器中选中, 否则打开 logs 目录 (并提示尚无记录)。
+    private void OpenLog()
+    {
+        var path = AppLog.LogPath;
+        try
+        {
+            if (System.IO.File.Exists(path))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+                Status = $"已打开日志：{path}";
+            }
+            else
+            {
+                var dir = System.IO.Path.GetDirectoryName(path)!;
+                System.IO.Directory.CreateDirectory(dir);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", dir) { UseShellExecute = true });
+                Status = "暂无日志记录（出现 AI 失败后这里会有诊断详情）。";
+            }
+        }
+        catch (Exception ex) { Status = $"打开日志失败：{ex.Message}　日志位置：{path}"; }
     }
 
     private void RaiseAll()

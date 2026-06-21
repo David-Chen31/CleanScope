@@ -589,6 +589,32 @@
                 </Setter>
             </Style>
 
+            <!-- 描边次级按钮 (比 Ghost 更显眼: 实描边 + 深色加粗文字)。用于"返回"等需要被看见的次级操作。 -->
+            <Style x:Key="Outline" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="13.5"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" Background="{StaticResource Card}" CornerRadius="8"
+                                    BorderBrush="{StaticResource Line}" BorderThickness="1.4" Padding="16,9">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  TextElement.Foreground="{TemplateBinding Foreground}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}"/>
+                                    <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- 标题栏 AI 状态胶囊 (带标签可点; hover 微亮) -->
             <Style x:Key="AiPill" TargetType="Button">
                 <Setter Property="Foreground" Value="{StaticResource Muted}"/>

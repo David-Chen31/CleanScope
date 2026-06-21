@@ -43,10 +43,13 @@ public sealed class ExplanationService : IExplanationService
                 var content = await _chat!.CompleteAsync(SystemPrompt, BuildUserPrompt(input), ct);
                 if (TryParseCloud(content, input, out var explanation))
                     return explanation;
+                // 云端有响应但解析不出 JSON (常见: 被 max_tokens 截断 / 模型加了多余说明) —— 记下, 便于诊断。
+                Domain.Diagnostics.AppTrace.Log("AI 解释: 返回内容无法解析为 JSON, 降级本地规则解释");
             }
-            catch
+            catch (Exception ex)
             {
-                // 离线/超时/异常 → 降级 (T-14)。
+                // 离线/超时/异常 → 降级 (T-14); 记录真实原因 (问题#1), 不再静默。
+                Domain.Diagnostics.AppTrace.Log("AI 解释调用失败, 降级本地规则解释", ex);
             }
         }
         return BuildLocal(input);
