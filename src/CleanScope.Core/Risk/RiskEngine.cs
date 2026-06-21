@@ -126,10 +126,14 @@ public sealed class RiskEngine : IRiskEngine
         if (PersonalDataRx.IsMatch(path))
             return Build(node, evidence, RiskLevel.C, 50, new[] { "用户个人数据 (误删=数据丢失)" }, 0.75, false);
 
-        // P2: 目录名表明为可重建缓存/临时/日志 → B (任意深度; 让深埋在各 app 里的缓存显形为可清理)。
+        // P2: 目录名表明为可重建缓存/临时/日志, 或可重建的开发依赖/产物 → B (任意深度; 让深埋的缓存显形为可清理)。
         if (node.IsDirectory && CacheHeuristics.IsRebuildableCacheDir(node.Name))
-            return Build(node, evidence, RiskLevel.B, 35,
-                new[] { "目录名表明为可重建缓存/临时, 删后会自动重建, 建议用官方方式清理" }, 0.55, canDelete: false);
+        {
+            var note = CacheHeuristics.IsDependencyDir(node.Name)
+                ? "可重建的开发依赖/产物 (如 node_modules), 删后需重新安装依赖或重新构建; 仍只进回收站可还原"
+                : "目录名表明为可重建缓存/临时, 删后会自动重建, 建议用官方方式清理";
+            return Build(node, evidence, RiskLevel.B, 35, new[] { note }, 0.55, canDelete: false);
+        }
 
         if (RoamingAppDataRx.IsMatch(path) || LocalAppDataRx.IsMatch(path))
             return Build(node, evidence, RiskLevel.C, 50, new[] { "应用数据/配置 (删后软件重置或丢登录态)" }, 0.6, false);

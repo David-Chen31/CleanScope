@@ -174,6 +174,29 @@ public sealed class RiskEngineTests
         Assert.False(r.CanDeleteDirectly);         // 启发式不授予直删权
     }
 
+    // L1: 可重建的开发依赖/产物 (node_modules 等无歧义名) → B, 但文案诚实标注"需重新安装/构建"。
+    [Theory]
+    [InlineData(@"D:\proj\app\node_modules")]
+    [InlineData(@"D:\proj\src\__pycache__")]
+    [InlineData(@"D:\proj\.pytest_cache")]
+    public void Dev_artifact_directory_yields_B_with_rebuild_note(string path)
+    {
+        var r = Assess(Node(path, isDir: true), null);
+        Assert.Equal(RiskLevel.B, r.Level);
+        Assert.False(r.CanDeleteDirectly);
+        Assert.Contains(r.Factors, f => f.Contains("重新安装") || f.Contains("重新构建"));
+    }
+
+    // L1 反例: 故意不收 build/dist/bin 等常见词, 避免把用户自建同名文件夹误判可清理 (用户区 → C)。
+    [Theory]
+    [InlineData(@"D:\我的资料\build")]
+    [InlineData(@"D:\photos\dist")]
+    public void Ambiguous_names_are_not_treated_as_cleanable(string path)
+    {
+        var r = Assess(Node(path, isDir: true), null);
+        Assert.NotEqual(RiskLevel.B, r.Level);     // 不被误标可清理
+    }
+
     [Fact]
     public void Cache_heuristic_only_applies_to_directories_not_files()
     {
