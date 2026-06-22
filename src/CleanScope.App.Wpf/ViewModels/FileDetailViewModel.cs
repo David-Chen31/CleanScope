@@ -10,9 +10,9 @@ namespace CleanScope.App.Wpf.ViewModels;
 /// <summary>
 /// 文件详情 (T5.4): 属性 / 证据链(事实 vs AI 推测视觉区分) / 风险 / AI 解释 / 建议。
 ///
-/// 红线: **不渲染任何删除入口** (MVP 零删除); 仅提供安全的辅助操作 (打开目录/复制路径/加忽略)。
-/// 页内以只读方式展示"安全闸门判定", 证明即便发起删除意图也会被闸门拒绝 (SR-1)。
-/// 辅助操作经 <see cref="IActionExecutor"/> 执行 (先写审计后执行, SR-9)。
+/// 删除红线: **唯一删除入口 = 移入回收站 (可还原), 绝不永久删除**; 与「目录浏览」一致, 单一入口覆盖全部风险等级
+/// (A/B 普通确认, C-E 经闸门 override 走高风险强确认), 命中系统关键/容器/占用者闸门一律拒绝。
+/// 页内以只读方式展示"安全闸门判定"。辅助操作经 <see cref="IActionExecutor"/> 执行 (先写审计后执行, SR-9)。
 /// </summary>
 public sealed class FileDetailViewModel : ViewModelBase
 {
@@ -125,47 +125,127 @@ public sealed class FileDetailViewModel : ViewModelBase
         }
     }
 
-    // 以"移入回收站"意图询问闸门 (纯判定, 绝不执行)。A/B 可清理项放行 (仅回收站可恢复); 其余拒绝并给理由。
+    // 以"移入回收站"意图询问闸门 (纯判定, 绝不执行)。与「目录浏览」一致的两级判定:
+    //   常规放行 (A/B) → ✅; 常规被拒但 override 可放行 (C-E, 仅风险高非红线) → ⚠ 需强确认;
+    //   连 override 都拒 (黑名单/容器/占用红线) → 🔒 不可删除。
     private void EvaluateGate(FileRowViewModel row)
     {
-        var request = new ActionRequest(null, row.Path, ActionType.MoveToRecycleBin);
-        var decision = _services.SafetyGuard.Evaluate(request, row.Analysis.RuleMatch, row.Analysis.Risk);
-        var head = decision.Outcome == GuardOutcome.Rejected ? "🔒 不可删除" : "✅ 可移入回收站（可恢复）";
-        GuardVerdict = string.IsNullOrWhiteSpace(decision.RecommendedAlternative)
-            ? $"{head}：{decision.Reason}"
-            : $"{head}：{decision.Reason}　建议：{decision.RecommendedAlternative}";
+        var normal = _services.SafetyGuard.Evaluate(
+            new ActionRequest(null, row.Path, ActionType.MoveToRecycleBin), row.Analysis.RuleMatch, row.Analysis.Risk);
+        if (normal.Outcome == GuardOutcome.Allowed)
+        {
+            GuardVerdict = $"✅ 可移入回收站（可还原）：{normal.Reason}";
+            return;
+        }
+        var manual = _services.SafetyGuard.Evaluate(
+            new ActionRequest(null, row.Path, ActionType.MoveToRecycleBin, UserOverride: true), row.Analysis.RuleMatch, row.Analysis.Risk);
+        if (manual.Outcome == GuardOutcome.Allowed)
+        {
+            GuardVerdict = $"⚠ 风险偏高：删除需二次强确认，移入回收站仍可还原。（{normal.Reason}）";
+            return;
+        }
+        GuardVerdict = string.IsNullOrWhiteSpace(manual.RecommendedAlternative)
+            ? $"🔒 不可删除：{manual.Reason}"
+            : $"🔒 不可删除：{manual.Reason}　建议：{manual.RecommendedAlternative}";
     }
 
-    // S-E: 移入回收站 (可恢复)。两步确认 (C8) → 闸门复核 → 执行器先写审计后移入回收站。绝不永久删除。
+    // S-E: 移入回收站 (可恢复)。与「目录浏览」一致的单一入口覆盖全部风险等级:
+    //   ① 常规过闸门 (A/B) → 放行 → 普通确认。
+    //   ② 常规被拒 (风险高) → 以 UserOverride 复判; 放行 → 高风险强确认 (红 + 必须勾选)。
+    //   ③ 连 override 都拒 → 命中系统关键/容器/占用红线, 不可删除, 只如实告知理由。
+    // 闸门复核 → 执行器先写审计后移入回收站; 绝不永久删除; 删后广播扣减 + 累计战绩 + Toast 撤销。
     private async Task MoveToRecycleBinAsync()
     {
         if (Row is null) return;
+        var row = Row;
 
-        // 闸门先判: 被拒则直接告知理由, 连确认框都不弹。
-        var probe = new ActionRequest(null, Row.Path, ActionType.MoveToRecycleBin);
-        var verdict = _services.SafetyGuard.Evaluate(probe, Row.Analysis.RuleMatch, Row.Analysis.Risk);
+        var normal = new ActionRequest(null, row.Path, ActionType.MoveToRecycleBin);
+        var verdict = await Task.Run(() => _services.SafetyGuard.Evaluate(normal, row.Analysis.RuleMatch, row.Analysis.Risk));
+        var request = normal;
+        var highRisk = false;
+
         if (verdict.Outcome != GuardOutcome.Allowed)
         {
-            ActionStatus = $"操作被拒：{verdict.Reason}";
-            return;
+            var manual = new ActionRequest(null, row.Path, ActionType.MoveToRecycleBin, UserOverride: true);
+            var manualVerdict = await Task.Run(() => _services.SafetyGuard.Evaluate(manual, row.Analysis.RuleMatch, row.Analysis.Risk));
+            if (manualVerdict.Outcome != GuardOutcome.Allowed)
+            {
+                ActionStatus = string.IsNullOrWhiteSpace(manualVerdict.RecommendedAlternative)
+                    ? $"操作被拒：{manualVerdict.Reason}"
+                    : $"操作被拒：{manualVerdict.Reason}　建议：{manualVerdict.RecommendedAlternative}";
+                return;
+            }
+            verdict = manualVerdict;
+            request = manual;
+            highRisk = true;
         }
 
-        // 两步确认 (C8): 自绘确认弹窗 (问题#2: 与全局视觉统一, 非 Windows MessageBox)。
-        var model = new Views.ConfirmDialogModel
-        {
-            Title = "移入回收站",
-            Intro = "确定把以下项移入回收站吗？可从回收站随时还原，非永久删除。",
-            Details = Views.ConfirmDialogModel.Rows(
-                ("名称", Row.Name), ("路径", Row.Path), ("大小", Row.SizeText), ("归属", Row.OwnerApp ?? "未知")),
-            ConfirmText = "移入回收站",
-        };
+        var model = highRisk
+            ? new Views.ConfirmDialogModel
+            {
+                Title = "移入回收站（高风险项）",
+                IsHighRisk = true,
+                Intro = "此项未被识别为可安全清理，等级偏高。仅在你确认这是你自己的、了解其用途的数据时才继续。",
+                Details = Views.ConfirmDialogModel.Rows(
+                    ("名称", row.Name), ("路径", row.Path), ("大小", row.SizeText),
+                    ("归属", row.Origin), ("风险", row.RiskMeaning)),
+                WarningText = "移入回收站后仍可还原，但请自行确认它不是某个程序/系统正在使用的数据。",
+                CheckText = "我确认这是我自己的数据，了解风险并自行承担（仍可从回收站还原）。",
+                ConfirmText = "确认移入回收站",
+            }
+            : new Views.ConfirmDialogModel
+            {
+                Title = "移入回收站",
+                Intro = "确定把以下项移入回收站吗？可从回收站随时还原，非永久删除。",
+                Details = Views.ConfirmDialogModel.Rows(
+                    ("名称", row.Name), ("路径", row.Path), ("大小", row.SizeText), ("归属", row.Origin)),
+                ConfirmText = "移入回收站",
+            };
         if (!Views.ConfirmDialog.Show(System.Windows.Application.Current?.MainWindow, model))
         {
             ActionStatus = "已取消，未做任何改动。";
             return;
         }
 
-        await DoActionAsync(ActionType.MoveToRecycleBin);
+        ActionStatus = $"正在移入回收站「{row.Name}」…";
+        var log = await Task.Run(() => _services.ActionExecutor.ExecuteAsync(request, verdict));
+        if (!ReferenceEquals(_row, row)) return;   // 用户已切到别的项
+        if (log.Result == ActionResult.Success)
+        {
+            row.MarkDeleted();
+            _host.Session?.NotifyRemoved(row.Path, row.Size, row.CanRecycle);   // 广播扣减 (高风险项 CanRecycle=false, 不计入可清理量)
+            Common.UserPrefs.Current.AddCleaned(row.Size, 1);
+            _lastRecycled = (row.Path, row.Size, row.CanRecycle);
+            GuardVerdict = "✅ 已移入回收站（可在回收站还原，非永久删除）。";
+            ActionStatus = $"已移入回收站（可还原）：{row.Name}";
+            Toast.Show($"已移入回收站：{row.Name}", ToastKind.Success, "撤销", () => _ = UndoRecycleAsync());
+        }
+        else
+        {
+            ActionStatus = $"操作未完成：{log.RejectReason}";
+            Toast.Error($"未能移入回收站：{log.RejectReason}");
+        }
+    }
+
+    private (string path, long size, bool cleanable)? _lastRecycled;
+
+    // 撤销刚才的移入回收站: 还原到原位 + 回补累计战绩 + 广播还原。失败则提示去回收站手动还原。
+    private async Task UndoRecycleAsync()
+    {
+        if (_lastRecycled is not { } last) return;
+        var restored = await Task.Run(() => _services.RecycleRestore.TryRestore(last.path));
+        if (restored)
+        {
+            _host.Session?.NotifyRestored(last.path, last.size, last.cleanable);
+            Common.UserPrefs.Current.SubtractCleaned(last.size, 1);
+            _lastRecycled = null;
+            ActionStatus = "已撤销：已从回收站还原到原位。";
+            Toast.Show("已还原到原位。", ToastKind.Success);
+        }
+        else
+        {
+            Toast.Show("未能自动还原，请在回收站手动还原。", ToastKind.Info);
+        }
     }
 
     private async Task CopyPathAsync()

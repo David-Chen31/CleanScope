@@ -39,13 +39,13 @@
                     <TextBlock Text="{Binding Name}" Style="{StaticResource H1}" Margin="0,10,0,2"/>
                     <TextBlock Text="{Binding Path}" Style="{StaticResource Sub}" TextWrapping="Wrap"/>
 
-                    <!-- 高风险提示: D/E 仅提示不建议删除, 不渲染任何删除入口 -->
+                    <!-- 高风险提示: D/E 强烈建议保留; 如确需清理, 下方「移入回收站」会要求二次强确认且仅进回收站(可还原) -->
                     <Border Margin="0,12,0,0" Padding="12" CornerRadius="6" Background="{DynamicResource CriticalSoft}"
                             Visibility="{Binding IsHighRisk, Converter={StaticResource BoolToVis}}">
                         <StackPanel Orientation="Horizontal">
                             <Ellipse Width="10" Height="10" Fill="{DynamicResource Critical}" VerticalAlignment="Top" Margin="0,3,8,0"/>
                             <TextBlock Foreground="{DynamicResource Critical}" TextWrapping="Wrap"
-                                       Text="该项为高风险（D/E）：可能是系统/应用关键文件或无法判断来源。本工具不提供删除入口，强烈建议保留。"/>
+                                       Text="该项为高风险（D/E）：可能是系统/应用关键文件或无法判断来源，强烈建议保留。如确认是你自己的数据、确需清理，下方「移入回收站」会要求二次强确认，且只移入回收站、随时可还原。"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -204,7 +204,7 @@
                 <!-- S-D 推荐动作: 命令型→运行/复制官方命令; 安装目录→卸载程序; 通用→定位/复制路径/忽略 -->
                 <WrapPanel>
                     <Button Command="{Binding MoveToRecycleBinCommand}" Style="{StaticResource Primary}"
-                            Margin="0,0,8,8" Visibility="{Binding Row.CanRecycle, Converter={StaticResource BoolToVis}}">
+                            Margin="0,0,8,8" Visibility="{Binding Row.CanAttemptRecycle, Converter={StaticResource BoolToVis}}">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{StaticResource IconTrash}" Style="{StaticResource IconStroke}" Stroke="White"
                                   Width="14" Height="14" Margin="0,0,6,0"/>

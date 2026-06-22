@@ -676,6 +676,9 @@
                 <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <!-- 静止态边框透明 (消除每行的"黑边"); hover 才点亮蓝边, 厚度恒为 1 → 不抖动 -->
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
@@ -690,6 +693,63 @@
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
                                     <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentSoft}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 折叠分组 (按软件页): 干净的可点表头 + 旋转 chevron, 无虚线焦点框、无默认黑边/色块 -->
+            <Style x:Key="CardExpander" TargetType="Expander">
+                <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Expander">
+                            <StackPanel>
+                                <ToggleButton x:Name="Header" Cursor="Hand" Focusable="False"
+                                              FocusVisualStyle="{x:Null}" HorizontalContentAlignment="Stretch"
+                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="hb" Background="Transparent" CornerRadius="8" Padding="8,7"
+                                                    BorderBrush="Transparent" BorderThickness="1">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Path x:Name="chev" Grid.Column="0" Width="11" Height="11" Margin="2,0,10,0"
+                                                          Stretch="Uniform" Stroke="{DynamicResource Muted}" StrokeThickness="2"
+                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                          Data="M 0 0 L 5 5 L 10 0" VerticalAlignment="Center"
+                                                          RenderTransformOrigin="0.5,0.5">
+                                                        <Path.RenderTransform><RotateTransform Angle="-90"/></Path.RenderTransform>
+                                                    </Path>
+                                                    <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="hb" Property="Background" Value="{DynamicResource Hover}"/>
+                                                    <Setter TargetName="hb" Property="BorderBrush" Value="{DynamicResource Line}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="chev" Property="RenderTransform">
+                                                        <Setter.Value><RotateTransform Angle="0"/></Setter.Value>
+                                                    </Setter>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                    <ContentPresenter ContentSource="Header"/>
+                                </ToggleButton>
+                                <ContentPresenter x:Name="content" Visibility="Collapsed"/>
+                            </StackPanel>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsExpanded" Value="True">
+                                    <Setter TargetName="content" Property="Visibility" Value="Visible"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

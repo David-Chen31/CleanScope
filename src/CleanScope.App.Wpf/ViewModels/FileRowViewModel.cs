@@ -93,9 +93,14 @@ public sealed class FileRowViewModel : ViewModelBase
     public bool HasRunCommand => ActionKind == CleanupActionKind.RunCommand && !string.IsNullOrWhiteSpace(Command);
     public bool HasUninstall => ActionKind == CleanupActionKind.Uninstall;
 
-    /// <summary>S-E: 是否提供「移入回收站」入口。仅"可清理"桶 (A/B)、非容器、未被占用;
-    /// 安全闸门仍会独立复核 (黑名单/容器/占用/风险), 此处只决定是否渲染按钮。</summary>
+    /// <summary>S-E: 是否计入"可放心清理"。仅"可清理"桶 (A/B)、非容器、未被占用;
+    /// 用于批量勾选/treemap ✓ 角标等"安全集合"判定。</summary>
     public bool CanRecycle => Bucket == CleanupBucket.Cleanable && !IsContainer && !IsOccupied;
+
+    /// <summary>详情页「移入回收站」入口是否渲染。与「目录浏览」一致: 单一入口覆盖全部风险等级——
+    /// 真实文件 (有路径、非容器、未占用、未删) 即可尝试; A/B 普通确认, C-E 经闸门 override 走高风险强确认。
+    /// 是否真正放行 (黑名单/容器/占用/风险) 仍由安全闸门当场判定。</summary>
+    public bool CanAttemptRecycle => !IsContainer && !IsOccupied && !IsDeleted && !string.IsNullOrEmpty(Path);
 
     // —— 详情属性 ——
     public bool IsDirectory { get; }
@@ -141,8 +146,14 @@ public sealed class FileRowViewModel : ViewModelBase
     /// <summary>是否已移入回收站 (UI 显示删除线, 退出选择)。</summary>
     public bool IsDeleted { get => _isDeleted; private set => SetField(ref _isDeleted, value); }
 
-    /// <summary>标记为已移入回收站: 取消勾选并置删除线。</summary>
-    public void MarkDeleted() { IsDeleted = true; IsSelected = false; }
+    /// <summary>标记为已移入回收站: 取消勾选并置删除线; 通知依赖删除态的可回收标志刷新。</summary>
+    public void MarkDeleted()
+    {
+        IsDeleted = true;
+        IsSelected = false;
+        OnPropertyChanged(nameof(CanAttemptRecycle));
+        OnPropertyChanged(nameof(IsRecyclable));
+    }
 
     /// <summary>当前是否仍可被批量回收 (可清理桶、未删、未占用)。</summary>
     public bool IsRecyclable => CanRecycle && !IsDeleted;

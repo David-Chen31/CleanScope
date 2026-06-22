@@ -23,7 +23,7 @@ public sealed class ShellViewModel : ViewModelBase, INavigationHost
         _home = new HomeViewModel(services, this);
         _map = new SpaceMapViewModel(this);
         _explorer = new ExplorerViewModel(services);
-        _software = new SpaceBySoftwareViewModel(this);
+        _software = new SpaceBySoftwareViewModel(services, this);
         _report = new ReportViewModel(services, this);
         _detail = new FileDetailViewModel(services, this);
         _aiSettings = new AiSettingsViewModel(services);
