@@ -43,6 +43,9 @@ public sealed class HomeViewModel : ViewModelBase
         {
             if (p is string t) { TargetPath = t; if (ScanCommand.CanExecute(null)) ScanCommand.Execute(null); }
         }, _ => !_isScanning);
+        // #5 三步主线: 第二步"按软件深清" / 第三步"深度腾空间"的页面跳转。
+        GoBySoftwareCommand = new RelayCommand(() => _host.ShowBySoftware(), () => Session is not null);
+        GoExplorerCommand = new RelayCommand(() => _host.ShowExplorer(), () => Session is not null);
         RefreshRecentScans();
         RefreshDrive();
     }
@@ -445,7 +448,9 @@ public sealed class HomeViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanOneClickClean));
         OnPropertyChanged(nameof(OneClickCleanText));
         OneClickCleanCommand.RaiseCanExecuteChanged();
-        RefreshRecommendedActions();                    // P3
+        RefreshTopSoftware();                           // #5 第二步: 按软件深清
+        GoBySoftwareCommand.RaiseCanExecuteChanged();
+        GoExplorerCommand.RaiseCanExecuteChanged();
     }
 
     // A3: 回到首页时刷新磁盘容量条 (官方清理/删除后空间已变, 例如关闭休眠/清空回收站)。
@@ -703,30 +708,25 @@ public sealed class HomeViewModel : ViewModelBase
         CleanResultVisible = true;
     }
 
-    // —— P3: 扫描后"推荐操作"卡 (按可省排序: 一键清理 + 最划算的官方手段) ——
-    public ObservableCollection<RecommendedActionViewModel> RecommendedActions { get; } = new();
-    public bool HasRecommendedActions => RecommendedActions.Count > 0;
+    // —— #5 第二步"按软件深清": 占地大户 (微信/QQ/浏览器/IDE…) + 各自可清量 → 点进「按软件」专清 ——
+    public RelayCommand GoBySoftwareCommand { get; }
+    public RelayCommand GoExplorerCommand { get; }
+    public ObservableCollection<SoftwareUsageViewModel> TopSoftware { get; } = new();
+    public bool HasTopSoftware => TopSoftware.Count > 0;
 
-    private void RefreshRecommendedActions()
+    private void RefreshTopSoftware()
     {
-        RecommendedActions.Clear();
+        TopSoftware.Clear();
         var s = Session;
         if (s is not null)
         {
-            var rank = 1;
-            if (s.RemainingReclaimable > 0)
-                RecommendedActions.Add(new RecommendedActionViewModel(
-                    rank++, "一键清理可放心清理项", $"约 {Format.HumanSize(s.RemainingReclaimable)}",
-                    "一键清理", OneClickCleanCommand, null));
-            foreach (var a in ApplicableOfficialActions
-                         .Where(a => a.Action.EstimatedBytes > 0)
-                         .OrderByDescending(a => a.Action.EstimatedBytes).Take(2))
-                RecommendedActions.Add(new RecommendedActionViewModel(
-                    rank++, a.Title, a.SavingsText, a.OpensWindowsUi ? "打开" : "执行",
-                    new RelayCommand(_ => { if (RunOfficialActionCommand.CanExecute(a)) RunOfficialActionCommand.Execute(a); },
-                                     _ => !_isScanning && !_officialBusy && !_cleaning), a));
+            var summary = CleanupSummaryBuilder.From(s.Report.Items);
+            foreach (var u in summary.Software
+                         .Where(u => u.TotalSize > 0)
+                         .OrderByDescending(u => u.TotalSize).Take(6))
+                TopSoftware.Add(new SoftwareUsageViewModel(u));
         }
-        OnPropertyChanged(nameof(HasRecommendedActions));
+        OnPropertyChanged(nameof(HasTopSoftware));
     }
 
     // —— P5: 累计清理战绩 (跨会话, 本机) ——
@@ -796,29 +796,21 @@ public sealed class HomeViewModel : ViewModelBase
 /// <summary>概览"最划算的几步"行 (只读预览; 操作在可清理清单页批量进行)。</summary>
 public sealed record OverviewItem(string SizeText, string Name, string Path, string Origin);
 
-/// <summary>P3: 一条"推荐操作"(按可省排序): 标题 + 可省 + 一键执行命令 (一键清理 / 官方手段)。</summary>
-public sealed class RecommendedActionViewModel
+/// <summary>#5 第二步"按软件深清"的一行: 软件名 + 总占用 + 其中可清理。点卡进「按软件」专清该软件。</summary>
+public sealed class SoftwareUsageViewModel
 {
-    public RecommendedActionViewModel(int rank, string title, string savingText, string actionText,
-        System.Windows.Input.ICommand runCommand, OfficialActionViewModel? official)
+    public SoftwareUsageViewModel(SoftwareUsage u)
     {
-        Rank = rank;
-        Title = title;
-        SavingText = savingText;
-        ActionText = actionText;
-        RunCommand = runCommand;
-        Official = official;
+        Name = u.Name;
+        TotalText = Common.Format.HumanSize(u.TotalSize);
+        HasCleanable = u.CleanableSize > 0;
+        CleanableText = HasCleanable ? $"可清 {Common.Format.HumanSize(u.CleanableSize)}" : "";
     }
 
-    public int Rank { get; }
-    public string Title { get; }
-    public string SavingText { get; }
-    public bool HasSaving => !string.IsNullOrWhiteSpace(SavingText);
-    public string ActionText { get; }
-    public System.Windows.Input.ICommand RunCommand { get; }
-    public OfficialActionViewModel? Official { get; }   // 官方手段则非空 (供命令参数)
-    public bool IsOneClick => Official is null;          // 一键清理行 → 主按钮
-    public bool IsOfficial => Official is not null;      // 官方手段行 → 次按钮
+    public string Name { get; }
+    public string TotalText { get; }
+    public string CleanableText { get; }
+    public bool HasCleanable { get; }
 }
 
 /// <summary>H: 最近扫描项 (目标 / 占用 / 项数 / 时间) —— 点击一键重扫该目标。</summary>

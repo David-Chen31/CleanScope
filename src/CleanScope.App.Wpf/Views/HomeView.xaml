@@ -138,22 +138,7 @@
         <!-- 扫描后概览 (评审问题#4: 工作台首屏先给结果, 排在官方清理之上) -->
         <Border Style="{StaticResource Cards}" Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
             <StackPanel>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="本次扫描概览" Style="{StaticResource H2}"/>
-                    <!-- P2: 引导式向导入口 (适合新手, 一步步带你清) -->
-                    <Button Grid.Column="1" Click="OpenWizard_Click" Style="{StaticResource Ghost}" Padding="12,6" VerticalAlignment="Top"
-                            ToolTip="一步步带你安全瘦身：可放心清理 → 迁移大目录 → 官方手段">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource IconPlan}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Accent}"
-                                  Width="14" Height="14" Margin="0,0,6,0"/>
-                            <TextBlock Text="腾出空间向导（新手友好）" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                </Grid>
+                <TextBlock Text="本次扫描概览" Style="{StaticResource H2}"/>
 
                 <UniformGrid Columns="3" Margin="0,4,0,12">
                     <StackPanel Margin="0,0,12,0">
@@ -173,62 +158,46 @@
                     </StackPanel>
                 </UniformGrid>
 
-                <!-- P3/P1: 推荐操作 (按可省排序; 第一项=一键清理可放心清理项) —— 小白不必逐个挑, 直接点 -->
-                <Border Background="{DynamicResource CleanSoft}" CornerRadius="8" Padding="14,12" Margin="0,0,0,12"
-                        Visibility="{Binding HasRecommendedActions, Converter={StaticResource BoolToVis}}">
+                <!-- ========== 清理中心: 由浅入深的三步 (一键放心清理 → 按软件深清 → 深度腾空间) ========== -->
+
+                <!-- 第一步 · 一键放心清理 (浅层, 90% 够用; 唯一主操作) -->
+                <Border Background="{DynamicResource CleanSoft}" CornerRadius="10" Padding="16,14" Margin="0,0,0,12">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource IconCheck}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Clean}"
-                                  Width="15" Height="15" Margin="0,0,7,0"/>
-                            <TextBlock Text="推荐操作（按可省排序，一键完成）" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource Clean}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                        <TextBlock Text="不想逐个挑？直接点下面：可放心清理的已为你判好，删除只进回收站、可随时撤销。"
-                                   Style="{StaticResource Sub}" Margin="0,2,0,8"/>
-                        <ItemsControl ItemsSource="{Binding RecommendedActions}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
-                                            CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="24" Height="24" CornerRadius="12"
-                                                    Background="{DynamicResource Accent}" VerticalAlignment="Center" Margin="0,0,10,0">
-                                                <TextBlock Text="{Binding Rank}" Foreground="White" FontWeight="Bold" FontSize="13"
-                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource Ink}"
-                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                            <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{DynamicResource CleanSoft}"
-                                                    Margin="8,0,10,0" VerticalAlignment="Center"
-                                                    Visibility="{Binding HasSaving, Converter={StaticResource BoolToVis}}">
-                                                <TextBlock Text="{Binding SavingText}" FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource Clean}"/>
-                                            </Border>
-                                            <!-- 一键清理 = 主按钮; 官方手段 = 次按钮 -->
-                                            <Button Grid.Column="3" Command="{Binding RunCommand}" Style="{StaticResource Primary}"
-                                                    Padding="16,8" MinWidth="96"
-                                                    Visibility="{Binding IsOneClick, Converter={StaticResource BoolToVis}}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Path Data="{StaticResource IconTrash}" Style="{StaticResource IconStroke}" Stroke="White"
-                                                          Width="14" Height="14" Margin="0,0,6,0"/>
-                                                    <TextBlock Text="一键清理" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </Button>
-                                            <Button Grid.Column="3" Command="{Binding RunCommand}" Content="{Binding ActionText}"
-                                                    Style="{StaticResource Ghost}" Padding="14,7" MinWidth="80"
-                                                    Visibility="{Binding IsOfficial, Converter={StaticResource BoolToVis}}"/>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <ProgressBar Height="4" IsIndeterminate="True" Margin="2,2,2,0" BorderThickness="0"
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" Background="{DynamicResource Clean}"
+                                    VerticalAlignment="Center" Margin="0,0,10,0">
+                                <TextBlock Text="1" Foreground="White" FontWeight="Bold" FontSize="14"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="一键放心清理" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource Ink}"/>
+                                <TextBlock Text="缓存、临时、可重建文件等已判安全的项，移入回收站可还原。" Style="{StaticResource Sub}" Margin="0,1,0,0"/>
+                            </StackPanel>
+                            <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{DynamicResource Card}" Margin="8,0,10,0"
+                                    VerticalAlignment="Center" Visibility="{Binding ShowOneClickClean, Converter={StaticResource BoolToVis}}">
+                                <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource Clean}">
+                                    <Run Text="约 "/><Run Text="{Binding OverviewReclaimable, Mode=OneWay}"/>
+                                </TextBlock>
+                            </Border>
+                            <Button Grid.Column="3" Command="{Binding OneClickCleanCommand}" Style="{StaticResource Primary}"
+                                    Padding="20,10" MinWidth="120" VerticalAlignment="Center"
+                                    Visibility="{Binding ShowOneClickClean, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource IconTrash}" Style="{StaticResource IconStroke}" Stroke="White"
+                                          Width="15" Height="15" Margin="0,0,7,0"/>
+                                    <TextBlock Text="一键清理" VerticalAlignment="Center" FontSize="14.5"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                        <TextBlock Text="本次没有发现可放心清理的项 —— 看看下面第二、三步。" Style="{StaticResource Sub}" Margin="36,6,0,0"
+                                   Visibility="{Binding ShowOneClickClean, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
+                        <ProgressBar Height="4" IsIndeterminate="True" Margin="2,8,2,0" BorderThickness="0"
                                      Foreground="{DynamicResource Clean}" Background="{DynamicResource Track}"
                                      Visibility="{Binding IsCleaning, Converter={StaticResource BoolToVis}}"/>
                     </StackPanel>
@@ -275,13 +244,98 @@
                     </StackPanel>
                 </Border>
 
-                <!-- S-H: 整盘 AI 清理参谋 —— 按需生成 (零默认 token); 未配置 AI 时按钮不显示 -->
+                <!-- 第二步 · 按软件深清 (针对性: 微信/QQ/浏览器/IDE… 各自占多少、可清多少) -->
+                <Border Background="{DynamicResource Subtle}" CornerRadius="10" Padding="16,14" Margin="0,0,0,12"
+                        Visibility="{Binding HasTopSoftware, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" Background="{DynamicResource Accent}"
+                                    VerticalAlignment="Center" Margin="0,0,10,0">
+                                <TextBlock Text="2" Foreground="White" FontWeight="Bold" FontSize="14"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="按软件深清" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource Ink}"/>
+                                <TextBlock Text="想再清点？看看谁占了地，点进去按软件清那一个。" Style="{StaticResource Sub}" Margin="0,1,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="2" Content="全部 →" Command="{Binding GoBySoftwareCommand}"
+                                    Style="{StaticResource Ghost}" Padding="12,6" VerticalAlignment="Center"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding TopSoftware}" Margin="36,8,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.GoBySoftwareCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            Style="{StaticResource RowButton}" Padding="10,7" Margin="0,0,0,5"
+                                            BorderBrush="{DynamicResource Line}" BorderThickness="1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="{DynamicResource Ink}"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding TotalText}" Foreground="{DynamicResource Muted}"
+                                                       VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                            <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{DynamicResource CleanSoft}"
+                                                    VerticalAlignment="Center"
+                                                    Visibility="{Binding HasCleanable, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="{Binding CleanableText}" FontSize="11.5" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource Clean}"/>
+                                            </Border>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- 第三步 · 深度腾空间 (进阶, 需你判断: 迁移大目录 / 浏览目录树 / 官方手段在下方) -->
+                <Border Background="{DynamicResource Subtle}" CornerRadius="10" Padding="16,14" Margin="0,0,0,12">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" Background="{DynamicResource Faint}"
+                                    VerticalAlignment="Center" Margin="0,0,10,0">
+                                <TextBlock Text="3" Foreground="White" FontWeight="Bold" FontSize="14"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="深度腾空间（进阶）" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource Ink}"/>
+                                <TextBlock Text="占地大但不能删的，可迁移到其他盘（软件照常用）；或浏览整盘目录树自己定夺。" Style="{StaticResource Sub}" Margin="0,1,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="36,8,0,0">
+                            <Button Command="{Binding GoExplorerCommand}" Style="{StaticResource Ghost}" Padding="12,7" Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource IconRestore}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Accent}"
+                                          Width="14" Height="14" Margin="0,0,6,0"/>
+                                    <TextBlock Text="浏览目录树 · 迁移大目录" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock Text="还想更彻底？下方「Windows 官方清理」可关休眠、清组件(DISM)、删 Windows.old、优化驱动器等。"
+                                   Style="{StaticResource Sub}" Margin="36,8,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- AI 解读: 降为可选小入口 (不再是并列大按钮); 未配置 AI 不显示 -->
                 <StackPanel Margin="0,0,0,12" Visibility="{Binding ShowAdviseButton, Converter={StaticResource BoolToVis}}">
-                    <Button Command="{Binding AdviseCommand}" Style="{StaticResource Ghost}" HorizontalAlignment="Left">
+                    <Button Command="{Binding AdviseCommand}" Style="{StaticResource RowButton}" HorizontalAlignment="Left" Padding="10,7"
+                            ToolTip="基于占用汇总(不含路径)请求一次，让 AI 跨项解读并给建议（可选）">
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource IconPlan}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Accent}"
+                            <Path Data="{StaticResource IconAi}" Style="{StaticResource IconFill}" Fill="{DynamicResource Ai}"
                                   Width="14" Height="14" Margin="0,0,6,0"/>
-                            <TextBlock Text="生成 AI 行动计划（基于占用汇总，不含路径，请求一次，可选）" VerticalAlignment="Center"/>
+                            <TextBlock Text="让 AI 解读这次结果并给建议" Foreground="{DynamicResource Ai}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <StackPanel Orientation="Horizontal" Margin="2,8,0,0" VerticalAlignment="Center"
@@ -412,31 +466,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 最划算的几步: 最大的"可清理"项 (取代旧 Top10 最大目录, 后者多为不可动容器) -->
-                <TextBlock Text="最划算的几步（最大的可清理项）" Style="{StaticResource H2}"
-                           Visibility="{Binding HasBestCleanable, Converter={StaticResource BoolToVis}}"/>
-                <ItemsControl ItemsSource="{Binding BestCleanable}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="0,3">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="110"/>
-                                    <ColumnDefinition Width="2*"/>
-                                    <ColumnDefinition Width="3*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{Binding SizeText}" FontWeight="Bold"
-                                           Foreground="{DynamicResource Clean}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
-                                           Foreground="{DynamicResource Ink}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                <TextBlock Grid.Column="2" Text="{Binding Path}" TextTrimming="CharacterEllipsis"
-                                           Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <Button Content="去目录浏览批量处理 →" Command="{Binding ViewListCommand}"
-                        Style="{StaticResource Ghost}" HorizontalAlignment="Left" Margin="0,14,0,0"/>
             </StackPanel>
         </Border>
 
