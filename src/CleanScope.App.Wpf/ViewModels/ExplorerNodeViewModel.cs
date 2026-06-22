@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows.Media;
 using CleanScope.App.Wpf.Common;
 using CleanScope.App.Wpf.Mvvm;
@@ -18,18 +19,21 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     private readonly long _parentSize;
     private readonly bool _withinCleanable;   // 处在某个可清理祖先(如缓存目录)之下 → 随父清理
     private readonly IExplorerActions? _actions;
+    private readonly string? _expandableDir;  // 问题#1: 非空 → 展开时按需读取该真实目录, 列出其下所有文件/子目录
     private bool _childrenBuilt;
 
     public ExplorerNodeViewModel(ScanTreeNode node, long parentSize, bool withinCleanable = false,
-        IExplorerActions? actions = null, bool selectable = false)
+        IExplorerActions? actions = null, bool selectable = false, string? expandableDir = null)
     {
         _node = node;
         _parentSize = parentSize > 0 ? parentSize : node.Size;
         _withinCleanable = withinCleanable;
         _actions = actions;
+        _expandableDir = expandableDir;
         IsSelectable = selectable;
         Children = new ObservableCollection<ExplorerNodeViewModel>();
-        if (node.HasChildren) Children.Add(Placeholder);   // 占位, 展开时替换为真实子节点
+        // 真实树有子节点, 或本节点可按需读文件系统 (余量/文件系统子目录) → 加占位, 展开时物化。
+        if (node.HasChildren || expandableDir is not null) Children.Add(Placeholder);
 
         CopyPathCommand = new RelayCommand(_ => _actions?.CopyToClipboard(Path, "已复制路径"), _ => HasPath);
         CopyPurposeCommand = new RelayCommand(
@@ -215,6 +219,10 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
         if (_childrenBuilt) return;
         _childrenBuilt = true;
         Children.Clear();
+
+        // 问题#1: 余量节点 / 文件系统子目录 → 按需读真实目录, 把"本目录其它文件"完全展开。
+        if (_expandableDir is not null) { BuildFromFileSystem(); return; }
+
         // 处在可清理祖先下 → 子项随父清理 (颜色一致); 容器自身不下传可清理。
         var childWithinCleanable = EffectiveCleanable && !_node.IsContainer;
         foreach (var c in _node.Children)
@@ -224,22 +232,58 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
         // 没有真实子项时不显示余量 —— 否则会冒出一条与本目录等大、可被反复展开的"（其它文件/小目录）"。
         var r = _node.Remainder;
         if (_node.HasChildren && r > 1_000_000 && r > _node.Size * 0.02)
-            Children.Add(Remainder(r, _node.Size, _node.Origin, childWithinCleanable, _actions));
+            Children.Add(Remainder(r, _node.Path, _node.Size, _node.Origin, childWithinCleanable, _actions, IsSelectable));
     }
+
+    // 问题#1: 展开"本目录其它文件"(或文件系统子目录) —— 实读真实目录, 列出其下全部子目录 + 直接文件,
+    // 让用户能看到/勾选每一个文件。失败 (权限/IO) 静默返回空; 有界 (子目录/文件各设上限) 防超大目录卡死。
+    private void BuildFromFileSystem()
+    {
+        var childWithinCleanable = EffectiveCleanable && !_node.IsContainer;
+        DirectoryInfo dir;
+        try { dir = new DirectoryInfo(_expandableDir!); if (!dir.Exists) return; }
+        catch { return; }
+
+        foreach (var d in SafeDirs(dir).Select(d => (d, size: DirectFileSize(d)))
+                                       .OrderByDescending(t => t.size).Take(500))
+        {
+            var n = new ScanTreeNode(d.d.FullName, d.d.Name, d.size, _node.RiskLevel,
+                isContainer: false, isCleanable: childWithinCleanable,
+                origin: _node.Origin, purpose: "本目录的子目录（实时读取）", recommendedAction: "", isDirectory: true);
+            Children.Add(new ExplorerNodeViewModel(n, _node.Size > 0 ? _node.Size : Math.Max(1, d.size),
+                childWithinCleanable, _actions, IsSelectable, expandableDir: d.d.FullName));
+        }
+
+        foreach (var f in SafeFiles(dir).OrderByDescending(f => f.Length).Take(2000))
+        {
+            var n = new ScanTreeNode(f.FullName, f.Name, f.Length, _node.RiskLevel,
+                isContainer: false, isCleanable: childWithinCleanable,
+                origin: _node.Origin, purpose: "本目录的直接文件（实时读取）", recommendedAction: "", isDirectory: false);
+            Children.Add(new ExplorerNodeViewModel(n, _node.Size > 0 ? _node.Size : Math.Max(1, f.Length),
+                childWithinCleanable, _actions, IsSelectable));
+        }
+    }
+
+    // 子目录大小估算: 只累加直接文件 (快、不递归), 作为排序与展示的近似值; 展开它再看其下细目。
+    private static long DirectFileSize(DirectoryInfo d) { try { return d.EnumerateFiles().Sum(f => f.Length); } catch { return 0; } }
+    private static IReadOnlyList<DirectoryInfo> SafeDirs(DirectoryInfo d) { try { return d.EnumerateDirectories().ToList(); } catch { return Array.Empty<DirectoryInfo>(); } }
+    private static IReadOnlyList<FileInfo> SafeFiles(DirectoryInfo d) { try { return d.EnumerateFiles().ToList(); } catch { return Array.Empty<FileInfo>(); } }
 
     private static readonly ScanTreeNode PlaceholderNode =
         new("", "…", 0, RiskLevel.C, false, false, "", null, "");
     private static ExplorerNodeViewModel Placeholder => new(PlaceholderNode, 1);
 
-    // 余量节点恒为叶子 (无子项 → 不可展开), 来源继承父目录 (这些文件属于同一目录, 归属一致)。
-    private static ExplorerNodeViewModel Remainder(long size, long parentSize, string parentOrigin,
-        bool withinCleanable, IExplorerActions? actions)
+    // 余量节点: 问题#1 起可展开 —— 带上父目录真实路径, 展开时实读列出其下全部文件/子目录。
+    private static ExplorerNodeViewModel Remainder(long size, string parentDirPath, long parentSize, string parentOrigin,
+        bool withinCleanable, IExplorerActions? actions, bool selectable)
     {
-        var node = new ScanTreeNode("", "（本目录其它文件）", size, RiskLevel.C,
+        var node = new ScanTreeNode("", "（本目录其它文件，点 ▸ 展开看全部）", size, RiskLevel.C,
             isContainer: false, isCleanable: false,
             origin: string.IsNullOrWhiteSpace(parentOrigin) ? "未知来源" : parentOrigin,
-            purpose: "本目录下未单独列出的直接文件与小于阈值的子目录",
-            recommendedAction: "在系统资源管理器中打开本目录查看", isDirectory: false);
-        return new ExplorerNodeViewModel(node, parentSize, withinCleanable, actions) { IsRemainder = true };
+            purpose: "本目录下未单独列出的直接文件与小于阈值的子目录（可展开逐个查看）",
+            recommendedAction: "展开查看，或在系统资源管理器中打开本目录", isDirectory: false);
+        // 有父目录路径才可展开; 否则退化为叶子 (与旧行为一致)。
+        var expandable = string.IsNullOrEmpty(parentDirPath) ? null : parentDirPath;
+        return new ExplorerNodeViewModel(node, parentSize, withinCleanable, actions, selectable, expandable) { IsRemainder = true };
     }
 }
