@@ -89,6 +89,20 @@ public static class OfficialCleanupCatalog
                 Consequence: "仅“打开”Windows 磁盘清理工具，不会自动删除任何东西——删什么由你在它界面里勾选后确认。",
                 Surface: CleanupSurface.OpensWindowsUi),
 
+            // 优化驱动器 (碎片整理 / SSD TRIM): 用户常说的"磁盘整理/合并零散空间"。Windows 自带「优化驱动器」
+            // 会自动识别盘类型——机械盘做碎片整理(合并空闲块)、固态盘发 TRIM (绝不能对 SSD 强行碎片整理, 否则
+            // 徒增写入、折寿)。这是官方且安全的做法; 我们只"拉起"它, 不替它动盘。它不释放空间, 属维护类。
+            new("optimize-drives",
+                "优化驱动器（碎片整理 / SSD TRIM）",
+                "Windows 自带「优化驱动器」：机械硬盘(HDD)做碎片整理、合并零散空闲块；固态硬盘(SSD)发送 TRIM。它会自动识别盘类型、选对方式。",
+                CleanupActionKind.RunCommand, ActionType.RunCleanupCommand, "dfrgui",
+                EstimatedBytes: 0, Detected: true, NeedsAdmin: false,
+                Note: "不删除文件、不直接释放空间, 只整理布局/性能。SSD 切勿手动碎片整理(只需 TRIM)；Windows 默认每周已自动优化一次, 通常无需手动。",
+                Reversible: true,
+                Undo: "无需撤销：优化不删除任何数据, 只是重新整理文件布局或对 SSD 发送 TRIM 指令。",
+                Consequence: "仅“打开”Windows「优化驱动器」工具：HDD 做碎片整理(合并零散空闲块)、SSD 做 TRIM；不删除任何文件、不直接释放空间。优化哪个盘、是否优化由你在它界面里决定。",
+                Surface: CleanupSurface.OpensWindowsUi),
+
             // 存储感知: 现代设置页, 可一劳永逸自动清理临时/回收站。
             new("storage-sense",
                 "打开存储感知设置",

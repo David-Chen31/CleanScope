@@ -52,6 +52,16 @@ public sealed class OfficialCleanupCatalogTests
         Assert.Contains("storage-sense", ids);
     }
 
+    [Fact] // 优化驱动器: 拉起 Windows「优化驱动器」(dfrgui), 自动 SSD TRIM / HDD 碎片整理; 维护类、不删文件、可逆。
+    public void Optimize_drives_opens_windows_tool_and_is_reversible()
+    {
+        var opt = OfficialCleanupCatalog.Build(@"C:\", Probe(0, false)).Single(a => a.Id == "optimize-drives");
+        Assert.Equal("dfrgui", opt.Payload);
+        Assert.Equal(CleanupSurface.OpensWindowsUi, opt.Surface);
+        Assert.True(opt.Reversible);
+        Assert.Equal(0, opt.EstimatedBytes);   // 优化不释放空间 (维护类)
+    }
+
     [Fact]
     public void Storage_sense_is_a_settings_jump_not_a_command()
     {
