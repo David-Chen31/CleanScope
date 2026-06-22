@@ -19,7 +19,10 @@ public sealed class ExplanationService : IExplanationService
         "(例如 Steam=游戏平台、Zed/VS Code=代码编辑器、有道=翻译软件、微信=即时通讯), 请大方说明它是什么、" +
         "典型用途、该目录通常存放什么, 帮用户看懂。不要因为'只是文件夹名'就拒绝介绍已知软件。\n" +
         "(2) 删除安全 —— 必须保守、只依据给定事实: 关于'能否删除/风险等级', 不得断言'一定可删'; " +
-        "系统关键项必须建议不要删除; 不确定就明说不确定, 优先推荐软件自带或系统官方的清理方式。\n" +
+        "系统关键项必须建议不要删除; 不确定就明说不确定。\n" +
+        "(2b) 处理建议必须落在**本程序内可完成**的操作上: 可清理项就在「可清理清单」勾选移入回收站(可还原); " +
+        "需要官方手段时, 引导用本程序「Windows 官方清理」卡片里的一键按钮(关闭休眠/清空回收站/磁盘清理/DISM/存储感知)。" +
+        "**不要**让用户自己打开命令行/PowerShell/设置, 或去用别的清理软件——本程序内就能搞定。\n" +
         "注意: pathPattern 中的 %USER%/%FILE% 是为保护隐私做的占位符 (分别代表用户名/被隐去的名称), 不是真实名字。\n" +
         "只输出一个 JSON 对象, 字段: whatIsIt(string, 点明是什么软件及其用途), ownerApp(string|null), " +
         "riskLevel(A|B|C|D|E), canDeleteDirectly(bool), recommendedAction(string), reasoning(string[]), " +
@@ -129,10 +132,10 @@ public sealed class ExplanationService : IExplanationService
 
     private static string DefaultAction(RiskLevel? risk) => risk switch
     {
-        RiskLevel.A => "通常可清理, 仍建议确认",
-        RiskLevel.B => "建议用官方方式清理 (命令/设置)",
+        RiskLevel.A => "通常可清理: 在本程序「可清理清单」移入回收站即可 (可还原)",
+        RiskLevel.B => "可在本程序「Windows 官方清理」里一键处理 (无需命令行)",
         RiskLevel.C => "谨慎处理: 建议先备份或确认用途",
-        RiskLevel.D => "不建议删除: 高风险, 见官方替代方案",
+        RiskLevel.D => "不建议删除: 高风险; 如需释放可在本程序「Windows 官方清理」走更安全的官方手段",
         RiskLevel.E => "无法判断, 不建议删除",
         _ => "建议确认后再处理",
     };

@@ -30,7 +30,7 @@ public sealed class OpenAiChatClient : IAiChat
         {
             model = _options.Model,
             temperature = 0.2,
-            max_tokens = 1500,          // 600 偏小, JSON 解释易被截断导致解析失败 → 误报"未能生成"
+            max_tokens = 3000,          // 1500 仍偏小: 7 步中文 JSON 计划易被截断 → 解析失败、把半截 JSON 倒给用户
             messages = new[]
             {
                 new { role = "system", content = systemPrompt },

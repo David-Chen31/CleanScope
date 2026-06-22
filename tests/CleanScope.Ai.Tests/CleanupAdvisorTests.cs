@@ -52,6 +52,34 @@ public sealed class CleanupAdvisorTests
         Assert.Contains("清理可重建的编译缓存", plan.Markdown);   // 合成的 markdown 含步骤
     }
 
+    [Fact] // 问题#4: JSON 被截断 → 抢救出已完整的步骤, 不把半截 JSON 倒给用户。
+    public async Task Salvages_complete_steps_from_truncated_json()
+    {
+        const string truncated = """
+        {"summary":"预计可省约 5 GB","steps":[
+          {"title":"去可清理清单一键回收","detail":"A/B 项删后进回收站可还原。","saving":"约 5 GB","difficulty":"简单","where":"可清理清单"},
+          {"title":"关闭休眠","detail":"释放 hiber
+        """;
+        var plan = await new CleanupAdvisor(new FakeChat(truncated)).AdviseAsync(Summary());
+
+        Assert.NotNull(plan);
+        Assert.Single(plan!.Steps);                         // 仅抢救出完整的第一步
+        Assert.Equal("去可清理清单一键回收", plan.Steps[0].Title);
+        Assert.Contains("可省约 5 GB", plan.Summary);
+        Assert.DoesNotContain("{", plan.Markdown);          // 绝不把原始 JSON 倒给用户
+    }
+
+    [Fact] // 问题#4: JSON 残缺到一步都抢救不出 → 给可重试提示, 而非原始花括号。
+    public async Task Broken_json_shows_retry_hint_not_raw_braces()
+    {
+        var plan = await new CleanupAdvisor(new FakeChat("{\"summary\":\"x\",\"steps\":[ {\"title\":")).AdviseAsync(Summary());
+
+        Assert.NotNull(plan);
+        Assert.Empty(plan!.Steps);
+        Assert.DoesNotContain("{", plan.Markdown);
+        Assert.Contains("重试", plan.Markdown);
+    }
+
     [Fact] // 脱敏: 喂给 AI 的用户提示只含软件/类别/容量, 不含任何路径或盘符。
     public async Task User_prompt_contains_no_paths()
     {

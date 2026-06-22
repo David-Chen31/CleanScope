@@ -20,20 +20,24 @@ namespace CleanScope.Ai.Advice;
 public sealed class CleanupAdvisor : ICleanupAdvisor
 {
     private const string SystemPrompt =
-        "你是 Windows 磁盘清理顾问, 面向**不懂命令行的普通用户**。基于用户的占用汇总与本机适用的官方清理手段, " +
-        "给出一份分步的清理行动计划, 按「省得多 + 风险低 + 操作简单」排优先顺序, 并识别重复/冗余 (多套同类工具链、重复缓存)。\n" +
-        "只输出**一个 JSON 对象**, 字段如下 (不要输出 JSON 以外的任何字符):\n" +
-        "  summary(string): 一句话总览, 包含预计可省的总量, 让人一眼知道值不值得做;\n" +
-        "  steps(数组, 至多 7 项, 每项一个对象):\n" +
-        "    title(string): 一句话的具体动作, 让小白也能看懂(如『清理可重建的编译缓存』);\n" +
-        "    detail(string): 1-2 句, 说清这是什么、为什么可以清、删了会怎样 (给想了解的人看);\n" +
+        "你是 Windows 磁盘清理顾问, 面向**不懂命令行、也不想动脑的普通用户**——他们只想知道『哪些能放心清、点哪里、能省多少』, 然后磁盘就瘦下来。\n" +
+        "本程序已经用确定性规则把每项判好了风险等级: A/B = 可放心清理 (删除只进回收站, 可还原), C = 个人资料/信息不足需你确认, D/E = 系统关键勿动。" +
+        "你的计划必须**站在这个已判好的结论上**, 帮用户把『可放心清理』的部分一键清掉, 而不是让他自己纠结。\n" +
+        "**第一步永远是**: 去本程序「可清理清单」一键勾选并批量移入回收站那些已判为可放心清理(A/B)的项, 用我给你的『估算可清理』总量作为这一步的 saving (让用户一眼看到能省多少)。\n" +
+        "其后再按「省得多 + 风险低 + 操作简单」补充: 本机适用的官方清理手段(我会给名称与预估收益), 以及识别出的重复/冗余(多套同类工具链、重复缓存)。\n" +
+        "要**具体**, 不要泛泛: 用我给的真实数据点名实际的大类/大项及其大小(如『Temp 约 3.9 GB』『编译/扩展缓存 约 X』), 直说哪些可清、哪些是个人资料要保留。\n" +
+        "只输出**一个 JSON 对象**, 字段如下 (不要输出 JSON 以外的任何字符, 也不要用 ``` 代码块包裹):\n" +
+        "  summary(string): 一句话总览, 含预计可省总量, 让人一眼知道值不值得做;\n" +
+        "  steps(数组, 3-6 项, 每项一个对象, 第一项即上面的『一键批量回收 A/B』):\n" +
+        "    title(string): 一句话的具体动作, 让小白也能看懂(如『去可清理清单一键回收可放心清理项』);\n" +
+        "    detail(string): 1-2 句, 说清这是什么、为什么可以清、删了会怎样;\n" +
         "    saving(string): 预计可省, 如『约 1.4 GB』; 不确定就给空字符串;\n" +
-        "    difficulty(string): 只能是『简单』『中等』『谨慎』三者之一;\n" +
+        "    difficulty(string): 只能是『简单』『中等』『谨慎』三者之一; 第一步应是『简单』;\n" +
         "    where(string): 在哪做 —— 只能是本程序「可清理清单」, 或「Windows 官方清理」卡片里**与我给的名称完全一致**的按钮名;\n" +
-        "  note(string): 末尾一句提醒, 例如『删除前再确认; 本程序删除只进回收站, 可随时还原』。\n" +
-        "硬性要求: where 必须具体到上面两种入口之一, 不要写『用官方方式』『用命令』这类笼统话; " +
-        "**严禁**让用户自己打开终端/PowerShell/CMD 或手敲命令; **严禁**输出任何删除命令、脚本或路径删除指令; " +
-        "只能引用我提供的官方手段名称, 不要自创。若提供了「具体大项」(真实路径/名称), 针对它们判断哪些可清、哪些是个人资料应保留 (只描述)。";
+        "  note(string): 末尾一句提醒, 例如『个人资料请自行确认; 本程序删除只进回收站, 可随时还原』。\n" +
+        "硬性要求: 所有动作都要能在**本程序内**完成; where 必须具体到上面两种入口之一, 不要写『用官方方式』『用命令』『去设置里』这类笼统话; " +
+        "**严禁**让用户自己打开终端/PowerShell/CMD 或第三方软件、手敲命令; **严禁**输出任何删除命令、脚本或路径删除指令; " +
+        "只能引用我提供的官方手段名称, 不要自创。若提供了「具体大项」(真实路径/名称), 据此判断哪些可清、哪些是个人资料应保留 (只描述, 不替用户做删除决定)。";
 
     private readonly IAiChat _chat;
 
@@ -58,8 +62,29 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
                 Domain.Diagnostics.AppTrace.Log("AI 行动计划: 返回空内容");
                 return null;
             }
-            // 优先按结构化 JSON 解析成分步卡片; 失败则退化为纯文本展示 (仍可用)。
-            return TryParsePlan(reply) ?? new CleanupPlan("", Array.Empty<CleanupPlanStep>(), "", reply.Trim());
+            // 优先按结构化 JSON 解析成分步卡片。
+            var parsed = TryParsePlan(reply);
+            if (parsed is not null) return parsed;
+
+            // 问题#4: JSON 被截断/夹带说明 → 尽力抢救已完整的步骤, 别让用户看到半截 JSON。
+            var salvaged = TrySalvageSteps(reply);
+            if (salvaged is { Count: > 0 })
+            {
+                var sum = ExtractSummary(reply) ?? "";
+                var nt = "部分内容可能被截断, 仅展示已成型的步骤; 个人资料请自行确认, 删除只进回收站可还原。";
+                return new CleanupPlan(sum, salvaged, nt, BuildMarkdown(sum, salvaged, nt));
+            }
+
+            // 仍解析不出: 若回复本就是 JSON(只是不完整/异常), 绝不把原始花括号倒给用户; 给一句可重试的提示。
+            if (LooksLikeJson(reply))
+            {
+                Domain.Diagnostics.AppTrace.Log("AI 行动计划: 无法解析为结构化计划 (疑似截断/格式异常)");
+                const string msg = "AI 这次返回的清理计划不完整或格式异常（可能被截断）。请再点一次「生成 AI 清理建议」重试。";
+                return new CleanupPlan("", Array.Empty<CleanupPlanStep>(), "", msg);
+            }
+
+            // 真·纯文本(模型没按 JSON 走) → 原样展示 (仍可读)。
+            return new CleanupPlan("", Array.Empty<CleanupPlanStep>(), "", reply.Trim());
         }
         catch (Exception ex)
         {
@@ -104,6 +129,83 @@ public sealed class CleanupAdvisor : ICleanupAdvisor
         {
             return null;
         }
+    }
+
+    // 问题#4: 从被截断/夹带文字的回复里, 逐个抢救出**已完整**的 step 对象 (忽略末尾半截的那个)。
+    private static List<CleanupPlanStep>? TrySalvageSteps(string reply)
+    {
+        var keyIdx = reply.IndexOf("\"steps\"", StringComparison.Ordinal);
+        if (keyIdx < 0) return null;
+        var arrIdx = reply.IndexOf('[', keyIdx);
+        if (arrIdx < 0) return null;
+
+        var steps = new List<CleanupPlanStep>();
+        var order = 0;
+        var i = arrIdx + 1;
+        while (i < reply.Length && steps.Count < 7)
+        {
+            // 找下一个对象起点; 遇到 ']' 说明数组正常收尾。
+            while (i < reply.Length && reply[i] != '{' && reply[i] != ']') i++;
+            if (i >= reply.Length || reply[i] == ']') break;
+
+            // 扫描平衡花括号 (容忍字符串内的花括号/转义), 截出一个完整对象。
+            var depth = 0; var inStr = false; var esc = false; var objStart = i; var objEnd = -1;
+            for (; i < reply.Length; i++)
+            {
+                var ch = reply[i];
+                if (esc) { esc = false; continue; }
+                if (ch == '\\') { esc = true; continue; }
+                if (ch == '"') inStr = !inStr;
+                else if (!inStr && ch == '{') depth++;
+                else if (!inStr && ch == '}') { depth--; if (depth == 0) { objEnd = i; i++; break; } }
+            }
+            if (objEnd < 0) break;   // 半截对象 (被截断) → 丢弃, 停止
+
+            try
+            {
+                using var doc = JsonDocument.Parse(reply[objStart..(objEnd + 1)]);
+                var s = doc.RootElement;
+                var title = Str(s, "title");
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+                    order++;
+                    steps.Add(new CleanupPlanStep(
+                        order, title!.Trim(), Str(s, "detail")?.Trim() ?? "",
+                        Str(s, "saving")?.Trim() ?? "", NormalizeDifficulty(Str(s, "difficulty")),
+                        Str(s, "where")?.Trim() ?? ""));
+                }
+            }
+            catch { break; }   // 解析不出 → 停
+        }
+        return steps.Count > 0 ? steps : null;
+    }
+
+    // 抢救 summary: 优先取 "summary":"..." 的值 (即便整体 JSON 不完整)。
+    private static string? ExtractSummary(string reply)
+    {
+        var k = reply.IndexOf("\"summary\"", StringComparison.Ordinal);
+        if (k < 0) return null;
+        var colon = reply.IndexOf(':', k);
+        if (colon < 0) return null;
+        var q1 = reply.IndexOf('"', colon + 1);
+        if (q1 < 0) return null;
+        var sb = new StringBuilder();
+        for (var i = q1 + 1; i < reply.Length; i++)
+        {
+            var ch = reply[i];
+            if (ch == '\\' && i + 1 < reply.Length) { sb.Append(reply[++i]); continue; }
+            if (ch == '"') break;
+            sb.Append(ch);
+        }
+        var s = sb.ToString().Trim();
+        return s.Length > 0 ? s : null;
+    }
+
+    // 回复看起来是 JSON (而非模型自由发挥的纯文本) —— 用于决定失败时是否该展示原文。
+    private static bool LooksLikeJson(string reply)
+    {
+        var t = reply.TrimStart().TrimStart('`').TrimStart();
+        return t.StartsWith('{') || reply.Contains("\"steps\"", StringComparison.Ordinal);
     }
 
     // 由结构化计划合成可读 markdown (供报告导出 / Console 展示)。

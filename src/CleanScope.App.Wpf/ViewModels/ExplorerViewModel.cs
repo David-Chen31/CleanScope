@@ -42,6 +42,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         SelectAllCommand = new RelayCommand(() => SetAllSelected(true), () => _showCleanableOnly && !_busy);
         SelectNoneCommand = new RelayCommand(() => SetAllSelected(false), () => _showCleanableOnly && !_busy);
         RecycleSelectedCommand = new AsyncRelayCommand(_ => RecycleSelectedAsync(), _ => _showCleanableOnly && !_busy);
+        InvestigateSelectedCommand = new AsyncRelayCommand(_ => InvestigateSelectedAsync(), _ => _services.AiEnabled && _showCleanableOnly && !_busy);
         SortBySizeCommand = new RelayCommand(() => SortFlat(bySize: true), () => _showCleanableOnly && !IsSearching);
         SortByNameCommand = new RelayCommand(() => SortFlat(bySize: false), () => _showCleanableOnly && !IsSearching);
         ClearSearchCommand = new RelayCommand(() => SearchText = "");
@@ -70,6 +71,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     public RelayCommand SelectAllCommand { get; }
     public RelayCommand SelectNoneCommand { get; }
     public AsyncRelayCommand RecycleSelectedCommand { get; }
+    public AsyncRelayCommand InvestigateSelectedCommand { get; }   // 问题#1: 对勾选项批量 AI 识别
     public RelayCommand SortBySizeCommand { get; }
     public RelayCommand SortByNameCommand { get; }
     public RelayCommand ClearSearchCommand { get; }
@@ -84,6 +86,8 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             if (!SetField(ref _searchText, value ?? "")) return;
             OnPropertyChanged(nameof(IsSearching));
             OnPropertyChanged(nameof(ShowBatchBar));
+            OnPropertyChanged(nameof(ShowBatchAi));
+            InvestigateSelectedCommand.RaiseCanExecuteChanged();
             SortBySizeCommand.RaiseCanExecuteChanged();
             SortByNameCommand.RaiseCanExecuteChanged();
             Rebuild();
@@ -110,6 +114,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             SelectAllCommand.RaiseCanExecuteChanged();
             SelectNoneCommand.RaiseCanExecuteChanged();
             RecycleSelectedCommand.RaiseCanExecuteChanged();
+            InvestigateSelectedCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -124,14 +129,19 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             if (!SetField(ref _showCleanableOnly, value)) return;
             Rebuild();
             OnPropertyChanged(nameof(ShowBatchBar));
+            OnPropertyChanged(nameof(ShowBatchAi));
             SelectAllCommand.RaiseCanExecuteChanged();
             SelectNoneCommand.RaiseCanExecuteChanged();
             RecycleSelectedCommand.RaiseCanExecuteChanged();
+            InvestigateSelectedCommand.RaiseCanExecuteChanged();
         }
     }
 
     /// <summary>批量操作条仅在"只看可清理"且非搜索态时显示 (搜索结果不参与批量)。</summary>
     public bool ShowBatchBar => _showCleanableOnly && !IsSearching;
+
+    /// <summary>问题#1: 批量 AI 识别按钮仅在配置了 AI 时出现 (未配置零开销, 不显示)。</summary>
+    public bool ShowBatchAi => ShowBatchBar && _services.AiEnabled;
 
     // C2: 当前选中节点 → 底部详情面板完整展示来源/用途/AI 解释/建议 (长文本不再被列截断、不必复制)。
     private ExplorerNodeViewModel? _selectedNode;
@@ -287,6 +297,51 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             + (skipped > 0 ? $"；{skipped} 项被安全闸门拦下或失败，已保留。" : "。");
         if (ok > 0) Toast.Show($"已移入回收站 {ok} 项", ToastKind.Success, "撤销", () => _ = UndoLastRecycleAsync());
         UpdateSelectionSummary();
+    }
+
+    // 问题#1: 批量 AI 识别勾选项 —— 逐个走按需识别 (命中缓存即跳过、不花 token), 给整体进度。
+    private async Task InvestigateSelectedAsync()
+    {
+        if (!_services.AiEnabled) { ActionStatus = "未配置 AI，无法识别。可在「AI 设置」里配置后再试。"; return; }
+
+        // 只挑勾选、可识别、且本会话尚未识别过的 (已识别的不重复花 token)。
+        var targets = _flatNodes.Where(n => n.IsSelected && n.CanInvestigate && !n.IsAiResolved).ToList();
+        if (targets.Count == 0)
+        {
+            ActionStatus = _flatNodes.Any(n => n.IsSelected)
+                ? "勾选的项都已识别过了（已识别的不重复请求）。"
+                : "请先勾选要用 AI 识别的项。";
+            return;
+        }
+
+        var model = new ConfirmDialogModel
+        {
+            Title = "批量用 AI 识别",
+            Intro = "将对勾选的项逐个用 AI 识别来源 / 用途（脱敏后请求，仅供参考）。命中缓存或已识别过的会自动跳过、不再花 token。",
+            Details = ConfirmDialogModel.Rows(
+                ("待识别", $"{targets.Count} 项"), ("出云脱敏", SanitizationLabel)),
+            WarningText = "AI 只补充“是什么/归谁”的推测，绝不改动风险等级、更不会触发删除。",
+            ConfirmText = $"开始识别（{targets.Count} 项）",
+        };
+        if (!ConfirmDialog.Show(System.Windows.Application.Current?.MainWindow, model))
+        {
+            ActionStatus = "已取消批量识别。"; return;
+        }
+
+        IsBusy = true;
+        var done = 0;
+        try
+        {
+            foreach (var n in targets)
+            {
+                done++;
+                ActionStatus = $"正在用 AI 识别 {done}/{targets.Count}：「{n.Name}」…";
+                await InvestigateAsync(n);   // 复用单项逻辑: 缓存/脱敏请求/落库/行内转圈
+            }
+        }
+        finally { IsBusy = false; }
+
+        ActionStatus = $"批量 AI 识别完成：处理 {targets.Count} 项（结果见各行「AI推测」标记与右侧解释面板）。";
     }
 
     // H: 撤销刚才的回收 —— 从回收站还原回原位 (纯还原); 自动还原失败的回退到"打开回收站"。

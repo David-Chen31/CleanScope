@@ -64,6 +64,16 @@
                             <TextBlock Text="移入回收站（可还原）" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
+                    <!-- 问题#1: 对勾选项批量 AI 识别 (仅配置了 AI 时出现) -->
+                    <Button Command="{Binding InvestigateSelectedCommand}" Style="{StaticResource Ghost}" Margin="0,0,12,0"
+                            ToolTip="对勾选的项逐个用 AI 识别来源/用途（脱敏后请求；命中缓存/已识别的会跳过）"
+                            Visibility="{Binding ShowBatchAi, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconAi}" Style="{StaticResource IconFill}" Fill="{DynamicResource Ai}"
+                                  Width="14" Height="14" Margin="0,0,6,0"/>
+                            <TextBlock Text="用 AI 识别选中" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <TextBlock Text="排序" VerticalAlignment="Center" Foreground="{DynamicResource Muted}" Margin="0,0,4,0"/>
                     <Button Content="大小" Command="{Binding SortBySizeCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,0"/>
                     <Button Content="名称" Command="{Binding SortByNameCommand}" Style="{StaticResource Ghost}" Margin="0,0,16,0"/>
