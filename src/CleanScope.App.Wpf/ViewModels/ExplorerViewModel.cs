@@ -24,6 +24,7 @@ public interface IExplorerActions
     Task MigrateAsync(ExplorerNodeViewModel node);
     Task OpenRecycleBinAsync();
     Task AddIgnoreAsync(ExplorerNodeViewModel node);
+    void OnSelectionChanged();   // 任一节点勾选变化 → 宿主重算已选合计与批量条 (树/扁平通用)
 }
 
 /// <summary>
@@ -40,9 +41,9 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
     {
         _services = services;
         SelectAllCommand = new RelayCommand(() => SetAllSelected(true), () => _showCleanableOnly && !_busy);
-        SelectNoneCommand = new RelayCommand(() => SetAllSelected(false), () => _showCleanableOnly && !_busy);
-        RecycleSelectedCommand = new AsyncRelayCommand(_ => RecycleSelectedAsync(), _ => _showCleanableOnly && !_busy);
-        InvestigateSelectedCommand = new AsyncRelayCommand(_ => InvestigateSelectedAsync(), _ => _services.AiEnabled && _showCleanableOnly && !_busy);
+        SelectNoneCommand = new RelayCommand(() => SetAllSelected(false), () => (_showCleanableOnly || _hasSelection) && !_busy);
+        RecycleSelectedCommand = new AsyncRelayCommand(_ => RecycleSelectedAsync(), _ => (_showCleanableOnly || _hasSelection) && !_busy);
+        InvestigateSelectedCommand = new AsyncRelayCommand(_ => InvestigateSelectedAsync(), _ => _services.AiEnabled && (_showCleanableOnly || _hasSelection) && !_busy);
         SortBySizeCommand = new RelayCommand(() => SortFlat(bySize: true), () => _showCleanableOnly && !IsSearching);
         SortByNameCommand = new RelayCommand(() => SortFlat(bySize: false), () => _showCleanableOnly && !IsSearching);
         ClearSearchCommand = new RelayCommand(() => SearchText = "");
@@ -137,8 +138,24 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         }
     }
 
-    /// <summary>批量操作条仅在"只看可清理"且非搜索态时显示 (搜索结果不参与批量)。</summary>
-    public bool ShowBatchBar => _showCleanableOnly && !IsSearching;
+    // 树模式下勾选了任意项 → 也出现批量条 (满足"不开只看可清理也能多选批量")。
+    private bool _hasSelection;
+    public bool HasSelection
+    {
+        get => _hasSelection;
+        private set
+        {
+            if (!SetField(ref _hasSelection, value)) return;
+            OnPropertyChanged(nameof(ShowBatchBar));
+            OnPropertyChanged(nameof(ShowBatchAi));
+            SelectNoneCommand.RaiseCanExecuteChanged();
+            RecycleSelectedCommand.RaiseCanExecuteChanged();
+            InvestigateSelectedCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>批量操作条: "只看可清理"恒显示; 普通树模式只要勾了任意项也显示。搜索态不参与批量。</summary>
+    public bool ShowBatchBar => !IsSearching && (_showCleanableOnly || _hasSelection);
 
     /// <summary>问题#1: 批量 AI 识别按钮仅在配置了 AI 时出现 (未配置零开销, 不显示)。</summary>
     public bool ShowBatchAi => ShowBatchBar && _services.AiEnabled;
@@ -190,7 +207,6 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
                 !string.IsNullOrEmpty(r.Path) && string.Equals(r.Path.TrimEnd('\\'), p, StringComparison.OrdinalIgnoreCase));
             if (match is not null)
             {
-                match.PropertyChanged -= OnFlatNodePropertyChanged;
                 _flatNodes.Remove(match);
                 Roots.Remove(match);
                 UpdateSelectionSummary();
@@ -200,17 +216,42 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         MarkMaterializedDeleted(Roots, p);
     }
 
-    // —— C1 批量勾选 / 全选 / 批量回收 (只看可清理模式) ——
-    private void OnFlatNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ExplorerNodeViewModel.IsSelected)) UpdateSelectionSummary();
-    }
+    // —— C1 批量勾选 / 全选 / 批量回收 (树 + 只看可清理通用) ——
+
+    /// <summary>任一节点勾选变化的回调 (经 IExplorerActions) → 重算已选合计与批量条可见性。</summary>
+    public void OnSelectionChanged() { if (!_bulkSelecting) UpdateSelectionSummary(); }
+
+    // 批量勾选期间抑制每项回调, 末尾统一刷新一次 (避免 O(n^2))。
+    private bool _bulkSelecting;
 
     private void SetAllSelected(bool selected)
     {
-        foreach (var n in _flatNodes) n.IsSelected = selected;
+        _bulkSelecting = true;
+        try
+        {
+            // 全选只作用于扁平"只看可清理"清单; 全不选则清掉树/扁平的所有勾选。
+            if (selected) foreach (var n in _flatNodes) n.IsSelected = true;
+            else foreach (var n in EnumerateMaterialized()) n.IsSelected = false;
+        }
+        finally { _bulkSelecting = false; }
         UpdateSelectionSummary();
     }
+
+    // 已物化(可见)的节点 DFS —— 树模式下勾选的项必已物化, 故据此收集已选项。
+    private IEnumerable<ExplorerNodeViewModel> EnumerateMaterialized()
+    {
+        var stack = new Stack<ExplorerNodeViewModel>();
+        foreach (var r in Roots) stack.Push(r);
+        while (stack.Count > 0)
+        {
+            var n = stack.Pop();
+            yield return n;
+            foreach (var c in n.Children) stack.Push(c);
+        }
+    }
+
+    private List<ExplorerNodeViewModel> SelectedNodes() =>
+        EnumerateMaterialized().Where(n => n.IsSelected).ToList();
 
     // 扁平视图重排序 (按大小降序 / 按名称升序), 重排同一批节点实例 (勾选订阅不变)。
     private void SortFlat(bool bySize)
@@ -227,18 +268,20 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
 
     private void UpdateSelectionSummary()
     {
-        var chosen = _flatNodes.Where(n => n.IsSelected).ToList();
+        var chosen = SelectedNodes();
         var size = chosen.Sum(n => n.RawSize);
+        HasSelection = chosen.Count > 0;
         SelectionSummary = chosen.Count == 0
-            ? "勾选可清理项后可批量移入回收站（可还原）。"
-            : $"已选 {chosen.Count} 项，约 {Format.HumanSize(size)}，可一键移入回收站（可还原）。";
+            ? "勾选项后可批量移入回收站（可还原）或用 AI 识别。"
+            : $"已选 {chosen.Count} 项，约 {Format.HumanSize(size)}，可批量移入回收站（可还原）或用 AI 识别。";
         RecycleSelectedCommand.RaiseCanExecuteChanged();
+        InvestigateSelectedCommand.RaiseCanExecuteChanged();
     }
 
     // 批量移入回收站: 先确认(瞬时) → 后台线程逐项过闸门+执行 → 进度回 UI 线程 + 标删 + 广播变更总线。
     private async Task RecycleSelectedAsync()
     {
-        var targets = _flatNodes.Where(n => n.IsSelected && n.CanRecycle).ToList();
+        var targets = SelectedNodes().Where(n => n.CanRecycle).ToList();
         if (targets.Count == 0) { ActionStatus = "请先勾选要清理的项。"; return; }
 
         var total = targets.Sum(n => n.RawSize);
@@ -248,7 +291,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             Intro = "确定把选中的这些项移入回收站吗？可从回收站随时还原，非永久删除。",
             Details = ConfirmDialogModel.Rows(
                 ("项数", $"{targets.Count} 项"), ("合计", $"约 {Format.HumanSize(total)}")),
-            WarningText = "每一项仍会逐一经安全闸门复核，命中系统关键/容器/占用的会被自动跳过、不动。",
+            WarningText = "每一项仍会逐一经安全闸门复核：仅“可放心清理”(A/B)的项会被回收；谨慎/勿动(C-E)、系统关键、容器、占用中的会被自动跳过、原样保留。",
             ConfirmText = $"移入回收站（{targets.Count} 项）",
         };
         if (!ConfirmDialog.Show(System.Windows.Application.Current?.MainWindow, model))
@@ -305,10 +348,10 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         if (!_services.AiEnabled) { ActionStatus = "未配置 AI，无法识别。可在「AI 设置」里配置后再试。"; return; }
 
         // 只挑勾选、可识别、且本会话尚未识别过的 (已识别的不重复花 token)。
-        var targets = _flatNodes.Where(n => n.IsSelected && n.CanInvestigate && !n.IsAiResolved).ToList();
+        var targets = SelectedNodes().Where(n => n.CanInvestigate && !n.IsAiResolved).ToList();
         if (targets.Count == 0)
         {
-            ActionStatus = _flatNodes.Any(n => n.IsSelected)
+            ActionStatus = HasSelection
                 ? "勾选的项都已识别过了（已识别的不重复请求）。"
                 : "请先勾选要用 AI 识别的项。";
             return;
@@ -403,10 +446,9 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
 
     private void Rebuild()
     {
-        // 释放上一批扁平节点的勾选订阅, 避免泄漏。
-        foreach (var n in _flatNodes) n.PropertyChanged -= OnFlatNodePropertyChanged;
         _flatNodes.Clear();
         Roots.Clear();
+        HasSelection = false;
         var session = _session;
         if (session?.Tree is null)
         {
@@ -445,7 +487,6 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             foreach (var n in items)
             {
                 var vm = new ExplorerNodeViewModel(n, max, withinCleanable: false, actions: this, selectable: true);
-                vm.PropertyChanged += OnFlatNodePropertyChanged;
                 _flatNodes.Add(vm);
                 Roots.Add(vm);
             }
@@ -455,12 +496,13 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             return;
         }
 
-        var root = new ExplorerNodeViewModel(session.Tree, session.Tree.Size, withinCleanable: false, actions: this)
+        var root = new ExplorerNodeViewModel(session.Tree, session.Tree.Size, withinCleanable: false, actions: this, selectable: true)
         { IsExpanded = true };
         Roots.Add(root);
         Summary = $"{session.TargetPath} — 共 {Format.HumanSize(session.Tree.Size)}；" +
                   $"其中 ✓可清理约 {Format.HumanSize(session.TreeReclaimable)}（{session.TreeCleanableCount} 处，含各软件内部缓存）。" +
-                  "点击 ▸ 展开目录；右键可复制路径/打开位置/移入回收站。";
+                  "点击 ▸ 展开目录；勾选左侧复选框可多选，批量移入回收站或用 AI 识别；右键可复制路径/打开位置。";
+        UpdateSelectionSummary();
     }
 
     // —— IExplorerActions ——

@@ -52,10 +52,11 @@
 
                 <TextBlock Text="{Binding Summary}" Style="{StaticResource Sub}"/>
 
-                <!-- C1 批量操作条 (仅"只看可清理"显示) -->
+                <!-- C1 批量操作条 ("只看可清理"恒显示; 普通树模式勾选任意项也出现) -->
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0"
                             Visibility="{Binding ShowBatchBar, Converter={StaticResource BoolToVis}}">
-                    <Button Content="全选" Command="{Binding SelectAllCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+                    <Button Content="全选" Command="{Binding SelectAllCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"
+                            Visibility="{Binding ShowCleanableOnly, Converter={StaticResource BoolToVis}}"/>
                     <Button Content="全不选" Command="{Binding SelectNoneCommand}" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
                     <Button Command="{Binding RecycleSelectedCommand}" Style="{StaticResource Primary}" Margin="0,0,12,0">
                         <StackPanel Orientation="Horizontal">
@@ -74,9 +75,12 @@
                             <TextBlock Text="用 AI 识别选中" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <TextBlock Text="排序" VerticalAlignment="Center" Foreground="{DynamicResource Muted}" Margin="0,0,4,0"/>
-                    <Button Content="大小" Command="{Binding SortBySizeCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,0"/>
-                    <Button Content="名称" Command="{Binding SortByNameCommand}" Style="{StaticResource Ghost}" Margin="0,0,16,0"/>
+                    <TextBlock Text="排序" VerticalAlignment="Center" Foreground="{DynamicResource Muted}" Margin="0,0,4,0"
+                               Visibility="{Binding ShowCleanableOnly, Converter={StaticResource BoolToVis}}"/>
+                    <Button Content="大小" Command="{Binding SortBySizeCommand}" Style="{StaticResource Ghost}" Margin="0,0,6,0"
+                            Visibility="{Binding ShowCleanableOnly, Converter={StaticResource BoolToVis}}"/>
+                    <Button Content="名称" Command="{Binding SortByNameCommand}" Style="{StaticResource Ghost}" Margin="0,0,16,0"
+                            Visibility="{Binding ShowCleanableOnly, Converter={StaticResource BoolToVis}}"/>
                     <TextBlock Text="{Binding SelectionSummary}" VerticalAlignment="Center" Style="{StaticResource Sub}"/>
                 </StackPanel>
             </StackPanel>

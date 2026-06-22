@@ -140,7 +140,8 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
     public bool IsSelected
     {
         get => _isSelected;
-        set => SetField(ref _isSelected, value && CanSelect);   // 不可勾的项强制为否
+        // 不可勾的项强制为否; 变化时通知宿主重算"已选合计/批量条可见性"(树模式也支持多选)。
+        set { if (SetField(ref _isSelected, value && CanSelect)) _actions?.OnSelectionChanged(); }
     }
 
     // 迁移入口: 真实目录 (非余量/非容器/未删) 才显示; 是否真能迁由迁移器保守白名单当场判定。
@@ -154,7 +155,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
         private set
         {
             if (!SetField(ref _isDeleted, value)) return;
-            if (_isSelected) { _isSelected = false; OnPropertyChanged(nameof(IsSelected)); }
+            if (_isSelected) { _isSelected = false; OnPropertyChanged(nameof(IsSelected)); _actions?.OnSelectionChanged(); }
             OnPropertyChanged(nameof(CanRecycle));
             OnPropertyChanged(nameof(CanSelect));
             OnPropertyChanged(nameof(CanMigrate));
@@ -217,7 +218,7 @@ public sealed class ExplorerNodeViewModel : ViewModelBase
         // 处在可清理祖先下 → 子项随父清理 (颜色一致); 容器自身不下传可清理。
         var childWithinCleanable = EffectiveCleanable && !_node.IsContainer;
         foreach (var c in _node.Children)
-            Children.Add(new ExplorerNodeViewModel(c, _node.Size, childWithinCleanable, _actions));
+            Children.Add(new ExplorerNodeViewModel(c, _node.Size, childWithinCleanable, _actions, IsSelectable));
 
         // 余量 (直接文件 + 被剪枝的小目录): 仅当确有展开出的真实子项、且余量显著时才显示, 避免噪点。
         // 没有真实子项时不显示余量 —— 否则会冒出一条与本目录等大、可被反复展开的"（其它文件/小目录）"。
