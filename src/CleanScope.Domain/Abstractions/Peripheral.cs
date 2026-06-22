@@ -57,4 +57,11 @@ public interface IRecycleRestore
 {
     /// <summary>尝试把原路径为 <paramref name="originalPath"/> 的回收站项还原回原位; 成功 true, 否则 false (不抛)。</summary>
     bool TryRestore(string originalPath);
+
+    /// <summary>
+    /// 列出回收站中**当前仍在、可还原**的原始完整路径 (规范化: 反斜杠、去尾斜杠、小写)。
+    /// 供 UI 据此显示真实"可还原"状态 (用户若已清空回收站, 这些项就不在了 → 不再谎称可还原)。
+    /// 默认空 (非 Windows / 测试替身)。
+    /// </summary>
+    IReadOnlyCollection<string> ListRecoverableOriginalPaths() => Array.Empty<string>();
 }

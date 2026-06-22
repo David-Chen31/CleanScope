@@ -43,6 +43,11 @@
                                                     Visibility="{Binding Recoverable, Converter={StaticResource BoolToVis}}">
                                                 <TextBlock Text="可还原" FontSize="11" Foreground="{DynamicResource Clean}"/>
                                             </Border>
+                                            <!-- 问题#3: 已不在回收站 (清空/永久删除) → 如实标"已永久移除", 不再谎称可还原 -->
+                                            <Border Background="{DynamicResource Subtle}" CornerRadius="3" Padding="5,1" Margin="8,0,0,0"
+                                                    Visibility="{Binding Gone, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="已永久移除" FontSize="11" Foreground="{DynamicResource Faint}"/>
+                                            </Border>
                                         </StackPanel>
                                         <TextBlock Text="{Binding Path}" Foreground="{DynamicResource Muted}" FontSize="11"
                                                    TextTrimming="CharacterEllipsis"/>

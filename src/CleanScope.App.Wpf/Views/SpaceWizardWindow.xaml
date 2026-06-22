@@ -77,7 +77,7 @@
                             </TextBlock>
                             <TextBlock Text="{Binding KeepPath}" Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" Margin="0,4,0,12"/>
                             <Button Command="{Binding GoListCommand}" Style="{StaticResource Ghost}" HorizontalAlignment="Left" Padding="14,8">
-                                <TextBlock Text="去可清理清单 → 右键它选「迁移到其他盘」" VerticalAlignment="Center"/>
+                                <TextBlock Text="去目录浏览 → 右键它选「迁移到其他盘」" VerticalAlignment="Center"/>
                             </Button>
                         </StackPanel>
                     </Border>

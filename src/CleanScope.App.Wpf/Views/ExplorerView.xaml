@@ -18,7 +18,7 @@
             <!-- ===== 头部: 标题 + 只看可清理 + 概览 + 批量条 ===== -->
             <StackPanel Grid.Row="0" Margin="0,0,0,10">
                 <Grid>
-                    <TextBlock Text="资源管理器（整盘目录树 · 可清理清单）" Style="{StaticResource H2}" VerticalAlignment="Center"/>
+                    <TextBlock Text="目录浏览（整盘目录树 · 可勾选清理）" Style="{StaticResource H2}" VerticalAlignment="Center"/>
                     <CheckBox Content="只看可清理（扁平，可勾选批量清理）" IsChecked="{Binding ShowCleanableOnly}"
                               HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource Clean}" FontWeight="SemiBold"/>
                 </Grid>

@@ -55,6 +55,39 @@ public sealed class WindowsRecycleRestore : IRecycleRestore
         }
     }
 
+    public IReadOnlyCollection<string> ListRecoverableOriginalPaths()
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!OperatingSystem.IsWindows()) return set;
+
+        var shellType = Type.GetTypeFromProgID("Shell.Application");
+        if (shellType is null) return set;
+
+        object? shellObj = null;
+        try
+        {
+            shellObj = Activator.CreateInstance(shellType);
+            dynamic shell = shellObj!;
+            dynamic bin = shell.NameSpace(RecycleBinFolder);
+            if (bin is null) return set;
+
+            foreach (dynamic item in bin.Items())
+            {
+                string? from = OriginalLocation(bin, item);
+                if (from is null) continue;
+                try { set.Add(Normalize(System.IO.Path.Combine(from, (string)item.Name))); }
+                catch { /* 个别项读取失败 → 跳过 */ }
+            }
+        }
+        catch { /* 枚举失败 → 返回已收集的 (可能空) */ }
+        finally
+        {
+            if (shellObj is not null)
+                try { System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shellObj); } catch { }
+        }
+        return set;
+    }
+
     // 原始位置: 优先用与区域无关的扩展属性; 取不到再扫详情列里形如 X:\... 的值。
     private static string? OriginalLocation(dynamic bin, dynamic item)
     {

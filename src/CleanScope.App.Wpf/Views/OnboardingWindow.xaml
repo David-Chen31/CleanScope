@@ -55,7 +55,7 @@
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
                             <TextBlock Text="②" Foreground="{DynamicResource Accent}" FontWeight="Bold" Margin="0,0,8,0"/>
-                            <TextBlock Text="到「可清理清单」勾选要清理的项（A/B 级最安全）。" Foreground="{DynamicResource Ink}" TextWrapping="Wrap"/>
+                            <TextBlock Text="到「目录浏览」勾选要清理的项（A/B 级最安全）。" Foreground="{DynamicResource Ink}" TextWrapping="Wrap"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="③" Foreground="{DynamicResource Accent}" FontWeight="Bold" Margin="0,0,8,0"/>

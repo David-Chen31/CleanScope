@@ -100,21 +100,33 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button Command="{Binding DataContext.RescanRecentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                    CommandParameter="{Binding Target}" Style="{StaticResource Ghost}"
-                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,0,0,6" Padding="12,9">
+                                    CommandParameter="{Binding Target}" Style="{StaticResource RowButton}"
+                                    Margin="0,0,0,6" Padding="12,10"
+                                    BorderBrush="{DynamicResource Line}" BorderThickness="1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                    <!-- 文件夹图标 -->
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8" Background="{DynamicResource AccentSoft}"
+                                            VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <Path Data="{StaticResource IconMonitor}" Style="{StaticResource IconStroke}" Stroke="{DynamicResource Accent}"
+                                              Width="17" Height="17"/>
+                                    </Border>
+                                    <!-- 目标 + 元信息 (左对齐, 填满宽度) -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
                                         <TextBlock Text="{Binding Target}" Foreground="{DynamicResource Ink}" FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Foreground="{DynamicResource Muted}" FontSize="11.5">
+                                                   FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Foreground="{DynamicResource Muted}" FontSize="11.5" Margin="0,2,0,0">
                                             <Run Text="{Binding SizeText, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding CountText, Mode=OneWay}"/><Run Text="　"/><Run Text="{Binding WhenText, Mode=OneWay}"/>
                                         </TextBlock>
                                     </StackPanel>
-                                    <TextBlock Grid.Column="1" Text="重扫 →" Foreground="{DynamicResource Accent}" VerticalAlignment="Center"/>
+                                    <!-- 重扫 -->
+                                    <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{DynamicResource AccentSoft}" VerticalAlignment="Center">
+                                        <TextBlock Text="重扫 →" Foreground="{DynamicResource Accent}" FontSize="12.5" FontWeight="SemiBold"/>
+                                    </Border>
                                 </Grid>
                             </Button>
                         </DataTemplate>
@@ -423,7 +435,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Button Content="去可清理清单批量处理 →" Command="{Binding ViewListCommand}"
+                <Button Content="去目录浏览批量处理 →" Command="{Binding ViewListCommand}"
                         Style="{StaticResource Ghost}" HorizontalAlignment="Left" Margin="0,14,0,0"/>
             </StackPanel>
         </Border>

@@ -90,7 +90,7 @@
                     Visibility="{Binding ShowResultsBar, Converter={StaticResource BoolToVis}}">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <Button Tag="home" Content="概览" Command="{Binding GoHomeCommand}" Style="{StaticResource SegItem}" Margin="0,0,22,0"/>
-                    <Button Tag="explorer" Content="可清理清单" Command="{Binding GoExplorerCommand}" Style="{StaticResource SegItem}" Margin="0,0,16,0"/>
+                    <Button Tag="explorer" Content="目录浏览" Command="{Binding GoExplorerCommand}" Style="{StaticResource SegItem}" Margin="0,0,16,0"/>
                     <Border Width="1" Background="{DynamicResource Line}" Margin="0,9,18,9"/>
                     <Button Tag="map" Content="空间地图" Command="{Binding GoMapCommand}" Style="{StaticResource SegItem}" Margin="0,0,22,0"/>
                     <Button Tag="software" Content="按软件" Command="{Binding GoBySoftwareCommand}" Style="{StaticResource SegItem}" Margin="0,0,22,0"/>

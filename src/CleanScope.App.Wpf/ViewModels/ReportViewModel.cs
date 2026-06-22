@@ -144,19 +144,30 @@ public sealed class ReportViewModel : ViewModelBase
         try
         {
             var logs = await _services.AuditLog.GetRecentAsync(200);
+            // 问题#3: 以"回收站里此刻还在不在"为准, 而非审计当时的静态标记 —— 用户清空回收站后就不再谎称可还原。
+            var present = await Task.Run(() => _services.RecycleRestore.ListRecoverableOriginalPaths());
             RecycleHistory.Clear();
+            var recoverableCount = 0;
             foreach (var l in logs.Where(l => l.Action == ActionType.MoveToRecycleBin && l.Result == ActionResult.Success))
-                RecycleHistory.Add(new RecycleHistoryViewModel(l));
+            {
+                var stillThere = present.Contains(NormalizePath(l.TargetPath));
+                if (stillThere) recoverableCount++;
+                RecycleHistory.Add(new RecycleHistoryViewModel(l, stillThere));
+            }
             OnPropertyChanged(nameof(HasRecycleHistory));
             HistoryStatus = RecycleHistory.Count == 0
-                ? "暂无回收记录。你在本应用移入回收站的项会出现在这里，随时可还原。"
-                : $"共 {RecycleHistory.Count} 条回收记录（均可在回收站还原）。";
+                ? "暂无回收记录。你在本应用移入回收站的项会出现在这里。"
+                : $"共 {RecycleHistory.Count} 条回收记录；其中 {recoverableCount} 项仍在回收站、可还原（标“可还原”者）。";
         }
         catch (Exception ex)
         {
             HistoryStatus = $"读取回收历史失败：{ex.Message}";
         }
     }
+
+    // 与 WindowsRecycleRestore.Normalize 同口径 (反斜杠、去尾斜杠、小写), 用于与回收站现存集合比对。
+    private static string NormalizePath(string? p) =>
+        string.IsNullOrEmpty(p) ? "" : p.Replace('/', '\\').TrimEnd('\\').ToLowerInvariant();
 
     private void OpenRecycleBin()
     {
@@ -213,18 +224,21 @@ public sealed class CleanupCategoryViewModel
 /// <summary>F3: 回收历史条目展示 (来自审计日志的一条"移入回收站"记录)。</summary>
 public sealed class RecycleHistoryViewModel
 {
-    public RecycleHistoryViewModel(ActionLog log)
+    public RecycleHistoryViewModel(ActionLog log, bool recoverable)
     {
         Path = log.TargetPath ?? "";
         Name = LeafName(Path);
         When = log.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-        Recoverable = log.Recoverable;
+        Recoverable = recoverable;
     }
 
     public string Path { get; }
     public string Name { get; }
     public string When { get; }
+    /// <summary>此刻是否仍在回收站、可还原 (问题#3: 真实状态, 非审计当时的静态标记)。</summary>
     public bool Recoverable { get; }
+    /// <summary>已不在回收站 (用户已清空/永久删除) → UI 显示"已永久移除"而非"可还原"。</summary>
+    public bool Gone => !Recoverable;
 
     private static string LeafName(string p)
     {
