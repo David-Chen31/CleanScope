@@ -336,6 +336,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         }
 
         _lastRecycled = recycled;
+        if (ok > 0) UserPrefs.Current.AddCleaned(recycled.Sum(r => r.size), ok);   // P5: 累计清理战绩
         ActionStatus = $"已移入回收站 {ok} 项（可还原）"
             + (skipped > 0 ? $"；{skipped} 项被安全闸门拦下或失败，已保留。" : "。");
         if (ok > 0) Toast.Show($"已移入回收站 {ok} 项", ToastKind.Success, "撤销", () => _ = UndoLastRecycleAsync());
@@ -399,7 +400,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
         foreach (var (path, size, cleanable) in batch)
         {
             var restored = await Task.Run(() => _services.RecycleRestore.TryRestore(path));
-            if (restored) { _session?.NotifyRestored(path, size, cleanable); ok++; }
+            if (restored) { _session?.NotifyRestored(path, size, cleanable); UserPrefs.Current.SubtractCleaned(size, 1); ok++; }   // P5: 还原 → 回退战绩
             else fail++;
         }
         _lastRecycled.Clear();
@@ -726,6 +727,7 @@ public sealed class ExplorerViewModel : ViewModelBase, IExplorerActions
             node.MarkDeleted();
             _session?.NotifyRemoved(node.Path, node.RawSize, node.IsCleanable);   // A1: 广播给其它页 + 概览扣减
             _lastRecycled = new() { (node.Path, node.RawSize, node.IsCleanable) };  // H: 供"撤销"
+            UserPrefs.Current.AddCleaned(node.RawSize, 1);   // P5: 累计清理战绩
             ActionStatus = $"已移入回收站（可还原）：{node.Name}";
             Toast.Show($"已移入回收站：{node.Name}", ToastKind.Success, "撤销", () => _ = UndoLastRecycleAsync());
         }

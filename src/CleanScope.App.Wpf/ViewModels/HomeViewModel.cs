@@ -37,6 +37,7 @@ public sealed class HomeViewModel : ViewModelBase
         ViewListCommand = new RelayCommand(_host.ShowList, () => Session is not null);
         AdviseCommand = new AsyncRelayCommand(_ => AdviseAsync(), _ => CanAdvise);
         RunOfficialActionCommand = new AsyncRelayCommand(p => RunOfficialAsync(p as OfficialActionViewModel), _ => !_isScanning && !_officialBusy);
+        OneClickCleanCommand = new AsyncRelayCommand(_ => OneClickCleanAsync(), _ => CanOneClickClean);   // P1
         OfficialActions = _services.OfficialActions.Select(a => new OfficialActionViewModel(a)).ToList();
         RescanRecentCommand = new RelayCommand(p =>   // H: 点最近扫描项 → 设为目标并重扫
         {
@@ -88,6 +89,10 @@ public sealed class HomeViewModel : ViewModelBase
     public IReadOnlyList<OfficialActionViewModel> ApplicableOfficialActions => OfficialActions.Where(a => a.Detected).ToList();
     public bool HasApplicableOfficialActions => ApplicableOfficialActions.Count > 0;
 
+    /// <summary>P4: "清空回收站"手段 (供清理结果卡里"彻底释放"按钮复用); 无则 null。</summary>
+    public OfficialActionViewModel? EmptyRecycleBinAction => OfficialActions.FirstOrDefault(a => a.Action.Id == "empty-recyclebin");
+    public bool HasEmptyRecycleBin => EmptyRecycleBinAction is not null;
+
     private string _officialStatus = "";
     public string OfficialStatus { get => _officialStatus; private set => SetField(ref _officialStatus, value); }
 
@@ -116,6 +121,8 @@ public sealed class HomeViewModel : ViewModelBase
                 ScanCommand.RaiseCanExecuteChanged();
                 ScanAllDrivesCommand.RaiseCanExecuteChanged();
                 RunOfficialActionCommand.RaiseCanExecuteChanged();
+                OnPropertyChanged(nameof(CanOneClickClean));
+                OneClickCleanCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -402,6 +409,8 @@ public sealed class HomeViewModel : ViewModelBase
         Session.ItemRemoved += OnItemRemoved;     // A3: 别处删除 → 概览数字随之扣减
         Session.ItemRestored += OnItemRemoved;    // H: 撤销还原 → 概览数字随之回补 (同一重算)
         HasResult = true;
+        CleanResultVisible = false;      // P4: 新扫描清空上次的清理结果反馈
+        RefreshLifetime();               // P5
         OverviewTotal = $"{Format.HumanSize(session.TotalSize)}（{session.FileCount} 项）";
         HighRiskCount = session.HighRiskCount;
         // 加载会话: 只持久化了 markdown 文本 (无结构化步骤) → 清空卡片, 走纯文本回退展示。
@@ -432,6 +441,11 @@ public sealed class HomeViewModel : ViewModelBase
             .ToList();
         OnPropertyChanged(nameof(BestCleanable));
         OnPropertyChanged(nameof(HasBestCleanable));
+        OnPropertyChanged(nameof(ShowOneClickClean));   // P1
+        OnPropertyChanged(nameof(CanOneClickClean));
+        OnPropertyChanged(nameof(OneClickCleanText));
+        OneClickCleanCommand.RaiseCanExecuteChanged();
+        RefreshRecommendedActions();                    // P3
     }
 
     // A3: 回到首页时刷新磁盘容量条 (官方清理/删除后空间已变, 例如关闭休眠/清空回收站)。
@@ -448,7 +462,13 @@ public sealed class HomeViewModel : ViewModelBase
     public bool IsOfficialRunning
     {
         get => _officialBusy;
-        private set { if (SetField(ref _officialBusy, value)) RunOfficialActionCommand.RaiseCanExecuteChanged(); }
+        private set
+        {
+            if (!SetField(ref _officialBusy, value)) return;
+            RunOfficialActionCommand.RaiseCanExecuteChanged();
+            OnPropertyChanged(nameof(CanOneClickClean));
+            OneClickCleanCommand.RaiseCanExecuteChanged();
+        }
     }
 
     // —— P0: 执行一条官方清理手段 (启动系统自带工具 / 应用内隐藏执行官方命令; 我们不替它删文件) ——
@@ -530,6 +550,202 @@ public sealed class HomeViewModel : ViewModelBase
         }
     }
 
+    // ===================== P1/P3/P4/P5: 一键安全清理 + 推荐操作 + 前后反馈 + 累计战绩 =====================
+
+    /// <summary>P1: 一键把全部"可放心清理(A/B)"项移入回收站 (仅安全集合, 逐项过闸门, 可撤销)。</summary>
+    public AsyncRelayCommand OneClickCleanCommand { get; }
+
+    private bool _cleaning;
+    public bool IsCleaning
+    {
+        get => _cleaning;
+        private set
+        {
+            if (!SetField(ref _cleaning, value)) return;
+            OnPropertyChanged(nameof(CanOneClickClean));
+            OneClickCleanCommand.RaiseCanExecuteChanged();
+            RunOfficialActionCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>有扫描结果且尚有可清理量 → 显示"一键清理"主按钮。</summary>
+    public bool ShowOneClickClean => HasResult && (Session?.RemainingReclaimable ?? 0) > 0;
+    public bool CanOneClickClean => ShowOneClickClean && !_cleaning && !_isScanning && !_officialBusy;
+    public string OneClickCleanText => $"一键清理可放心清理项（约 {Format.HumanSize(Session?.RemainingReclaimable ?? 0)}）";
+
+    private List<(string path, long size, bool cleanable)> _lastCleaned = new();   // 供"撤销"
+
+    private async Task OneClickCleanAsync()
+    {
+        var s = Session;
+        if (s?.Tree is null || _cleaning) return;
+        var targets = ScanTreeStats.EnumerateCleanable(s.Tree).Where(n => !s.IsRemoved(n.Path)).ToList();
+        if (targets.Count == 0) { OfficialStatus = "没有可放心清理的项。"; return; }
+
+        var total = targets.Sum(n => n.Size);
+        var model = new Views.ConfirmDialogModel
+        {
+            Title = "一键清理可放心清理项",
+            Intro = "把所有“可放心清理(A/B)”的项一次性移入回收站。只清理这些已判定安全的项，可随时从回收站撤销/还原。",
+            Details = Views.ConfirmDialogModel.Rows(
+                ("可清理", $"{targets.Count} 处"), ("合计", $"约 {Format.HumanSize(total)}")),
+            WarningText = "每一项仍逐一经安全闸门复核：命中系统关键/容器/占用的会自动跳过、原样保留。删除只进回收站，不是永久删除。",
+            ConfirmText = $"清理（{targets.Count} 处）",
+        };
+        if (!Views.ConfirmDialog.Show(System.Windows.Application.Current?.MainWindow, model))
+        {
+            OfficialStatus = "已取消，未做任何改动。"; return;
+        }
+
+        IsCleaning = true;
+        OfficialStatus = $"正在清理 {targets.Count} 处…（移入回收站，可撤销）";
+        var recycled = new List<(string path, long size, bool cleanable)>();
+        int ok = 0, skipped = 0;
+        long freed = 0;
+        try
+        {
+            await Task.Run(() =>
+            {
+                foreach (var n in targets)
+                {
+                    var request = new ActionRequest(null, n.Path, ActionType.MoveToRecycleBin);
+                    var risk = new RiskAssessment(0, 0, RiskLevel.B, 0, Array.Empty<string>(), new long[] { 0 },
+                        CanDeleteDirectly: false, Confidence: null, CreatedAt: DateTime.UtcNow, IsContainer: false);
+                    var verdict = _services.SafetyGuard.Evaluate(request, null, risk);
+                    if (verdict.Outcome != GuardOutcome.Allowed) { skipped++; continue; }
+                    var log = _services.ActionExecutor.ExecuteAsync(request, verdict).GetAwaiter().GetResult();
+                    if (log.Result == ActionResult.Success) { ok++; freed += n.Size; recycled.Add((n.Path, n.Size, true)); }
+                    else skipped++;
+                }
+            });
+        }
+        finally { IsCleaning = false; }
+
+        // 广播扣减 (概览/各页同步) + 累计战绩 + 撤销栈。
+        foreach (var (path, size, clean) in recycled) s.NotifyRemoved(path, size, clean);
+        _lastCleaned = recycled;
+        if (ok > 0) Common.UserPrefs.Current.AddCleaned(freed, ok);
+        RefreshLifetime();
+        RefreshDrive();
+        RecomputeOverview();
+        ShowCleanResult(ok, skipped, freed);
+        OfficialStatus = ok > 0
+            ? $"✓ 已把 {ok} 处移入回收站（约 {Format.HumanSize(freed)}，可撤销）。"
+            : (skipped > 0 ? $"选中的 {skipped} 处都被安全闸门跳过、原样保留。" : "没有可清理的项。");
+        if (ok > 0)
+            Toast.Show($"已清理 {ok} 处（约 {Format.HumanSize(freed)}）", ToastKind.Success, "撤销", () => _ = UndoLastCleanAsync());
+    }
+
+    private async Task UndoLastCleanAsync()
+    {
+        var batch = _lastCleaned.ToList();
+        if (batch.Count == 0) return;
+        OfficialStatus = $"正在还原 {batch.Count} 处…";
+        int ok = 0, fail = 0;
+        foreach (var (path, size, clean) in batch)
+        {
+            var restored = await Task.Run(() => _services.RecycleRestore.TryRestore(path));
+            if (restored) { Session?.NotifyRestored(path, size, clean); Common.UserPrefs.Current.SubtractCleaned(size, 1); ok++; }
+            else fail++;
+        }
+        _lastCleaned.Clear();
+        RefreshLifetime();
+        RefreshDrive();
+        RecomputeOverview();
+        CleanResultVisible = false;
+        if (ok > 0 && fail == 0) { OfficialStatus = $"已还原 {ok} 处到原位。"; Toast.Show($"已还原 {ok} 处", ToastKind.Success); }
+        else { OfficialStatus = $"已还原 {ok} 处；{fail} 处未能自动还原，已为你打开回收站手动还原。"; await OpenRecycleBinFallbackAsync(); }
+    }
+
+    private async Task OpenRecycleBinFallbackAsync()
+    {
+        try { await Task.Run(() => System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "shell:RecycleBinFolder") { UseShellExecute = true })); }
+        catch { /* 兜底失败忽略 */ }
+    }
+
+    // —— P4: 清理前后反馈 (回收不立即释放磁盘 → 给“投影：清空回收站后”的对比, 诚实不夸大) ——
+    private bool _cleanResultVisible;
+    public bool CleanResultVisible { get => _cleanResultVisible; private set => SetField(ref _cleanResultVisible, value); }
+
+    private string _cleanResultText = "";
+    public string CleanResultText { get => _cleanResultText; private set => SetField(ref _cleanResultText, value); }
+
+    private string _cleanResultNote = "";
+    public string CleanResultNote { get => _cleanResultNote; private set => SetField(ref _cleanResultNote, value); }
+
+    private double _cleanBeforeRatio, _cleanAfterRatio;
+    public double CleanBeforeRatio { get => _cleanBeforeRatio; private set { if (SetField(ref _cleanBeforeRatio, value)) OnPropertyChanged(nameof(CleanBeforePercent)); } }
+    public double CleanAfterRatio { get => _cleanAfterRatio; private set { if (SetField(ref _cleanAfterRatio, value)) OnPropertyChanged(nameof(CleanAfterPercent)); } }
+    public string CleanBeforePercent => $"{_cleanBeforeRatio * 100:0}%";
+    public string CleanAfterPercent => $"{_cleanAfterRatio * 100:0}%";
+
+    private void ShowCleanResult(int ok, int skipped, long recycledBytes)
+    {
+        if (ok == 0) { CleanResultVisible = false; return; }
+        try
+        {
+            var root = Path.GetPathRoot(OfficialCleanupCatalog.SystemDrive());
+            var di = new DriveInfo(root!);
+            if (di.IsReady && di.TotalSize > 0)
+            {
+                double total = di.TotalSize;
+                var usedNow = total - di.AvailableFreeSpace;                 // 回收后实际占用 (回收站仍占着)
+                var usedAfterEmpty = Math.Max(0, usedNow - recycledBytes);   // 清空回收站后的投影占用
+                CleanBeforeRatio = usedNow / total;
+                CleanAfterRatio = usedAfterEmpty / total;
+            }
+        }
+        catch { CleanBeforeRatio = CleanAfterRatio = 0; }
+
+        CleanResultText = $"✓ 已把 {ok} 处 · 约 {Format.HumanSize(recycledBytes)} 移入回收站（可撤销，随时还原）"
+            + (skipped > 0 ? $"；{skipped} 处经闸门跳过、原样保留。" : "。");
+        CleanResultNote = "磁盘空间在清空回收站后才真正释放。确认无误后，可在下方「清空回收站」彻底释放（清空后将无法撤销）。";
+        CleanResultVisible = true;
+    }
+
+    // —— P3: 扫描后"推荐操作"卡 (按可省排序: 一键清理 + 最划算的官方手段) ——
+    public ObservableCollection<RecommendedActionViewModel> RecommendedActions { get; } = new();
+    public bool HasRecommendedActions => RecommendedActions.Count > 0;
+
+    private void RefreshRecommendedActions()
+    {
+        RecommendedActions.Clear();
+        var s = Session;
+        if (s is not null)
+        {
+            var rank = 1;
+            if (s.RemainingReclaimable > 0)
+                RecommendedActions.Add(new RecommendedActionViewModel(
+                    rank++, "一键清理可放心清理项", $"约 {Format.HumanSize(s.RemainingReclaimable)}",
+                    "一键清理", OneClickCleanCommand, null));
+            foreach (var a in ApplicableOfficialActions
+                         .Where(a => a.Action.EstimatedBytes > 0)
+                         .OrderByDescending(a => a.Action.EstimatedBytes).Take(2))
+                RecommendedActions.Add(new RecommendedActionViewModel(
+                    rank++, a.Title, a.SavingsText, a.OpensWindowsUi ? "打开" : "执行",
+                    new RelayCommand(_ => { if (RunOfficialActionCommand.CanExecute(a)) RunOfficialActionCommand.Execute(a); },
+                                     _ => !_isScanning && !_officialBusy && !_cleaning), a));
+        }
+        OnPropertyChanged(nameof(HasRecommendedActions));
+    }
+
+    // —— P5: 累计清理战绩 (跨会话, 本机) ——
+    public bool HasLifetimeCleaned => Common.UserPrefs.Current.TotalCleanedCount > 0;
+    public string LifetimeCleanedText
+    {
+        get
+        {
+            var p = Common.UserPrefs.Current;
+            return p.TotalCleanedCount <= 0 ? ""
+                : $"CleanScope 已累计为你清理 {p.TotalCleanedCount} 项 · 约 {Format.HumanSize(p.TotalCleanedBytes)}";
+        }
+    }
+    private void RefreshLifetime()
+    {
+        OnPropertyChanged(nameof(HasLifetimeCleaned));
+        OnPropertyChanged(nameof(LifetimeCleanedText));
+    }
+
     // 系统盘可用空间 (字节), 用于"执行前后差 = 释放量"。失败返回 0 (则不显示释放量)。
     private static long FreeBytesOfSystemDrive()
     {
@@ -579,6 +795,31 @@ public sealed class HomeViewModel : ViewModelBase
 
 /// <summary>概览"最划算的几步"行 (只读预览; 操作在可清理清单页批量进行)。</summary>
 public sealed record OverviewItem(string SizeText, string Name, string Path, string Origin);
+
+/// <summary>P3: 一条"推荐操作"(按可省排序): 标题 + 可省 + 一键执行命令 (一键清理 / 官方手段)。</summary>
+public sealed class RecommendedActionViewModel
+{
+    public RecommendedActionViewModel(int rank, string title, string savingText, string actionText,
+        System.Windows.Input.ICommand runCommand, OfficialActionViewModel? official)
+    {
+        Rank = rank;
+        Title = title;
+        SavingText = savingText;
+        ActionText = actionText;
+        RunCommand = runCommand;
+        Official = official;
+    }
+
+    public int Rank { get; }
+    public string Title { get; }
+    public string SavingText { get; }
+    public bool HasSaving => !string.IsNullOrWhiteSpace(SavingText);
+    public string ActionText { get; }
+    public System.Windows.Input.ICommand RunCommand { get; }
+    public OfficialActionViewModel? Official { get; }   // 官方手段则非空 (供命令参数)
+    public bool IsOneClick => Official is null;          // 一键清理行 → 主按钮
+    public bool IsOfficial => Official is not null;      // 官方手段行 → 次按钮
+}
 
 /// <summary>H: 最近扫描项 (目标 / 占用 / 项数 / 时间) —— 点击一键重扫该目标。</summary>
 public sealed class RecentScanViewModel

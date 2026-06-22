@@ -30,6 +30,30 @@ public sealed class UserPrefs
     // —— H: 最近扫描历史 (最多 8 条, 最近在前, 按目标去重) ——
     public List<ScanHistoryEntry> RecentScans { get; set; } = new();
 
+    // —— P5: 累计清理战绩 (本机, 跨会话) —— "CleanScope 一共为你清理过多少" ——
+    public long TotalCleanedBytes { get; set; }
+    public long TotalCleanedCount { get; set; }
+    public DateTime? LastCleanedAt { get; set; }
+
+    /// <summary>记一次成功回收 (累加战绩) 并保存。撤销还原时调用 <see cref="SubtractCleaned"/> 回退。</summary>
+    public void AddCleaned(long bytes, long count)
+    {
+        if (count <= 0) return;
+        TotalCleanedBytes += Math.Max(0, bytes);
+        TotalCleanedCount += count;
+        LastCleanedAt = DateTime.UtcNow;
+        Save();
+    }
+
+    /// <summary>撤销回收 → 回退战绩 (保持诚实: 还原了就不算"已清理")。</summary>
+    public void SubtractCleaned(long bytes, long count)
+    {
+        if (count <= 0) return;
+        TotalCleanedBytes = Math.Max(0, TotalCleanedBytes - Math.Max(0, bytes));
+        TotalCleanedCount = Math.Max(0, TotalCleanedCount - count);
+        Save();
+    }
+
     /// <summary>记一次扫描 (去重置顶, 截断到 8 条) 并保存。</summary>
     public void AddScan(string target, long totalSize, long fileCount)
     {
